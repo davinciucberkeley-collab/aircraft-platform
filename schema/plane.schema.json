@@ -1,49 +1,147 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/REPLACE_ME/aircraft-platform/schema/plane.schema.json",
-  "title": "Plane design v0.1",
+  "title": "Plane design v0.2",
   "description": "Canonical design file. Units are fixed: millimetres, grams, newtons, degrees, seconds. Body frame: origin at the nose datum, +x aft, +y starboard (right), +z up.",
   "type": "object",
-  "required": ["schema_version", "id", "name", "status", "morphology", "root", "components", "attachments"],
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "status",
+    "morphology",
+    "root",
+    "components",
+    "attachments"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": {"const": "0.1"},
-    "id": {"$ref": "#/$defs/slug"},
-    "name": {"type": "string", "minLength": 1},
-    "authors": {"type": "array", "items": {"type": "string"}},
-    "status": {"enum": ["concept", "designed", "built", "flown", "retired"]},
-    "description": {"type": "string"},
+    "schema_version": {
+      "enum": [
+        "0.1",
+        "0.2"
+      ],
+      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.1 files validate unchanged."
+    },
+    "id": {
+      "$ref": "#/$defs/slug"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "enum": [
+        "concept",
+        "designed",
+        "built",
+        "flown",
+        "retired"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
     "lineage": {
       "description": "Design ids this one was derived from, and knowledge-base entries that inspired it.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "derived_from": {"type": "array", "items": {"$ref": "#/$defs/slug"}},
-        "inspired_by": {"type": "array", "items": {"type": "string"}}
+        "derived_from": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/slug"
+          }
+        },
+        "inspired_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "morphology": {
       "description": "Tags matching the morphological chart in knowledge/morphological-chart.yaml.",
       "type": "object",
-      "required": ["lift", "vtol_method"],
+      "required": [
+        "lift",
+        "vtol_method"
+      ],
       "additionalProperties": false,
       "properties": {
-        "lift": {"enum": ["fixed-wing", "flying-wing", "multirotor", "lifting-body", "biplane", "box-wing", "other"]},
-        "vtol_method": {"enum": ["none", "tailsitter", "tiltrotor", "tiltwing", "lift-plus-cruise", "ducted-fan", "other"]},
-        "tail": {"enum": ["conventional", "v-tail", "t-tail", "canard", "none", "other"]},
-        "propulsion_count": {"type": "integer", "minimum": 0}
+        "lift": {
+          "enum": [
+            "fixed-wing",
+            "flying-wing",
+            "multirotor",
+            "lifting-body",
+            "biplane",
+            "box-wing",
+            "other"
+          ]
+        },
+        "vtol_method": {
+          "enum": [
+            "none",
+            "tailsitter",
+            "tiltrotor",
+            "tiltwing",
+            "lift-plus-cruise",
+            "ducted-fan",
+            "other"
+          ]
+        },
+        "tail": {
+          "enum": [
+            "conventional",
+            "v-tail",
+            "t-tail",
+            "canard",
+            "none",
+            "other"
+          ]
+        },
+        "propulsion_count": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "requirements": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "mtow_g": {"type": "number", "exclusiveMinimum": 0},
-        "payload_g": {"type": "number", "minimum": 0},
-        "cruise_speed_mps": {"type": "number", "exclusiveMinimum": 0},
-        "stall_speed_max_mps": {"type": "number", "exclusiveMinimum": 0},
-        "endurance_min": {"type": "number", "exclusiveMinimum": 0},
-        "budget_usd": {"type": "number", "minimum": 0}
+        "mtow_g": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "payload_g": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cruise_speed_mps": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "stall_speed_max_mps": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "endurance_min": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "budget_usd": {
+          "type": "number",
+          "minimum": 0
+        }
       }
     },
     "flight": {
@@ -51,11 +149,30 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "cl_max": {"type": "number", "exclusiveMinimum": 0, "default": 1.1},
-        "air_density_kgm3": {"type": "number", "exclusiveMinimum": 0, "default": 1.225}
+        "cl_max": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.1
+        },
+        "air_density_kgm3": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.225
+        },
+        "hover_pose": {
+          "type": "string",
+          "description": "v0.2. Articulation pose name used for tier-2 hover moment and hover T/W."
+        },
+        "cruise_pose": {
+          "type": "string",
+          "description": "v0.2. Articulation pose name used for tier-3 aero (stall, static margin)."
+        }
       }
     },
-    "root": {"description": "Component id that every other component must connect to through attachments.", "$ref": "#/$defs/slug"},
+    "root": {
+      "description": "Component id that every other component must connect to through attachments.",
+      "$ref": "#/$defs/slug"
+    },
     "materials": {
       "type": "object",
       "description": "Material id -> properties. Ids may also refer to standards/materials.yaml.",
@@ -63,116 +180,415 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "density_g_cm3": {"type": "number", "exclusiveMinimum": 0},
-          "notes": {"type": "string"}
+          "density_g_cm3": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "notes": {
+            "type": "string"
+          }
         }
       }
     },
     "components": {
       "type": "array",
       "minItems": 1,
-      "items": {"$ref": "#/$defs/component"}
+      "items": {
+        "$ref": "#/$defs/component"
+      }
     },
     "attachments": {
       "type": "array",
-      "items": {"$ref": "#/$defs/attachment"}
+      "items": {
+        "$ref": "#/$defs/attachment"
+      }
     },
-    "notes": {"type": "string"}
+    "notes": {
+      "type": "string"
+    }
   },
   "$defs": {
-    "slug": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
-    "vec3": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "vec3": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
     "component": {
       "type": "object",
-      "required": ["id", "type", "geometry", "position", "mass_g"],
+      "required": [
+        "id",
+        "type",
+        "geometry",
+        "position",
+        "mass_g"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": {"$ref": "#/$defs/slug"},
-        "type": {"enum": ["fuselage", "wing", "tail_surface", "boom", "motor", "propeller", "battery", "esc", "flight_controller", "receiver", "servo", "payload", "landing_gear", "structure", "pod", "other"]},
-        "description": {"type": "string"},
-        "geometry": {"$ref": "#/$defs/geometry"},
-        "position": {"description": "Component origin in body frame (mm). For box/cylinder: centre. For lifting_surface: root leading edge.", "$ref": "#/$defs/vec3"},
-        "rotation_deg": {"description": "Intrinsic roll, pitch, yaw about x, y, z (deg).", "$ref": "#/$defs/vec3"},
-        "mass_g": {"type": "number", "exclusiveMinimum": 0},
-        "cg_offset": {"description": "CG relative to the component's geometric centroid (mm). Default [0,0,0].", "$ref": "#/$defs/vec3"},
-        "material": {"type": "string"},
+        "id": {
+          "$ref": "#/$defs/slug"
+        },
+        "type": {
+          "enum": [
+            "fuselage",
+            "wing",
+            "tail_surface",
+            "boom",
+            "motor",
+            "propeller",
+            "battery",
+            "esc",
+            "flight_controller",
+            "receiver",
+            "servo",
+            "payload",
+            "landing_gear",
+            "structure",
+            "pod",
+            "other"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "geometry": {
+          "$ref": "#/$defs/geometry"
+        },
+        "position": {
+          "description": "Component origin in body frame (mm). For box/cylinder: centre. For lifting_surface: root leading edge.",
+          "$ref": "#/$defs/vec3"
+        },
+        "rotation_deg": {
+          "description": "Intrinsic roll, pitch, yaw about x, y, z (deg).",
+          "$ref": "#/$defs/vec3"
+        },
+        "mass_g": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cg_offset": {
+          "description": "CG relative to the component's geometric centroid (mm). Default [0,0,0].",
+          "$ref": "#/$defs/vec3"
+        },
+        "material": {
+          "type": "string"
+        },
         "manufacturing": {
           "type": "object",
-          "required": ["method"],
+          "required": [
+            "method"
+          ],
           "additionalProperties": false,
           "properties": {
-            "method": {"enum": ["laser-cut", "3d-print-fdm", "3d-print-sla", "cnc-router", "cnc-mill", "hotwire-foam", "foamboard", "composite-layup", "waterjet", "hand-cut", "purchased"]},
-            "machine": {"type": "string", "description": "Optional machine id from standards/manufacturing.yaml"},
-            "part_number": {"type": "string", "description": "For purchased parts"},
-            "cost_usd": {"type": "number", "minimum": 0}
+            "method": {
+              "enum": [
+                "laser-cut",
+                "3d-print-fdm",
+                "3d-print-sla",
+                "cnc-router",
+                "cnc-mill",
+                "hotwire-foam",
+                "foamboard",
+                "composite-layup",
+                "waterjet",
+                "hand-cut",
+                "purchased"
+              ]
+            },
+            "machine": {
+              "type": "string",
+              "description": "Optional machine id from standards/manufacturing.yaml"
+            },
+            "part_number": {
+              "type": "string",
+              "description": "For purchased parts"
+            },
+            "cost_usd": {
+              "type": "number",
+              "minimum": 0
+            }
           }
         },
         "propulsion": {
           "type": "object",
           "description": "Motors only.",
-          "required": ["max_thrust_n", "axis"],
+          "required": [
+            "max_thrust_n",
+            "axis"
+          ],
           "additionalProperties": false,
           "properties": {
-            "max_thrust_n": {"type": "number", "exclusiveMinimum": 0},
-            "axis": {"description": "Thrust direction in body frame (unit vector) at the component's rotation.", "$ref": "#/$defs/vec3"},
-            "role": {"enum": ["lift", "cruise", "both"]}
+            "max_thrust_n": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "axis": {
+              "description": "Direction of the thrust FORCE on the aircraft (unit vector, body frame). Forward thrust is [-1,0,0] for tractors and pushers alike; hover lift at 0 deg pose is [0,0,1].",
+              "$ref": "#/$defs/vec3"
+            },
+            "role": {
+              "enum": [
+                "lift",
+                "cruise",
+                "both"
+              ]
+            }
           }
         }
       },
       "allOf": [
-        {"if": {"properties": {"type": {"const": "motor"}}}, "then": {"required": ["propulsion"]}}
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "motor"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "propulsion"
+            ]
+          }
+        }
       ]
     },
     "geometry": {
       "oneOf": [
         {
-          "type": "object", "required": ["box"], "additionalProperties": false,
-          "properties": {"box": {"type": "object", "required": ["size"], "additionalProperties": false,
-            "properties": {"size": {"description": "[lx, ly, lz] mm", "$ref": "#/$defs/vec3"}}}}
+          "type": "object",
+          "required": [
+            "box"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "box": {
+              "type": "object",
+              "required": [
+                "size"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "size": {
+                  "description": "[lx, ly, lz] mm",
+                  "$ref": "#/$defs/vec3"
+                }
+              }
+            }
+          }
         },
         {
-          "type": "object", "required": ["cylinder"], "additionalProperties": false,
-          "properties": {"cylinder": {"type": "object", "required": ["radius", "length"], "additionalProperties": false,
-            "properties": {
-              "radius": {"type": "number", "exclusiveMinimum": 0},
-              "length": {"type": "number", "exclusiveMinimum": 0},
-              "axis": {"enum": ["x", "y", "z"], "default": "x"}
-            }}}
+          "type": "object",
+          "required": [
+            "cylinder"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "cylinder": {
+              "type": "object",
+              "required": [
+                "radius",
+                "length"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "radius": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "length": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "axis": {
+                  "enum": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "default": "x"
+                }
+              }
+            }
+          }
         },
         {
-          "type": "object", "required": ["lifting_surface"], "additionalProperties": false,
-          "properties": {"lifting_surface": {"type": "object", "required": ["span", "root_chord", "tip_chord"], "additionalProperties": false,
-            "properties": {
-              "span": {"description": "Full span tip to tip if mirrored, else root to tip (mm).", "type": "number", "exclusiveMinimum": 0},
-              "root_chord": {"type": "number", "exclusiveMinimum": 0},
-              "tip_chord": {"type": "number", "exclusiveMinimum": 0},
-              "sweep_le_deg": {"type": "number", "default": 0},
-              "dihedral_deg": {"type": "number", "default": 0},
-              "thickness_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 0.4, "default": 0.12},
-              "airfoil": {"type": "string"},
-              "mirrored": {"type": "boolean", "default": true, "description": "true: symmetric about the component's x-z plane. false: extends toward +y (use rotation for vertical fins)."},
-              "lifting": {"type": "boolean", "default": true, "description": "false for vertical fins (excluded from lift/neutral-point estimate)."}
-            }}}
+          "type": "object",
+          "required": [
+            "lifting_surface"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "lifting_surface": {
+              "type": "object",
+              "required": [
+                "span",
+                "root_chord",
+                "tip_chord"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "span": {
+                  "description": "Full span tip to tip if mirrored, else root to tip (mm).",
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "root_chord": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "tip_chord": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "sweep_le_deg": {
+                  "type": "number",
+                  "default": 0
+                },
+                "dihedral_deg": {
+                  "type": "number",
+                  "default": 0
+                },
+                "thickness_ratio": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 0.4,
+                  "default": 0.12
+                },
+                "airfoil": {
+                  "type": "string"
+                },
+                "mirrored": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "true: symmetric about the component's x-z plane. false: extends toward +y (use rotation for vertical fins)."
+                },
+                "lifting": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "false for vertical fins (excluded from lift/neutral-point estimate)."
+                }
+              }
+            }
+          }
         },
         {
-          "type": "object", "required": ["mesh"], "additionalProperties": false,
-          "properties": {"mesh": {"type": "object", "required": ["file"], "additionalProperties": false,
-            "properties": {"file": {"type": "string", "description": "STL/OBJ/GLB path relative to the design file, in mm."}}}}
+          "type": "object",
+          "required": [
+            "mesh"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mesh": {
+              "type": "object",
+              "required": [
+                "file"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "description": "STL/OBJ/GLB path relative to the design file, in mm."
+                }
+              }
+            }
+          }
         }
       ]
     },
     "attachment": {
       "type": "object",
-      "required": ["parent", "child", "method", "location", "rated_load_n"],
+      "required": [
+        "parent",
+        "child",
+        "method",
+        "location",
+        "rated_load_n"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": {"type": "string"},
-        "parent": {"$ref": "#/$defs/slug"},
-        "child": {"$ref": "#/$defs/slug"},
-        "method": {"enum": ["bolted", "glued", "press-fit", "magnet", "hinge", "zip-tie", "tape", "printed-integral", "clamp", "slot-tab"]},
-        "location": {"description": "Joint point in body frame (mm). Must lie on or inside both parts (within tolerance).", "$ref": "#/$defs/vec3"},
-        "embed_ok": {"type": "boolean", "default": false, "description": "true if the child is meant to pass into the parent (spar into slot, motor into pod)."},
-        "rated_load_n": {"type": "number", "exclusiveMinimum": 0}
+        "id": {
+          "type": "string"
+        },
+        "parent": {
+          "$ref": "#/$defs/slug"
+        },
+        "child": {
+          "$ref": "#/$defs/slug"
+        },
+        "method": {
+          "enum": [
+            "bolted",
+            "glued",
+            "press-fit",
+            "magnet",
+            "hinge",
+            "zip-tie",
+            "tape",
+            "printed-integral",
+            "clamp",
+            "slot-tab"
+          ]
+        },
+        "location": {
+          "description": "Joint point in body frame (mm). Must lie on or inside both parts (within tolerance).",
+          "$ref": "#/$defs/vec3"
+        },
+        "embed_ok": {
+          "type": "boolean",
+          "default": false,
+          "description": "true if the child is meant to pass into the parent (spar into slot, motor into pod)."
+        },
+        "rated_load_n": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "articulation": {
+          "description": "v0.2. The joint moves. Rotation applies to the CHILD side: the child and everything attached downstream of it (reached from the child without crossing back through this joint). 0 deg = the geometry as written.",
+          "type": "object",
+          "required": [
+            "type",
+            "pivot",
+            "axis",
+            "range_deg"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "revolute"
+            },
+            "pivot": {
+              "description": "A point on the rotation axis, body frame (mm), at 0 deg.",
+              "$ref": "#/$defs/vec3"
+            },
+            "axis": {
+              "description": "Rotation axis direction (right-hand rule), body frame, at 0 deg.",
+              "$ref": "#/$defs/vec3"
+            },
+            "range_deg": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "[min, max] angle in degrees."
+            },
+            "poses": {
+              "type": "object",
+              "description": "Named poses -> angle in degrees (each within range_deg).",
+              "additionalProperties": {
+                "type": "number"
+              }
+            }
+          }
+        }
       }
     }
   }

@@ -5,24 +5,30 @@ import numpy as np
 import trimesh
 
 from .design import Design
-from .geometry import component_parts
+from .geometry import posed_component_parts, pose_transforms
 
 
-def component_cg(component: dict, parts: list[trimesh.Trimesh]) -> np.ndarray:
+def component_cg(component: dict, parts: list[trimesh.Trimesh], rot: np.ndarray | None = None) -> np.ndarray:
     vols = np.array([max(p.volume, 1e-9) for p in parts])
     cents = np.array([p.center_mass for p in parts])
     centroid = (cents * vols[:, None]).sum(0) / vols.sum()
-    return centroid + np.array(component.get("cg_offset", [0, 0, 0]), dtype=float)
+    off = np.array(component.get("cg_offset", [0, 0, 0]), dtype=float)
+    if rot is not None:
+        off = rot @ off  # the offset turns with the component when an articulated joint is posed
+    return centroid + off
 
 
-def mass_properties(design: Design) -> dict:
+def mass_properties(design: Design, angles: dict[str, float] | None = None) -> dict:
+    """`angles`: optional articulated-joint configuration (joint label -> deg); default is the 0 deg geometry."""
+    posed = posed_component_parts(design, angles)
+    tf = pose_transforms(design, angles)
     total = 0.0
     moment = np.zeros(3)
     entries = []
     for c in design.components:
-        parts = component_parts(c, design.base_dir)
+        parts = posed[c["id"]]
         m = float(c["mass_g"])
-        cg = component_cg(c, parts)
+        cg = component_cg(c, parts, tf[c["id"]][:3, :3])
         entries.append((c, parts, m, cg))
         total += m
         moment += m * cg

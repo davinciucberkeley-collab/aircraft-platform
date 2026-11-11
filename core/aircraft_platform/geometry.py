@@ -87,11 +87,103 @@ def component_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
     return [component_mesh(component, base_dir)]
 
 
+# ---------------------------------------------------------------- articulation (schema 0.2)
+def att_label(a: dict) -> str:
+    return a.get("id") or f"{a['parent']}->{a['child']}"
+
+
+def articulated_attachments(design: Design) -> list[dict]:
+    return [a for a in design.data.get("attachments", []) if a.get("articulation")]
+
+
+def _adjacency(design: Design) -> dict[str, set[str]]:
+    adj: dict[str, set[str]] = {}
+    for a in design.data.get("attachments", []):
+        adj.setdefault(a["parent"], set()).add(a["child"])
+        adj.setdefault(a["child"], set()).add(a["parent"])
+    return adj
+
+
+def downstream_ids(design: Design, att: dict) -> set[str]:
+    """Components on the CHILD side of `att`: reached from the child without crossing this joint.
+    If the joint lies in a loop the parent is reachable and the result contains it (T1.articulation FAILs that)."""
+    adj = _adjacency(design)
+    seen, stack = {att["child"]}, [att["child"]]
+    while stack:
+        n = stack.pop()
+        for m in adj.get(n, ()):
+            if m in seen or (n == att["child"] and m == att["parent"]):
+                continue
+            seen.add(m)
+            stack.append(m)
+    return seen
+
+
+def _depth(design: Design, cid: str) -> int:
+    adj = _adjacency(design)
+    dist, frontier = {design.data["root"]: 0}, [design.data["root"]]
+    while frontier:
+        nxt = []
+        for n in frontier:
+            for m in adj.get(n, ()):
+                if m not in dist:
+                    dist[m] = dist[n] + 1
+                    nxt.append(m)
+        frontier = nxt
+    return dist.get(cid, 0)
+
+
+def joint_rotation(articulation: dict, angle_deg: float) -> np.ndarray:
+    """4x4 rotation by angle_deg about the joint axis through its pivot (body frame, as written at 0 deg)."""
+    axis = np.array(articulation["axis"], dtype=float)
+    pivot = np.array(articulation["pivot"], dtype=float)
+    return trimesh.transformations.rotation_matrix(math.radians(angle_deg), axis / np.linalg.norm(axis), pivot)
+
+
+def pose_transforms(design: Design, angles: dict[str, float] | None) -> dict[str, np.ndarray]:
+    """Component id -> 4x4 transform for the configuration `angles` (joint label -> degrees; missing = 0).
+    Nested joints compose with the joint nearest the root applied last."""
+    out = {c["id"]: np.eye(4) for c in design.components}
+    if not angles:
+        return out
+    joints = [a for a in articulated_attachments(design) if abs(angles.get(att_label(a), 0.0)) > 1e-12]
+    joints.sort(key=lambda a: _depth(design, a["parent"]), reverse=True)  # innermost (deepest) first
+    for a in joints:
+        r = joint_rotation(a["articulation"], angles[att_label(a)])
+        for cid in downstream_ids(design, a):
+            if cid in out:
+                out[cid] = r @ out[cid]
+    return out
+
+
+def posed_component_parts(design: Design, angles: dict[str, float] | None = None) -> dict[str, list[trimesh.Trimesh]]:
+    """Watertight parts of every component with the articulated joints at `angles` (None = 0 deg, as written)."""
+    tf = pose_transforms(design, angles)
+    out = {}
+    for c in design.components:
+        parts = component_parts(c, design.base_dir)
+        t = tf[c["id"]]
+        if not np.allclose(t, np.eye(4)):
+            parts = [p.copy() for p in parts]
+            for p in parts:
+                p.apply_transform(t)
+        out[c["id"]] = parts
+    return out
+
+
+def pose_angles(design: Design, pose_name: str | None) -> dict[str, float]:
+    """Joint label -> angle for a named pose (joints that do not define it stay at 0). None -> all 0."""
+    if not pose_name:
+        return {}
+    return {att_label(a): float(a["articulation"].get("poses", {}).get(pose_name, 0.0))
+            for a in articulated_attachments(design)}
+
+
 def design_meshes(design: Design) -> dict[str, list[trimesh.Trimesh]]:
     return {c["id"]: component_parts(c, design.base_dir) for c in design.components}
 
 
-def lifting_surface_properties(component: dict) -> dict:
+def lifting_surface_properties(component: dict, pose: np.ndarray | None = None) -> dict:
     """Area (mm^2), aspect ratio, MAC (mm) and the body-frame x of the MAC quarter-chord."""
     ls = component["geometry"]["lifting_surface"]
     mirrored = ls.get("mirrored", True)
@@ -107,5 +199,7 @@ def lifting_surface_properties(component: dict) -> dict:
     x_le_mac = y_mac * math.tan(math.radians(ls.get("sweep_le_deg", 0)))
     local_ac = np.array([x_le_mac + 0.25 * mac, 0.0, 0.0])
     ac_body = rotation_matrix(component.get("rotation_deg")) @ local_ac + np.array(component["position"])
+    if pose is not None:  # articulated joint at a pose: 4x4 transform of the component's subtree
+        ac_body = pose[:3, :3] @ ac_body + pose[:3, 3]
     return {"area_mm2": area, "aspect_ratio": ar, "mac_mm": mac, "x_ac_mm": float(ac_body[0]),
             "lifting": ls.get("lifting", True)}
