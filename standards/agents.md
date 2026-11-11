@@ -23,6 +23,8 @@ How Claude (and any other model) is used to make things in this repo. Load this 
 - Tactician → builder, scout.
 - Builder, scout, reviewer → nobody.
 
+**Where nesting isn't available** (e.g. Claude Code subagents can't launch their own subagents — found 2026-11-11 when the A-series tactician ran with no launch tool): the tactician runs in *briefing mode*. It writes the builder briefs to `plans/<task>/briefs/*.md` and returns; the conductor launches one Haiku builder per brief, then hands the results back to the same tactician (SendMessage) to check. A tactician that does the builder work itself must report it as a process miss.
+
 ## Declaring agents up front
 
 Before any agent is launched, the conductor writes a plan with an **agent table**:
