@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aircraft Platform Viewer</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <header class="brand">
+      <h1>Designs</h1>
+      <span id="count" class="muted"></span>
+    </header>
+    <div class="filters">
+      <input id="filter-text" type="search" placeholder="Filter by name, id, tag" aria-label="Filter designs">
+      <select id="filter-vtol" aria-label="Filter by VTOL method"><option value="">All VTOL methods</option></select>
+    </div>
+    <ul id="design-list" class="design-list"></ul>
+    <footer class="muted small" id="generated"></footer>
+  </aside>
+
+  <main id="stage">
+    <div class="toolbar">
+      <div class="seg" role="tablist">
+        <button id="mode-inspect" class="active" role="tab">Inspect</button>
+        <button id="mode-compare" role="tab">Compare</button>
+      </div>
+      <span id="mode-hint" class="muted small"></span>
+    </div>
+
+    <section id="inspect" class="inspect">
+      <div class="vp-wrap"><div id="vp-main" class="viewport"></div></div>
+      <aside id="scorecard" class="panel"></aside>
+    </section>
+
+    <section id="compare" class="compare" hidden>
+      <div class="compare-views">
+        <div class="vp-wrap"><div class="vp-head"><span class="slot">A</span><select id="sel-a"></select></div><div id="vp-a" class="viewport"></div></div>
+        <div class="vp-wrap"><div class="vp-head"><span class="slot">B</span><select id="sel-b"></select></div><div id="vp-b" class="viewport"></div></div>
+      </div>
+      <div id="compare-table" class="panel"></div>
+    </section>
+  </main>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

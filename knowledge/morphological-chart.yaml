@@ -1,0 +1,67 @@
+version: "0.1"
+sources: [morph-icas2006-fuel-matrix, morph-icas2024-uncertainty-matrix, morph-uaav-hybrid-2022, morph-box-wing-barua-scholz-2013, morph-ceas2017-morphing-wings]
+dimensions:
+  - id: lift
+    name: Lift generation
+    options:
+      - {id: fixed-wing, name: "Conventional wing"}
+      - {id: flying-wing, name: "Flying wing"}
+      - {id: multirotor, name: "Rotors only"}
+      - {id: lifting-body, name: "Lifting body"}
+      - {id: biplane, name: "Biplane"}
+      - {id: box-wing, name: "Box / joined wing"}
+  - id: vtol_method
+    name: VTOL method
+    options:
+      - {id: tailsitter, name: "Tailsitter"}
+      - {id: tiltrotor, name: "Tiltrotor"}
+      - {id: tiltwing, name: "Tiltwing"}
+      - {id: lift-plus-cruise, name: "Lift-plus-cruise"}
+      - {id: ducted-fan, name: "Ducted fan"}
+      - {id: none, name: "None (fixed-wing only)"}
+  - id: tail
+    name: Tail / stabilizer
+    options:
+      - {id: conventional, name: "Conventional"}
+      - {id: v-tail, name: "V-tail"}
+      - {id: t-tail, name: "T-tail"}
+      - {id: canard, name: "Canard"}
+      - {id: none, name: "None"}
+  - id: engine_position
+    name: Engine position
+    source: morph-box-wing-barua-scholz-2013
+    options:
+      - {id: fuselage-aft, name: "Fuselage aft"}
+      - {id: fuselage-middle, name: "Fuselage middle"}
+      - {id: wing-mounted, name: "Wing-mounted"}
+  - id: wing_sweep
+    name: Wing sweep
+    source: morph-box-wing-barua-scholz-2013
+    options:
+      - {id: unswept, name: "Unswept"}
+      - {id: backward, name: "Backward swept"}
+      - {id: forward, name: "Forward swept"}
+      - {id: mixed, name: "Backward and forward (per wing)"}
+  - id: wing_morphing
+    name: Wing morphing (aerofoil camber)
+    source: morph-ceas2017-morphing-wings
+    options:
+      - {id: none, name: "None (fixed camber)"}
+      - {id: leading-edge, name: "Leading-edge camber"}
+      - {id: trailing-edge, name: "Trailing-edge camber"}
+      - {id: full-camber, name: "Entire camber"}
+  - id: rotor_frame
+    name: Multirotor frame layout
+    source: morph-uaav-hybrid-2022
+    options:
+      - {id: quad-plus, name: "Quad +"}
+      - {id: quad-x, name: "Quad X"}
+      - {id: quad-h, name: "Quad H"}
+      - {id: quad-v, name: "Quad V"}
+  - id: fuselage_count
+    name: Fuselage count
+    source: morph-ceas2017-morphing-wings
+    options:
+      - {id: none, name: "None (flying wing)"}
+      - {id: one, name: "One fuselage"}
+      - {id: two, name: "Two fuselages"}

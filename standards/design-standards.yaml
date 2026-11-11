@@ -1,0 +1,80 @@
+# Thresholds used by the automated validators. Every rule needs a source.
+# `source: pending` means a scout/reviewer still has to confirm it — treat as provisional.
+# Criterion links look like: design-standards.yaml#<key>
+
+version: "0.1"
+
+geometry:
+  attach_tolerance_mm:
+    value: 2.0
+    rule: Attached parts must touch or overlap; joint point within this distance of both parts.
+    source: internal convention
+  interference_max_mm3:
+    value: 1.0
+    rule: Parts that are not attached to each other may not overlap more than this volume (catches clipping and prop strikes).
+    source: internal convention
+  glued_overlap_max_fraction:
+    value: 0.02
+    rule: Attached parts without embed_ok may overlap at most this fraction of the smaller part's volume.
+    source: internal convention
+
+structure:
+  landing_load_factor:
+    value: 3.0
+    rule: Every attachment must carry (mass outboard of the joint) x g x this factor (x ultimate_factor).
+    source: pending
+    note: No source found for a 3 g landing factor (knowledge/sources/std-SUMMARY.md). STANAG 4703 uses 3.8 g limit manoeuvre load. Need STANAG Annex B or ASTM F3298 load tables.
+  ultimate_factor:
+    value: 1.5
+    rule: Ultimate load = limit load x 1.5; joint ratings are ultimate ratings.
+    source: ASTM F3298-19 and STANAG 4703 (knowledge/sources/std-astm-f3298-lightweight-uas.md, std-stanag-4703-aep-83.md)
+
+aero:
+  static_margin:
+    min: 0.05
+    max: 0.15
+    rule: Static margin (neutral point minus CG, over main-wing MAC) for fixed-wing cruise.
+    source: MIT 16.01 design rules; uavmodel DIY UAV guide (knowledge/sources/std-mit-unified-desrules.md, std-uavmodel-diy-uav-airframe.md)
+    note: MIT states it per chord c; confirm it means MAC.
+  hover_thrust_to_weight_min:
+    value: 1.5
+    rule: VTOL designs need total lift-motor thrust at least this multiple of weight.
+    source: pending
+    note: Sources range 1.2-1.5 (forum citing a paper) to 2.0 (heuristic); ArduPilot/PX4 give none. Candidate change to 2.0 once the underlying paper is read.
+  lateral_cg_max_fraction_span:
+    value: 0.02
+    rule: "|CG y| no more than this fraction of the main-wing span."
+    source: internal convention
+  cl_max_default:
+    value: 1.1
+    rule: Used for stall speed when the design gives no flight.cl_max. Deliberately conservative.
+    source: Guglielmo & Selig 1997 (plain airfoils at Re 2e5 reach 1.17-2.2), so 1.1 is a conservative floor (knowledge/sources/std-guglielmo-selig-1997-s1223.md)
+    note: Flat-plate wings only reach 0.55-0.7 (Ananda, Sukumar & Selig 2015); set flight.cl_max for those.
+
+regulatory:
+  faa_part107_max_mass_g:
+    value: 24947
+    rule: Small UAS under 14 CFR Part 107 must weigh less than 55 lb.
+    source: 14 CFR 107.3
+  faa_registration_mass_g:
+    value: 250
+    rule: Over 0.55 lb requires FAA registration (informational).
+    source: 14 CFR 48 / 107
+
+sim:
+  drop_height_m:
+    value: 0.3
+    rule: Height above the ground from which the MuJoCo drop test releases the aircraft in its landing orientation (nose-up for tailsitters, wheels/belly down otherwise).
+    source: internal convention
+  duration_s:
+    value: 2.0
+    rule: Simulated time for the drop test.
+    source: internal convention
+  rest_speed_max_mps:
+    value: 0.05
+    rule: At the end of the drop test the centre of mass must move slower than this (comes to rest).
+    source: internal convention
+  tip_angle_max_deg:
+    value: 30.0
+    rule: At rest, the landing "up" axis may be at most this far from vertical; beyond this the aircraft has tipped over.
+    source: internal convention

@@ -1,0 +1,103 @@
+version: "0.1"
+facility: Jacobs Hall, Jacobs Institute for Design Innovation, UC Berkeley
+retrieved: 2026-11-11
+source_urls:
+  - https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+  - https://jacobsinstitute.berkeley.edu/student-resources/other-spaces/
+machines:
+  - id: jacobs-laser
+    name: "Universal Systems laser cutter (32 x 18 in bed)"
+    count: 3
+    methods: [laser-cut]
+    materials: [plywood, acrylic]
+    notes: "Bed 32 x 18 in (813 x 457 mm) per the page; max thickness not stated, so no z dimension. Page also says similar materials are allowed."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-laser-48x25
+    name: "Universal Systems laser cutter (48 x 25 in bed)"
+    count: 1
+    methods: [laser-cut]
+    materials: [wood, acrylic]
+    notes: "Bed 48 x 25 in (1219 x 635 mm) per the page; max thickness not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-fiber-laser
+    name: "FabLight fiber laser cutter"
+    count: 1
+    methods: [laser-cut]
+    materials: [metal sheet, metal tube]
+    notes: "Metal shop in the basement. Cutting area 50 x 25 in (1270 x 635 mm) per the page; max thickness not stated. Also engraves steel, stainless, aluminum, brass, bronze, copper and titanium."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-fdm
+    name: "Prusa 3D printers (model not stated)"
+    count: unknown
+    methods: [3d-print-fdm]
+    materials: [PLA]
+    notes: "All-purpose makerspace printers. Page says PLA filament; count and build volume not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-fdm-lulzbot
+    name: "LulzBot TAZ 6 (1.2 mm nozzle)"
+    count: unknown
+    methods: [3d-print-fdm]
+    materials: []
+    notes: "All-purpose makerspace. Page says large build volume without dimensions; materials not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-fdm-fortus
+    name: "Stratasys Fortus 380MC"
+    count: 1
+    methods: [3d-print-fdm]
+    materials: [engineering-grade thermoplastics]
+    notes: "Advanced Prototyping Lab. Page says large build volume without dimensions."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-sla
+    name: "Form 3 SLA printer"
+    count: 4
+    methods: [3d-print-sla]
+    materials: []
+    notes: "Advanced Prototyping Lab. Build volume and resin types not stated on the page."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-cnc-router
+    name: "ShopBot PRSalpha CNC router"
+    count: 1
+    methods: [cnc-router]
+    materials: []
+    notes: "Bed 4 ft x 8 ft (1219 x 2438 mm) per the page. Max thickness and allowed materials not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-cnc-mill-othermill
+    name: "Othermill CNC mills"
+    count: 2
+    methods: [cnc-mill]
+    materials: [wood, metal, plastic]
+    notes: "All-purpose makerspace. Build volume not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-cnc-mill-tormach
+    name: "Tormach 440 PCNC module"
+    count: 1
+    methods: [cnc-mill]
+    materials: [aluminum, steel, rigid plastics]
+    notes: "Metal shop. Build volume and max thickness not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-waterjet
+    name: "OMAX 2626 waterjet cutter"
+    count: 1
+    methods: [waterjet]
+    materials: [nearly anything except tempered glass]
+    notes: "Metal shop. Cutting area 26 x 26 in (660 x 660 mm) per the page. Max thickness not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
+  - id: jacobs-hand-tools
+    name: "Hand tools (all-purpose and metal shop)"
+    count: unknown
+    methods: [hand-cut]
+    materials: []
+    notes: "Listed under the all-purpose makerspace and metal shop. Count and materials not stated."
+    source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
+    verified: true
