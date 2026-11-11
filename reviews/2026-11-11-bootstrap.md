@@ -195,3 +195,83 @@ The remaining WARN rows in any scorecard are the three T4 rows above and T2.hove
 3. `EMBED_PARENTS`, `EMBED_CHILDREN` and `SHEET_METHODS` are written in checks.py, and the embed lists are repeated in the yaml rule text. Read them from design-standards.yaml/manufacturing.yaml (e.g. `sheet: true` per machine).
 4. `embed_max_fraction_of_child: 0.35` (internal convention) still lets a fin sink 34% into a wing or a non-prop part clip 35% through another. Justify the number or tie it to joint method (slot-tab depth).
 5. The MuJoCo error in T2.sim_stable (b2) contains a newline, which breaks the markdown table row. Collapse whitespace in messages.
+
+## Round 3 (5a86f3e)
+
+Reviewer: same Opus instance (R1). Commits reviewed: 72fda53 (loophole fixes), b8c0e9a (schema v0.2 articulation), f7e3456, 645ef30, 9265042 (converted designs), 5a86f3e (agents.md). Attack copies are in `/tmp/ap-review2/` (re-generated from the current example with `mk.py`) and `/tmp/ap-review3/` (`mk3.py`; each folder has `plane.yaml` and `out.md`). Nothing under `designs/` was edited.
+
+### Automated
+
+- `python3 -m pytest -q`: `48 passed, 34 warnings in 15.06s`.
+- `plane validate <d> --tier all`: example-tailsitter-wing exit 0, **Accepted: yes**, no non-PASS rows. c0-lift-cruise, c0-a1, c0-a2, c0-a3 and tiltwing-cakir exit 1. Their non-PASS rows match the lists in each `validator-comparison.md` (tiltwing has 29, matching its tier counts).
+
+### 1. Re-review blockers
+
+| # | Re-review blocker | Status | Evidence (current example, `/tmp/ap-review2`) |
+|---|---|---|---|
+| 1 | embed/prop rules trust `type` | CLOSED | Embed now uses geometric containment (`containment_min_fraction` 0.99, `type` not read) plus `T1.motor_has_prop`. n1b (prop relabelled `payload`): exit 1, "motor_l: has a propulsion block but no attached component of type propeller". n1 (FC 36x400x10 inside the wing, wing labelled `pod`): exit 0. The FC is now 100% inside the wing (144000/144000 mm^3), so it is a bay, not a clip. I accept that. |
+| 2 | fit uses the rotated AABB | CLOSED | n2 (900x100x3 strip tilted 60 deg): "oriented extents [3.0, 100.0, 900.0] mm do not fit jacobs-laser bed [457, 813]". Sheet thickness is still not limited, but the PASS message now says so ("lists no thickness limit"). |
+| 3 | unchecked fit still accepted | CLOSED | n2c (no `machine`): T4.machine FAIL "in-house method laser-cut needs a `machine`". n4 (1 m wing on jacobs-fdm): T4.fits_machine **SKIP**, not accepted. n4b: T4.method FAIL "no manufacturing method". The example's mounts moved to laser-cut ply to stay accepted, which is documented in the commit. |
+| 4 | partial run says "Accepted: yes" | CLOSED | `--tier 1` prints "**Partial run (tiers 0-1):** ..." and JSON has `accepted: false, partial: true`. A clean partial run exits 0, which is fine because it never claims acceptance. |
+
+n3 (machine without the method) is still CAUGHT.
+
+### 2. Articulation attacks (/tmp/ap-review3/)
+
+Base: the current example plus a hinged 80x20x4 ply hatch on the fuselage top (pivot (200,0,40), axis [0,-1,0], range [0,90]). Where needed, a post and arm sit behind it.
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| r1 | Hatch clips the arm **only mid-swing**. Poses closed 0 / open 90; 0, 90 and both range ends are clear | **MISSED (design gap)**: exit 0, Accepted: yes | `_configurations` checks only 0 deg, named poses and range endpoints. Control r1b adds a pose at 45: "pose half (45°): clipping: hatch and arm overlap 1129 mm^3". So the per-pose check works, but nothing in between is ever looked at. |
+| r2 | Pivot 100 mm above the fuselage, off both parts | CAUGHT | T1.articulation "pivot is 100.0 mm from center_body and 96.0 mm from hatch at 0°", plus contact FAIL at 90 deg |
+| r2b | Pivot on the parent only (60 mm from the hatch) | CAUGHT | T1.articulation "0.0 mm from center_body and 60.0 mm from hatch" |
+| r3 | Tilting motor mounts (poses cruise 0 / hover 90), `flight.hover_pose: vertical`, which doesn't exist | CAUGHT | T1.articulation "flight.hover_pose 'vertical' is not a pose of any articulated joint"; T3.hover_tw 0.00. Cosmetic: T2.hover_moment still PASSes "at pose vertical", computed at 0 deg. |
+| r3b | Hover pose 90 deg outside range [0, 60] | CAUGHT | T1.articulation "pose hover (90°) is outside range [0°, 60°]". T3.hover_tw alone would PASS (2.42 at 90 deg), so only the range rule stops it. |
+| r3c | `hover` pose exists only on the unrelated hatch hinge; motors never tilt | CAUGHT | T3.hover_tw "0.00 at pose hover" (only the +z component of thrust counts) |
+| r3d | `vtol_method: tiltrotor` with no articulation and no `hover_pose`: thrust points forward (-x) forever | **MISSED**: exit 0, Accepted: yes | Without `hover_pose`, T3.hover_tw adds up `max_thrust_n` whatever the axis points to (2.42). That is right only for a tailsitter. |
+| r3e | `lift-plus-cruise`, both lift motors with axis [0,0,-1] (thrust pushes the aircraft down), no pose | **T3 MISSED**, caught by accident | T3.hover_tw PASS 2.42 on downward thrust. Exit 1 only because T2.hover_moment happens to see a 132% moment from the x offset of the motors. With motors over the CG it would pass. |
+
+### 3. Provenance spot-check (12 numbers; every source file opened, TiltWing model.js run with node)
+
+| Design: value in plane.yaml / comparison | Cited source | Source value | Result |
+|---|---|---|---|
+| c0: lift motor `max_thrust_n` 30.695 | dbf-combined `analysis/results.json` C0.struct.Tmax | 30.694814 (params.Tmax_g 3130) | match |
+| c0: Lift_Motor 660/4 = 165 g | `analysis/mass/mass_budget.json` | Lift_Motor qty 4, 660.0 g | match |
+| c0: spar 478.3 + joiner 197.1 = 675.4 g | mass_budget.json; results.json base.m_spar | 478.3, 197.1; 0.67524 kg | match |
+| c0: pusher disc lump 37.0+11.1+4.3+8.1 g | mass_budget.json | 37.0, 11.1, 4.3, 8.1 | match |
+| c0: pusher `max_thrust_n` 8.376 (stated as cruise drag, not a max) | results.json C0.sized.D_cruise | 8.3761566 | match (honestly labelled) |
+| c0 comparison: total 7415.9 / sized 7438.0 g; CG xLEtoCG -0.0903 m; SM with pod 10.4% | mass_budget total_kg; results.json; aero_results.json | 7.4159; 7.4379985; -0.090253; static_margin_pct CG_28pct 10.404 | match |
+| c0: servo protrusion uses lower surface yL55 -13.9 mm | `cad/params.txt` | yL55=-0.013910 | match |
+| tiltwing: `cl_max` 2.0142386 | TiltWing `model.js` size() CLmax | 2.014238599 | match |
+| tiltwing: TfMax 32.407694 / TrMax 6.156 / tMax 141.94 N | model.js l.174, 327 | 32.40769, 6.15619, 141.94317 | match |
+| tiltwing: S 0.57554 m^2, MAC 290.757 mm, m 9152.686 g, SM 0.11514, spar root moment 32.0 N*m | `data/verify.json` G1, G3, M1, A7 row, F1 | 0.5755396, 0.2907570, 9.152686, 0.1151391, 32.00176 | match |
+| tiltwing: pivots x 756 / 1656, z 84 / 24 | `cad/params.json` xw, xt; `tools/cad_export.py` zw = 0.42 df, zt = 0.12 df | 0.756, 1.656; 0.084, 0.024 | match |
+| tiltwing: nacelle 1 bounds x 565.608-913.412, wing z 78.8-128.3, tail z 15.8-32.2, tail-cylinder "real radius 45 mm" | `cad/cruise_tilt0/*.stl`, Fuselage.stl | 565.608-913.412; 78.818-128.285; 15.844-32.156; section radius 45.3 at x 1656 | match |
+
+**No mismatches.** Minor: tiltwing comparison row "Power" gives "hover 1501.6 W electrical (`M` S2)". In verify.json S2, 1501.58 is the *independent* (90 deg momentum-theory) column, and the model column is 1531.4 W (sim at 79 deg). The value exists, but the column should be named.
+
+### 4. Are the FAILs in the converted designs' validator-comparison.md honestly classified?
+
+Mostly yes. The tables list every FAIL/SKIP/WARN the validator emits today (checked against my runs). Placeholder ratings are labelled (c), not blamed on the design. Real findings are kept as (a): the c0 aileron-servo protrusion, the A1 stall at 12.3 m/s, the A3 front gear clamp. The tiltwing (b) clipping claim is backed by a scratch variant, and the 45 mm radius checks out. Corrections needed:
+
+1. **`T1.attachment_contact pusher-prop` 5 mm gap (c0, a2, a3) is labelled (b) "no hub in the schema". It should be (c).** The schema can model the M6 adapter as its own cylinder component between motor and disc (a3 models caps and c0 models `pusher_cup` the same way). The conversion folded the adapter mass into the disc instead (plane.yaml comment "M6 adapter, washer and bullet nut lumped in").
+2. **a3 `T1.interference lift_motor_* vs nacelle_*` labelled (b) "the schema has only solid boxes".** That isn't accurate: `mesh` geometry exists, and a closed two-skin shell mesh is watertight and would not overlap the motor. Call it (b)/(c): primitive-only modelling was a conversion choice. A schema `shell_thickness_mm` would still be a good addition.
+3. c0-a1 section 3 "Thrust axis sign ... A1 copies C0's value [1,0,0]" is stale. 645ef30 set C0 and all three variants to [-1,0,0]. Update or delete the paragraph.
+4. tiltwing S2 power column (above).
+
+None of these change a verdict on a design. Items 1-2 matter because "(b)" tells the conductor the platform is at fault when the fix is in the conversion.
+
+### Verdict
+
+**NOT ACCEPTED.** All 4 re-review blockers are closed and provenance is clean (12/12). Two articulation and thrust gaps remain, and each lets a broken design get Accepted: yes.
+
+### Remaining blockers
+
+1. **Clipping between poses is never checked** (r1). checks.py `_configurations`. Fix: sweep each articulated joint across `range_deg` in steps of a new `geometry.articulation_sweep_step_deg` key (e.g. 5 deg, `source: internal convention`), or check interference against the union of the child subtree's swept meshes. Add r1 as a test. A coupled joint group (tiltwing gap 4, `articulation.group`) would make the sweep cheaper and stop unflown wing-only configurations from being checked.
+2. **Hover thrust direction is ignored when no `hover_pose` is given** (r3d accepted, r3e T3 PASS on downward thrust). checks.py tier3 hover_tw and tier2 hover_moment. Fix: always count only the component of each lift thrust that points up in the hover attitude. For `vtol_method: tailsitter`, that is the nose-up attitude (reuse sim.py `_landing_rotation`); for everything else, the body frame at `hover_pose` (0 deg if none). Require `flight.hover_pose` when `vtol_method` is tiltrotor or tiltwing. Add r3d and r3e as tests.
+
+### Non-blocking (new)
+
+1. T2.hover_moment runs and PASSes "at pose <name>" even when the pose doesn't exist (r3). Skip it, or mark it blocked when T1 reports an unknown pose.
+2. The T3.hover_tw result at a pose outside `range_deg` is still computed and PASSes (r3b). Only T1 stops the design. Clamp it, or report "blocked".
+3. Make the classification corrections in section 4.
