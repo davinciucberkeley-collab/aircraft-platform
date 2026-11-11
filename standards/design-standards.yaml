@@ -19,7 +19,11 @@ geometry:
     source: internal convention
   embed_max_fraction_of_child:
     value: 0.35
-    rule: An embed_ok joint may overlap at most this fraction of the CHILD's volume, unless the parent is a fuselage or pod and the child is a battery, esc, flight_controller, receiver, payload or servo (those may be fully contained). Propellers may never use embed_ok.
+    rule: An embed_ok joint may overlap at most this fraction of the CHILD's volume, unless the child is fully contained in the parent (see containment_min_fraction). Component `type` is never consulted. Propellers may never use embed_ok. Every component with a propulsion block must have an attached component of type propeller (T1.motor_has_prop).
+    source: internal convention
+  containment_min_fraction:
+    value: 0.99
+    rule: An embed_ok joint may exceed embed_max_fraction_of_child only if at least this fraction of the child's volume lies inside the parent (a bay). A part poking through its parent is never a bay.
     source: internal convention
 
 structure:

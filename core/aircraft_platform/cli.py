@@ -72,7 +72,7 @@ def validate_cmd(path, max_tier, fmt, out_file):
         click.echo(f"wrote {out_file}")
     else:
         click.echo(text, nl=False)
-    sys.exit(0 if card.accepted else 1)
+    sys.exit(0 if card.clean and (card.accepted or card.partial) else 1)
 
 
 @cli.command("mass")

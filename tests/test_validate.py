@@ -22,7 +22,7 @@ def test_example_accepted(example):
     sc = validate(load_design(example))
     assert sc.accepted
     by_tier = {t.tier: t.status for t in sc.tiers}
-    for tier in (0, 1, 2, 3, 5):
+    for tier in (0, 1, 2, 3, 4, 5):
         assert by_tier[tier] == PASS, f"tier {tier} is {by_tier[tier]}"
 
 

@@ -46,13 +46,13 @@ components:
     geometry: {box: {size: [45, 20, 20]}}
     position: [137, -250, 0]
     mass_g: 10
-    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+    manufacturing: {method: laser-cut, machine: jacobs-laser}  # stacked ply; FDM fit unverifiable until printer volumes are listed
   - id: mount_r
     type: structure
     geometry: {box: {size: [45, 20, 20]}}
     position: [137, 250, 0]
     mass_g: 10
-    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+    manufacturing: {method: laser-cut, machine: jacobs-laser}  # stacked ply; FDM fit unverifiable until printer volumes are listed
 
   - id: motor_l
     type: motor
@@ -103,8 +103,8 @@ components:
 
   - id: battery
     type: battery
-    geometry: {box: {size: [100, 35, 25]}}
-    position: [140, 0, -28]
+    geometry: {box: {size: [100, 35, 24]}}
+    position: [140, 0, -27.5]
     mass_g: 250
     manufacturing: {method: purchased, part_number: "3S 2200mAh"}
 
@@ -127,5 +127,5 @@ attachments:
   - {id: prop-r, parent: motor_r, child: prop_r, method: press-fit, location: [85, 250, 0], rated_load_n: 30}
   - {id: fin-l, parent: wing, child: fin_l, method: slot-tab, location: [300, -495, 0], embed_ok: true, rated_load_n: 80}
   - {id: fin-r, parent: wing, child: fin_r, method: slot-tab, location: [300, 495, 0], embed_ok: true, rated_load_n: 80}
-  - {id: battery-bay, parent: center_body, child: battery, method: clamp, location: [140, 0, -28], embed_ok: true, rated_load_n: 80}
+  - {id: battery-bay, parent: center_body, child: battery, method: clamp, location: [140, 0, -27.5], embed_ok: true, rated_load_n: 80}
   - {id: fc-mount, parent: center_body, child: flight_controller, method: bolted, location: [200, 0, 28], embed_ok: true, rated_load_n: 5}

@@ -72,7 +72,7 @@ def validate_design(design_id: str, max_tier: int = 5) -> dict:
 
     Use this after changing a design, or to check whether a design is accepted. Tiers: 0 schema,
     1 geometry, 2 physics, 3 aero, 4 manufacturing, 5 standards. Lower max_tier to run only the
-    early, faster checks. The result has 'accepted' (bool) and per-check results with messages.
+    early, faster checks. The result has 'accepted' (bool; always false for a partial run, see 'partial') and per-check results with messages.
     """
     design = load_design(_design_path(design_id))
     return validate(design, max_tier).to_dict()
@@ -130,7 +130,7 @@ def save_design(design_id: str, yaml_text: str, overwrite: bool = False) -> dict
         raise ValueError(f"yaml 'id' is {data.get('id')!r} but design_id is {design_id!r}")
 
     precheck = validate(Design(data=data, path=path), max_tier=0)
-    if not precheck.accepted:
+    if not precheck.clean:
         return {"saved": False, "scorecard": precheck.to_dict()}
     if path.exists() and not overwrite:
         raise ValueError(f"design '{design_id}' already exists; pass overwrite=true to replace it")

@@ -60,7 +60,7 @@ class TierReport:
         s = [r.status for r in self.results]
         if FAIL in s:
             return FAIL
-        if not s or all(x == SKIP for x in s):
+        if not s or SKIP in s:
             return SKIP
         if WARN in s:
             return WARN
@@ -71,15 +71,28 @@ class TierReport:
 class Scorecard:
     design_id: str
     tiers: list[TierReport]
+    max_tier: int = 5
+
+    @property
+    def partial(self) -> bool:
+        return self.max_tier < 5
+
+    @property
+    def clean(self) -> bool:
+        """No FAIL/SKIP among the tiers that ran."""
+        return all(r.status not in (FAIL, SKIP) for t in self.tiers for r in t.results)
 
     @property
     def accepted(self) -> bool:
-        return all(r.status not in (FAIL, SKIP) for t in self.tiers for r in t.results)
+        """Full-run verdict only: a partial run (max_tier < 5) is never accepted."""
+        return not self.partial and all(r.status not in (FAIL, SKIP) for t in self.tiers for r in t.results)
 
     def to_dict(self) -> dict:
         return {
             "design_id": self.design_id,
             "accepted": self.accepted,
+            "partial": self.partial,
+            "max_tier": self.max_tier,
             "tiers": [
                 {"tier": t.tier, "name": t.name, "status": t.status,
                  "results": [asdict(r) for r in t.results]}
@@ -89,7 +102,8 @@ class Scorecard:
 
     def to_markdown(self) -> str:
         lines = [f"# Scorecard: {self.design_id}", "",
-                 f"**Accepted:** {'yes' if self.accepted else 'no'}", "",
+                 (f"**Partial run (tiers 0\u2013{self.max_tier}):** {'no failures' if self.clean else 'failures found'}"
+                  if self.partial else f"**Accepted:** {'yes' if self.accepted else 'no'}"), "",
                  "| Tier | Status | Check | Result | Criterion |", "|---|---|---|---|---|"]
         for t in self.tiers:
             for r in t.results:

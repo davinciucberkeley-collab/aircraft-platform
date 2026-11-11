@@ -27,9 +27,6 @@ from .mass import mass_properties
 G = 9.80665
 RHO_DEFAULT = 1.225  # ISA sea level, kg/m^3 (physical constant, matches the schema default)
 STD = "design-standards.yaml#"
-# Convention from design-standards.yaml#embed_max_fraction_of_child: these may be fully contained.
-EMBED_PARENTS = {"fuselage", "pod"}
-EMBED_CHILDREN = {"battery", "esc", "flight_controller", "receiver", "payload", "servo"}
 
 
 # ---------------------------------------------------------------- tier 0
@@ -104,6 +101,7 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     max_int = g["interference_max_mm3"]["value"]
     max_frac = g["glued_overlap_max_fraction"]["value"]
     embed_frac = g["embed_max_fraction_of_child"]["value"]
+    contain_min = g["containment_min_fraction"]["value"]
     meshes = {cid: component_parts(design.component(cid), design.base_dir) for cid in (c["id"] for c in design.components)}
     atts = design.data.get("attachments", [])
     res: list[CheckResult] = []
@@ -152,14 +150,16 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
                                        STD + "attach_tolerance_mm", {"gap_mm": round(d, 2)}))
                 continue
         elif embed:
-            if not (ptype in EMBED_PARENTS and ctype in EMBED_CHILDREN):
-                child_vol = sum(x.volume for x in meshes[c])
-                frac = ov / child_vol if child_vol else 1.0
-                if frac > embed_frac:
-                    res.append(CheckResult("T1.attachment_overlap", FAIL,
-                                           f"{label}: embed_ok joint overlaps {frac:.0%} of the child {c} (limit {embed_frac:.0%})",
-                                           STD + "embed_max_fraction_of_child", {"overlap_fraction_of_child": round(frac, 3)}))
-                    continue
+            child_vol = sum(x.volume for x in meshes[c])
+            frac = ov / child_vol if child_vol else 1.0
+            # Over the limit is allowed only if the child is geometrically inside the parent (a bay);
+            # a part poking through its parent never is. `type` is never consulted.
+            if frac > embed_frac and frac < contain_min:
+                res.append(CheckResult("T1.attachment_overlap", FAIL,
+                                       f"{label}: embed_ok joint overlaps {frac:.0%} of the child {c} "
+                                       f"(limit {embed_frac:.0%} unless the child is >= {contain_min:.0%} inside the parent)",
+                                       STD + "embed_max_fraction_of_child", {"overlap_fraction_of_child": round(frac, 3)}))
+                continue
         else:
             smaller = min(sum(x.volume for x in meshes[p]), sum(x.volume for x in meshes[c]))
             frac = ov / smaller if smaller else 0
@@ -181,6 +181,17 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
         else:
             res.append(CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint OK",
                                    STD + "attach_tolerance_mm"))
+
+    # every motor must drive an attached propeller (so a mislabelled prop leaves its motor prop-less)
+    for comp in design.components:
+        if "propulsion" not in comp:
+            continue
+        nbrs = adj[comp["id"]]
+        has = any(design.component(n)["type"] == "propeller" for n in nbrs)
+        res.append(CheckResult("T1.motor_has_prop", PASS if has else FAIL,
+                               f"{comp['id']}: drives an attached propeller" if has
+                               else f"{comp['id']}: has a propulsion block but no attached component of type propeller",
+                               STD + "embed_max_fraction_of_child"))
 
     # interference between non-attached parts
     ids = list(meshes)
@@ -337,16 +348,23 @@ SHEET_METHODS = {"laser-cut", "waterjet", "cnc-router"}
 MFG = "manufacturing.yaml"
 
 
+def _obb_extents(parts: list[trimesh.Trimesh]) -> list[float]:
+    """Sorted (ascending) extents of the part's oriented bounding box: independent of how it is rotated."""
+    mesh = trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
+    return sorted(float(x) for x in mesh.bounding_box_oriented.primitive.extents)
+
+
 def _fits(extents: list[float], bed: list[float], sheet: bool) -> bool:
-    """extents/bed are sorted ascending. Sheet processes (2 bed values, or a sheet method) compare the two
-    largest extents to the bed and the smallest extent only to a third value if one is given."""
+    """extents are OBB extents. Sheet processes compare the two largest extents to the bed's X/Y (either
+    orientation) and the smallest extent (the sheet thickness) only to a third bed value if one is given."""
     e = sorted(extents)
     v = sorted(bed)
+    eps = 1e-3
     if sheet or len(v) == 2:
-        if len(v) < 2 or e[2] > max(v[-2:]) or e[1] > min(v[-2:]):
+        if len(v) < 2 or e[2] > max(v[-2:]) + eps or e[1] > min(v[-2:]) + eps:
             return False
-        return len(v) < 3 or e[0] <= v[0]
-    return all(x <= y for x, y in zip(e, v))
+        return len(v) < 3 or e[0] <= v[0] + eps
+    return all(x <= y + eps for x, y in zip(e, v))
 
 
 def tier4_manufacturing(design: Design) -> TierReport:
@@ -362,36 +380,45 @@ def tier4_manufacturing(design: Design) -> TierReport:
     for c in design.components:
         mf = c.get("manufacturing")
         if not mf:
-            res.append(CheckResult("T4.method", WARN, f"{c['id']}: no manufacturing method", MFG))
+            res.append(CheckResult("T4.method", FAIL, f"{c['id']}: no manufacturing method", MFG))
             continue
         method, mid = mf["method"], mf.get("machine")
-        if mid is not None:
-            mach = machines.get(mid)
-            if mach is None:
-                res.append(CheckResult("T4.machine", FAIL, f"{c['id']}: machine '{mid}' is not in standards/manufacturing.yaml", MFG))
-                continue
-            if method not in mach.get("methods", []):
-                res.append(CheckResult("T4.method", FAIL,
-                                       f"{c['id']}: {mid} does not do {method} (it does {mach.get('methods', [])})",
-                                       f"{MFG}#{mid}"))
-                continue
-            bed = mach.get("build_volume_mm")
-            if not bed:
-                res.append(CheckResult("T4.fits_machine", WARN, f"{c['id']}: {mid} has no build_volume_mm, fit not checked",
-                                       f"{MFG}#{mid}"))
-                continue
-            ext = [float(x) for x in np.ptp(np.vstack([p.vertices for p in component_parts(c, design.base_dir)]), axis=0)]
-            if not _fits(ext, bed, method in SHEET_METHODS):
-                res.append(CheckResult("T4.fits_machine", FAIL,
-                                       f"{c['id']}: {sorted(round(x) for x in ext)} mm does not fit {mid} bed {sorted(bed)}",
-                                       f"{MFG}#{mid}"))
-                continue
-            res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method} on {mid}, fits", f"{MFG}#{mid}"))
+        if mid is None:
+            if method in free_methods:
+                res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method}", MFG))
+            elif method not in all_methods:
+                res.append(CheckResult("T4.method", FAIL, f"{c['id']}: no available machine does {method}", MFG))
+            else:
+                res.append(CheckResult("T4.machine", FAIL,
+                                       f"{c['id']}: in-house method {method} needs a `machine` so fit can be checked", MFG))
             continue
-        if method not in all_methods:
-            res.append(CheckResult("T4.method", FAIL, f"{c['id']}: no available machine does {method}", MFG))
+        mach = machines.get(mid)
+        if mach is None:
+            res.append(CheckResult("T4.machine", FAIL, f"{c['id']}: machine '{mid}' is not in standards/manufacturing.yaml", MFG))
             continue
-        res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method}", MFG))
+        if method not in mach.get("methods", []):
+            res.append(CheckResult("T4.method", FAIL,
+                                   f"{c['id']}: {mid} does not do {method} (it does {mach.get('methods', [])})",
+                                   f"{MFG}#{mid}"))
+            continue
+        bed = mach.get("build_volume_mm")
+        if not bed:
+            res.append(CheckResult("T4.fits_machine", SKIP,
+                                   f"{c['id']}: fit not verified — add build_volume_mm to manufacturing.yaml ({mid})",
+                                   f"{MFG}#{mid}"))
+            continue
+        sheet = method in SHEET_METHODS
+        ext = _obb_extents(component_parts(c, design.base_dir))
+        shown = [round(x, 1) for x in ext]
+        if not _fits(ext, bed, sheet):
+            res.append(CheckResult("T4.fits_machine", FAIL,
+                                   f"{c['id']}: oriented extents {shown} mm do not fit {mid} bed {sorted(bed)}",
+                                   f"{MFG}#{mid}"))
+            continue
+        note = ""
+        if sheet and len(bed) < 3:
+            note = f" (sheet thickness {shown[0]} mm; {mid} lists no thickness limit)"
+        res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method} on {mid}, fits{note}", f"{MFG}#{mid}"))
     return TierReport(4, "manufacturing", res)
 
 
@@ -419,7 +446,7 @@ def validate(design: Design, max_tier: int = 5) -> Scorecard:
     std = load_standards()
     tiers = [tier0_schema(design)]
     if tiers[0].status == FAIL:
-        return Scorecard(design.id, tiers)
+        return Scorecard(design.id, tiers, max_tier)
     def run(tier: int, name: str, fn):
         """Run one tier; a crash becomes a FAIL result instead of killing the whole scorecard."""
         try:
@@ -435,7 +462,7 @@ def validate(design: Design, max_tier: int = 5) -> Scorecard:
         later = [(2, "physics"), (3, "aero"), (4, "manufacturing"), (5, "standards")]
         tiers += [TierReport(t, n, [CheckResult(f"T{t}.blocked", FAIL, f"mass properties failed: {e}", TIER_CRITERION[t])])
                   for t, n in later if t <= max_tier]
-        return Scorecard(design.id, tiers)
+        return Scorecard(design.id, tiers, max_tier)
 
     def tier2():
         rep = tier2_physics(design, std, mp)
@@ -454,4 +481,4 @@ def validate(design: Design, max_tier: int = 5) -> Scorecard:
         tiers.append(run(4, "manufacturing", lambda: tier4_manufacturing(design)))
     if max_tier >= 5:
         tiers.append(run(5, "standards", lambda: tier5_standards(design, std, mp)))
-    return Scorecard(design.id, tiers)
+    return Scorecard(design.id, tiers, max_tier)
