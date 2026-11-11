@@ -1,0 +1,328 @@
+# TiltWing tilt-wing VTOL (Cakir & Kurtulus 2022 sizing, UC Berkeley davinciucberkeley-collab/TiltWing @ 1488f8f),
+# converted to schema 0.2 by a tactician agent. Read designs/tiltwing-cakir/README.md for the frame, provenance
+# table and placeholders. Every number cites its source (file + key/formula) in a comment; anything the source
+# does not give is marked "placeholder - not from source". Values are the model's DEFAULT slider values
+# (= the paper's), evaluated with model.js size() (node) and cad/params.json (which equals the defaults).
+# Frame: cad/tools/cad_export.py states "X aft from the nose, Y to starboard, Z up. Units mm" = the platform body
+# frame, so no transform is needed. Tilt sign/axis verified against cad/hover_tilt90/*.stl (README.md).
+schema_version: "0.2"
+id: tiltwing-cakir
+name: TiltWing tilt-wing VTOL (Cakir & Kurtulus 2022 study)
+authors: ["davinciucberkeley-collab/TiltWing (source repo, model after Cakir & Kurtulus 2022)", "converted for aircraft-platform by a tactician agent"]
+status: concept
+description: >
+  Parametric tilt-wing VTOL study: 2.0 m S1223 tilting wing with 4 tractor rotors, tilting NACA 0009 horizontal tail
+  with 2 rotors, no vertical tail (model.js header). Mass 9.153 kg by the sizing (M1). Nothing has been built
+  (source README: study, estimates to replace with measurements).
+lineage:
+  derived_from: []
+  inspired_by: ["TiltWing@1488f8f (model.js, cad/params.json, cad/manifest.json, tools/cad_export.py, data/verify.json)", "Cakir & Kurtulus, Turk J Elec Eng & Comp Sci 30 (2022) 767-784, doi:10.3906/elk-2105-59"]
+morphology:
+  lift: fixed-wing
+  vtol_method: tiltwing
+  tail: other   # tilting all-moving horizontal tail with no vertical fin; the enum has no such cell
+  propulsion_count: 6
+requirements:
+  mtow_g: 9152.69       # model.js M1 m = (m_struct+m_elec+m_payload)/(1-f_prop) = 9.152686066 kg, rounded up to 9152.69 g so the exact roll-up passes (data/verify.json "M1 takeoff mass")
+  payload_g: 2500       # model.js PAPER.payload 2.5 kg (paper s2)
+  cruise_speed_mps: 20  # model.js PAPER.Vc 20 m/s (paper: 15-25 m/s, CFD at 20)
+  endurance_min: 60     # model.js PAPER.out.flightMin 60 (paper goal; the validator has no energy check)
+  budget_usd: 2000      # design report (artifact b23ddeab..., Fabrication section): "fits the $2,000 project budget"
+flight:
+  cl_max: 2.0142386     # model.js P4 CLmax,3D = k_3D(0.9, estimate) * c_lmax(S1223, Re 3.98e5) 2.238, size() r.CLmax
+  air_density_kgm3: 1.2250123   # model.js E1 ISA sea level (p.rho from isa(alt 0, dT 0))
+  hover_pose: hover     # wing and tail at 90 deg: cad/manifest.json configs.hover_tilt90.tilt_deg
+  cruise_pose: cruise   # cad/manifest.json configs.cruise_tilt0.tilt_deg 0
+root: fuselage
+materials:
+  xps-foam:
+    notes: "FOAMULAR NGX F-250 cores, hot-wired, skinned (design report BOM 'Wing / tail cores', build sequence 'Wing halves'); density not stated in the source"
+  carbon-tube:
+    density_g_cm3: 1.55
+    notes: "model.js MATERIALS cf_tube rho 1550 kg/m3 (estimate: typical roll-wrapped CF tube); Rock West 45002 per design report BOM"
+  pa6-cf20:
+    notes: "Polymaker PA6-CF20 nacelle mounts (design report BOM 'Mounts'); density not stated in the source"
+  glass-epoxy:
+    notes: "1 mm glass/epoxy shell over a foam plug (design report BOM 'Fuselage'); density not stated in the source"
+components:
+  # Fuselage, modelled as a plain R100 x 1800 cylinder. The CAD body is a revolved profile (ellipse nose over 0.32 L, parallel to 0.58 L, then a taper to 0.28 R); the schema has no profile geometry.
+  # src: model.js M1 mFus = 0.55 kg/m * Lf * (df/0.2) = 0.990 kg (0.55 kg/m: calibrated so the paper geometry gives the 2.0 kg airframe, model.js comment); Lf 1.8 m, df 0.2 m (PAPER.Lf, PAPER.df); cad_export.py fuselage(Lf, df/2)
+  # CG at mid-length: the source mass model is per metre of length (kg/m), so uniform along x
+  - id: fuselage
+    type: fuselage
+    geometry: {cylinder: {radius: 100, length: 1800, axis: x}}
+    position: [900, 0, 0]
+    mass_g: 990
+    material: glass-epoxy
+    manufacturing: {method: composite-layup}   # design report BOM: glass/epoxy shell over a foam plug. manufacturing.yaml has no layup machine and no machine_optional_methods entry -> T4 FAIL by design
+
+  # Wing tilt shaft (the "spar" of cad_export.py): the pivot of the wing tilt joint, fixed to the fuselage in the bearing bay
+  # src: cad_export.py spar = circle(0.012 m radius) extruded 1.2*df = 240 mm along y at (xw, 0, zw); xw 756.0 = 0.42*Lf (model.js size() xw), zw = 0.42*df = 84 (cad_export.py build()); STL Wing_Tilt_Spar.stl bounds x 744-768, y +-120, z 72-96
+  # mass: placeholder - not from source. 1 g, carved out of the wing bucket (model.js "wing 1.40 kg/m2 incl. tilt mechanism") so the total stays the source mass. The design report BOM names a 25 mm / 26.8 mm Rock West 45002 carbon tube per half; the CAD shaft is 24 mm. CAD used here.
+  - id: wing_spar
+    type: structure
+    geometry: {cylinder: {radius: 12, length: 240, axis: y}}
+    position: [756, 0, 84]
+    mass_g: 1.0
+    material: carbon-tube
+    manufacturing: {method: purchased, part_number: "Rock West Composites 45002 carbon tube 26.8/25.0 mm x 72 in (design report BOM; CAD shaft is 24 mm OD)", cost_usd: 99.99}
+
+  # Tail tilt shaft
+  # src: cad_export.py tspar = circle(0.008 m radius) extruded 0.6*df = 120 mm along y at (xt, 0, zt); xt 1656.0 = 0.92*Lf (model.js size() xt), zt = 0.12*df = 24; STL Tail_Tilt_Spar.stl bounds x 1648-1664, y +-60, z 16-32
+  # mass: placeholder - not from source. 1 g carved out of the tail bucket. Design report BOM: "10 mm carbon tube, 1 mm wall" (unpriced); the CAD shaft is 16 mm.
+  - id: tail_spar
+    type: structure
+    geometry: {cylinder: {radius: 8, length: 120, axis: y}}
+    position: [1656, 0, 24]
+    mass_g: 1.0
+    material: carbon-tube
+    manufacturing: {method: purchased, part_number: "10 mm carbon tube, 1 mm wall (design report BOM, unpriced)"}
+
+  # Main wing, ONE mirrored slab spanning y = -1000..+1000. The CAD wing is two lofted halves that start at y = +-110 (y_in = 0.55*df) so they clear the fuselage and can tilt; the schema has no root offset, so the slab also fills the root strip (see validator-comparison.md, clipping).
+  # src: model.js G1-G4 S = b^2/AR = 0.575540 m2 (span 2.0 m, AR 6.95), cr 338.553 mm, ct 236.987 mm (taper 0.7), LE sweep 5.7994 deg (straight TE, G4); root LE x = xw - 0.3*cr = 654.434 mm (model.js size() xLEroot; spar at 30 % chord, paper Fig. 3)
+  # thickness_ratio 0.1511 = bounding height of the S1223 section incl. camber (data/airfoils.json s1223 coords: z -0.0158..+0.1353 of chord; true max thickness 0.1211); slab z centre = zw + 0.0597*cr = 104.228523 mm (mid of that envelope), checked against Wing_S1223.stl bounds z 78.8-128.3
+  # mass: model.js M1 mWing = 1.40 kg/m2 * S = 805.755 g (incl. tilt mechanism, estimate calibrated to the paper's 2.0 kg airframe), less the 1 g wing_spar placeholder
+  - id: wing
+    type: wing
+    geometry: {lifting_surface: {span: 2000, root_chord: 338.552687, tip_chord: 236.986881, sweep_le_deg: 5.799405, dihedral_deg: 0, thickness_ratio: 0.1511, airfoil: "S1223", mirrored: true, lifting: true}}
+    position: [654.434194, 0, 104.228523]
+    mass_g: 804.755396
+    material: xps-foam
+    manufacturing: {method: hotwire-foam}   # design report build sequence: "Hot-wire S1223 cores from tiltwing/cad coordinates, skin them". manufacturing.yaml has no hot-wire machine -> T4 FAIL by design
+
+  # Horizontal tail (all-moving, tilts with the wing), ONE mirrored slab; the CAD halves start at y = +-50 (0.25*df)
+  # src: model.js G5 S_h = V_h S c/l_t = 0.115856 m2 (V_h 0.61, PAPER.Vh); ARh 4.1 (model.js size() comment, from paper Fig. 2) -> span 689.210128 mm, root chord 186.777812 mm, tip chord 149.42225 mm (taper 0.8, PAPER.tailTaper); LE sweep 5 deg (cad_export.py surface(..., 5.0, ...)); root LE x = xt - 0.3*crh = 1599.966656 mm (cad_export.py xth); NACA 0009 thickness 0.09 (data/airfoils.json naca0009), z centre zt = 24 (STL H_Tail_NACA0009.stl z 15.8-32.2)
+  # mass: model.js M1 mTail = 1.0 kg/m2 * S_h = 115.856 g, less the 1 g tail_spar placeholder
+  - id: tail
+    type: tail_surface
+    geometry: {lifting_surface: {span: 689.210128, root_chord: 186.777812, tip_chord: 149.42225, sweep_le_deg: 5, dihedral_deg: 0, thickness_ratio: 0.09, airfoil: "NACA 0009", mirrored: true, lifting: true}}
+    position: [1599.966656, 0, 24]
+    mass_g: 114.856244
+    material: xps-foam
+    manufacturing: {method: hotwire-foam}   # design report BOM: wing / tail cores in FOAMULAR, build sequence "Build NACA 0009 tail halves". No hot-wire machine in manufacturing.yaml -> T4 FAIL by design
+
+  # Wing rotor 1: nacelle + motor as one cylinder (R28), from the prop-disc rear face to the nacelle aft end. The CAD spinner cone (61.6 mm forward of the nacelle) is not modelled.
+  # src: cad_export.py rotor(): nacelle length 0.55*cr+0.1 m = 286.203978 mm, radius 28 mm, starts 0.45*length ahead of the local LE; local LE x = xLEroot + |y|*tan(sweep) = 756 mm; y = -1000 = +-0.5/0.2 * span; z = zw 84 (STL Wing_Nacelle_1.stl bounds x 565.60821-913.412188, y -1028..-972)
+  # mass: model.js M1 mMotors = f_prop*(1-f_batt)*m = 1830.537 g for the propulsion kit (motors, ESCs, props: the source does not split it), / 6 rotors = 305.090 g EQUAL SPLIT (placeholder - not from source; the 4 wing rotors and 2 tail rotors are different sizes), less the 1 g prop placeholder
+  # max_thrust_n = model.js TfMax = Tf1*TW = 32.4077 N (hover trim thrust per wing rotor 21.605 N times installed T/W 1.5, estimate)
+  - id: wing_motor_1
+    type: motor
+    geometry: {cylinder: {radius: 28, length: 297.003978, axis: x}}
+    position: [764.910199, -1000, 84]
+    mass_g: 304.089536
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm-fortus, part_number: "PA6-CF20 nacelle (design report BOM 'Mounts') around a SunnySky X3515S KV400 motor", cost_usd: 44.99}
+    propulsion: {max_thrust_n: 32.407694, axis: [-1, 0, 0], role: both}
+
+  # Wing rotor 1 swept disc (14 in model default; the design report BOM buys APC 15 x 5.5, 1 in larger than the paper)
+  # src: model.js PAPER.Dfront 14 in -> Df 0.3556 m (P2/P3 sizing disc) -> R 177.8 mm; thickness 6 mm and x position xn0 - 0.6*28 from cad_export.py rotor() (STL Wing_Prop_1.stl x 610.40821-616.40821)
+  # mass: placeholder - not from source (1 g carved out of the motor kit above)
+  - id: wing_prop_1
+    type: propeller
+    geometry: {cylinder: {radius: 177.8, length: 6, axis: x}}
+    position: [613.40821, -1000, 84]
+    mass_g: 1.0
+    manufacturing: {method: purchased, part_number: "APC 15 x 5.5 MR/MRP (design report BOM; model sizing uses the paper's 14 in)", cost_usd: 7.36}
+
+  # Wing rotor 2: nacelle + motor as one cylinder (R28), from the prop-disc rear face to the nacelle aft end. The CAD spinner cone (61.6 mm forward of the nacelle) is not modelled.
+  # src: cad_export.py rotor(): nacelle length 0.55*cr+0.1 m = 286.203978 mm, radius 28 mm, starts 0.45*length ahead of the local LE; local LE x = xLEroot + |y|*tan(sweep) = 695.060516 mm; y = -400 = +-0.5/0.2 * span; z = zw 84 (STL Wing_Nacelle_2.stl bounds x 504.668726-852.472704, y -428..-372)
+  # mass: model.js M1 mMotors = f_prop*(1-f_batt)*m = 1830.537 g for the propulsion kit (motors, ESCs, props: the source does not split it), / 6 rotors = 305.090 g EQUAL SPLIT (placeholder - not from source; the 4 wing rotors and 2 tail rotors are different sizes), less the 1 g prop placeholder
+  # max_thrust_n = model.js TfMax = Tf1*TW = 32.4077 N (hover trim thrust per wing rotor 21.605 N times installed T/W 1.5, estimate)
+  - id: wing_motor_2
+    type: motor
+    geometry: {cylinder: {radius: 28, length: 297.003978, axis: x}}
+    position: [703.970715, -400, 84]
+    mass_g: 304.089536
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm-fortus, part_number: "PA6-CF20 nacelle (design report BOM 'Mounts') around a SunnySky X3515S KV400 motor", cost_usd: 44.99}
+    propulsion: {max_thrust_n: 32.407694, axis: [-1, 0, 0], role: both}
+
+  # Wing rotor 2 swept disc (14 in model default; the design report BOM buys APC 15 x 5.5, 1 in larger than the paper)
+  # src: model.js PAPER.Dfront 14 in -> Df 0.3556 m (P2/P3 sizing disc) -> R 177.8 mm; thickness 6 mm and x position xn0 - 0.6*28 from cad_export.py rotor() (STL Wing_Prop_2.stl x 549.468726-555.468726)
+  # mass: placeholder - not from source (1 g carved out of the motor kit above)
+  - id: wing_prop_2
+    type: propeller
+    geometry: {cylinder: {radius: 177.8, length: 6, axis: x}}
+    position: [552.468726, -400, 84]
+    mass_g: 1.0
+    manufacturing: {method: purchased, part_number: "APC 15 x 5.5 MR/MRP (design report BOM; model sizing uses the paper's 14 in)", cost_usd: 7.36}
+
+  # Wing rotor 3: nacelle + motor as one cylinder (R28), from the prop-disc rear face to the nacelle aft end. The CAD spinner cone (61.6 mm forward of the nacelle) is not modelled.
+  # src: cad_export.py rotor(): nacelle length 0.55*cr+0.1 m = 286.203978 mm, radius 28 mm, starts 0.45*length ahead of the local LE; local LE x = xLEroot + |y|*tan(sweep) = 695.060516 mm; y = 400 = +-0.5/0.2 * span; z = zw 84 (STL Wing_Nacelle_3.stl bounds x 504.668726-852.472704, y 372..428)
+  # mass: model.js M1 mMotors = f_prop*(1-f_batt)*m = 1830.537 g for the propulsion kit (motors, ESCs, props: the source does not split it), / 6 rotors = 305.090 g EQUAL SPLIT (placeholder - not from source; the 4 wing rotors and 2 tail rotors are different sizes), less the 1 g prop placeholder
+  # max_thrust_n = model.js TfMax = Tf1*TW = 32.4077 N (hover trim thrust per wing rotor 21.605 N times installed T/W 1.5, estimate)
+  - id: wing_motor_3
+    type: motor
+    geometry: {cylinder: {radius: 28, length: 297.003978, axis: x}}
+    position: [703.970715, 400, 84]
+    mass_g: 304.089536
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm-fortus, part_number: "PA6-CF20 nacelle (design report BOM 'Mounts') around a SunnySky X3515S KV400 motor", cost_usd: 44.99}
+    propulsion: {max_thrust_n: 32.407694, axis: [-1, 0, 0], role: both}
+
+  # Wing rotor 3 swept disc (14 in model default; the design report BOM buys APC 15 x 5.5, 1 in larger than the paper)
+  # src: model.js PAPER.Dfront 14 in -> Df 0.3556 m (P2/P3 sizing disc) -> R 177.8 mm; thickness 6 mm and x position xn0 - 0.6*28 from cad_export.py rotor() (STL Wing_Prop_3.stl x 549.468726-555.468726)
+  # mass: placeholder - not from source (1 g carved out of the motor kit above)
+  - id: wing_prop_3
+    type: propeller
+    geometry: {cylinder: {radius: 177.8, length: 6, axis: x}}
+    position: [552.468726, 400, 84]
+    mass_g: 1.0
+    manufacturing: {method: purchased, part_number: "APC 15 x 5.5 MR/MRP (design report BOM; model sizing uses the paper's 14 in)", cost_usd: 7.36}
+
+  # Wing rotor 4: nacelle + motor as one cylinder (R28), from the prop-disc rear face to the nacelle aft end. The CAD spinner cone (61.6 mm forward of the nacelle) is not modelled.
+  # src: cad_export.py rotor(): nacelle length 0.55*cr+0.1 m = 286.203978 mm, radius 28 mm, starts 0.45*length ahead of the local LE; local LE x = xLEroot + |y|*tan(sweep) = 756 mm; y = 1000 = +-0.5/0.2 * span; z = zw 84 (STL Wing_Nacelle_4.stl bounds x 565.60821-913.412188, y 972..1028)
+  # mass: model.js M1 mMotors = f_prop*(1-f_batt)*m = 1830.537 g for the propulsion kit (motors, ESCs, props: the source does not split it), / 6 rotors = 305.090 g EQUAL SPLIT (placeholder - not from source; the 4 wing rotors and 2 tail rotors are different sizes), less the 1 g prop placeholder
+  # max_thrust_n = model.js TfMax = Tf1*TW = 32.4077 N (hover trim thrust per wing rotor 21.605 N times installed T/W 1.5, estimate)
+  - id: wing_motor_4
+    type: motor
+    geometry: {cylinder: {radius: 28, length: 297.003978, axis: x}}
+    position: [764.910199, 1000, 84]
+    mass_g: 304.089536
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm-fortus, part_number: "PA6-CF20 nacelle (design report BOM 'Mounts') around a SunnySky X3515S KV400 motor", cost_usd: 44.99}
+    propulsion: {max_thrust_n: 32.407694, axis: [-1, 0, 0], role: both}
+
+  # Wing rotor 4 swept disc (14 in model default; the design report BOM buys APC 15 x 5.5, 1 in larger than the paper)
+  # src: model.js PAPER.Dfront 14 in -> Df 0.3556 m (P2/P3 sizing disc) -> R 177.8 mm; thickness 6 mm and x position xn0 - 0.6*28 from cad_export.py rotor() (STL Wing_Prop_4.stl x 610.40821-616.40821)
+  # mass: placeholder - not from source (1 g carved out of the motor kit above)
+  - id: wing_prop_4
+    type: propeller
+    geometry: {cylinder: {radius: 177.8, length: 6, axis: x}}
+    position: [613.40821, 1000, 84]
+    mass_g: 1.0
+    manufacturing: {method: purchased, part_number: "APC 15 x 5.5 MR/MRP (design report BOM; model sizing uses the paper's 14 in)", cost_usd: 7.36}
+
+  # Tail rotor 1: nacelle + motor as one cylinder (R20), from the prop-disc rear face to the nacelle aft end (spinner not modelled)
+  # src: cad_export.py rotor(): nacelle length 0.55*crh+0.06 m = 162.727797 mm, radius 20 mm, local LE x = xth + (bh/2)*tan(5 deg) = 1630.115693 mm, y = +-bh/2 = -344.605064, z = zt 24 (STL Tail_Nacelle_1.stl x 1512.888184-1719.615981)
+  # mass: equal split of the propulsion kit, see wing rotors (placeholder - not from source), less the 1 g prop placeholder
+  # max_thrust_n = model.js TrMax = Tr1 + ctrlRes(10 %)*W/2 = 6.1562 N (rear trim thrust per rotor 1.668 N plus the pitch reserve, estimate)
+  - id: tail_motor_1
+    type: motor
+    geometry: {cylinder: {radius: 20, length: 168.727797, axis: x}}
+    position: [1635.252083, -344.605064, 24]
+    mass_g: 304.089536
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm-fortus, part_number: "PA6-CF20 nacelle around a FlashHobby Mars 2807 1300 KV motor (design report BOM)"}
+    propulsion: {max_thrust_n: 6.156195, axis: [-1, 0, 0], role: both}
+
+  # Tail rotor 1 swept disc: model.js PAPER.Drear 8 in -> Dr 0.2032 m -> R 101.6 mm; 6 mm thick at xn0 - 0.6*20 (STL Tail_Prop_1.stl x 1544.888184-1550.888184); mass placeholder - not from source
+  - id: tail_prop_1
+    type: propeller
+    geometry: {cylinder: {radius: 101.6, length: 6, axis: x}}
+    position: [1547.888184, -344.605064, 24]
+    mass_g: 1.0
+    manufacturing: {method: purchased, part_number: "7 in prop, CW + CCW (design report BOM, unpriced; model sizing uses the paper's 8 in)"}
+
+  # Tail rotor 2: nacelle + motor as one cylinder (R20), from the prop-disc rear face to the nacelle aft end (spinner not modelled)
+  # src: cad_export.py rotor(): nacelle length 0.55*crh+0.06 m = 162.727797 mm, radius 20 mm, local LE x = xth + (bh/2)*tan(5 deg) = 1630.115693 mm, y = +-bh/2 = 344.605064, z = zt 24 (STL Tail_Nacelle_2.stl x 1512.888184-1719.615981)
+  # mass: equal split of the propulsion kit, see wing rotors (placeholder - not from source), less the 1 g prop placeholder
+  # max_thrust_n = model.js TrMax = Tr1 + ctrlRes(10 %)*W/2 = 6.1562 N (rear trim thrust per rotor 1.668 N plus the pitch reserve, estimate)
+  - id: tail_motor_2
+    type: motor
+    geometry: {cylinder: {radius: 20, length: 168.727797, axis: x}}
+    position: [1635.252083, 344.605064, 24]
+    mass_g: 304.089536
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm-fortus, part_number: "PA6-CF20 nacelle around a FlashHobby Mars 2807 1300 KV motor (design report BOM)"}
+    propulsion: {max_thrust_n: 6.156195, axis: [-1, 0, 0], role: both}
+
+  # Tail rotor 2 swept disc: model.js PAPER.Drear 8 in -> Dr 0.2032 m -> R 101.6 mm; 6 mm thick at xn0 - 0.6*20 (STL Tail_Prop_2.stl x 1544.888184-1550.888184); mass placeholder - not from source
+  - id: tail_prop_2
+    type: propeller
+    geometry: {cylinder: {radius: 101.6, length: 6, axis: x}}
+    position: [1547.888184, 344.605064, 24]
+    mass_g: 1.0
+    manufacturing: {method: purchased, part_number: "7 in prop, CW + CCW (design report BOM, unpriced; model sizing uses the paper's 8 in)"}
+
+  # Battery (placeholder box; the source places no component inside the fuselage)
+  # mass: model.js M2 m_batt = f_batt*f_prop*m = 1830.537 g (f_prop 0.40, f_batt 0.50, paper s2.1); Ovonic 6S 6500 mAh per the design report BOM
+  # position x: placeholder - not from source, solved so that the whole-aircraft CG (cruise pose) equals the model's input CG xcg = xLEmac + 0.30*MAC = 789.457 mm (model.js size() xcg, hcg 30 % MAC). Box size placeholder.
+  - id: battery
+    type: battery
+    geometry: {box: {size: [180, 100, 60]}}
+    position: [454.635, 0, 0]
+    mass_g: 1830.537213
+    manufacturing: {method: purchased, part_number: "Ovonic 6S 6500 mAh 100C (design report BOM)", cost_usd: 69.5}
+
+  # Electronics: flight controller, GPS, airspeed, Remote ID, receiver, servos, BEC (the model's "elec" slider)
+  # mass: model.js PAPER.elec 1.0 kg (paper s2.1). Position and box size: placeholder - not from source (nose bay).
+  - id: electronics
+    type: other
+    geometry: {box: {size: [120, 100, 60]}}
+    position: [250, 0, 0]
+    mass_g: 1000
+    manufacturing: {method: purchased, part_number: "CoreWing F405 Wing APP V2 and sensors (design report BOM)"}
+
+  # Payload (the "payload" slider)
+  # mass: model.js PAPER.payload 2.5 kg (paper s2). Position and box size: placeholder - not from source.
+  - id: payload
+    type: payload
+    geometry: {box: {size: [220, 120, 120]}}
+    position: [960, 0, 0]
+    mass_g: 2500
+    manufacturing: {method: purchased, part_number: "payload (not specified in the source)"}
+
+  # Landing-gear / fastener lump 1: half of the model's gear + fasteners allowance at the gear point 0.30 L
+  # src: model.js M1 mMisc = 0.08 kg ("gear/fasteners"); gear points 0.30 L and 0.82 L from the design report build sequence (Fuselage bulkheads); box size and z: placeholder - not from source. No gear geometry exists in the CAD.
+  - id: gear_lump_1
+    type: landing_gear
+    geometry: {box: {size: [30, 30, 30]}}
+    position: [540, 0, -80]
+    mass_g: 40
+    manufacturing: {method: purchased, part_number: "hardware kit: wire, XT90S, screws, inserts, horns, pushrods, epoxy (design report BOM)"}
+
+  # Landing-gear / fastener lump 2: half of the model's gear + fasteners allowance at the gear point 0.82 L
+  # src: model.js M1 mMisc = 0.08 kg ("gear/fasteners"); gear points 0.30 L and 0.82 L from the design report build sequence (Fuselage bulkheads); box size and z: placeholder - not from source. No gear geometry exists in the CAD.
+  - id: gear_lump_2
+    type: landing_gear
+    geometry: {box: {size: [30, 30, 30]}}
+    position: [1476, 0, -80]
+    mass_g: 40
+    manufacturing: {method: purchased, part_number: "hardware kit: wire, XT90S, screws, inserts, horns, pushrods, epoxy (design report BOM)"}
+
+attachments:
+  # Tilt shaft held in the fuselage bearing bay (design report: "fit two 6804 bearings in 4 mm plates ... in a plywood/aluminium bay at 42 % of fuselage length"). Parent/child is spar -> fuselage so the shaft passing through the cylinder counts as embed of the (huge) child; the schema direction has no other meaning here.
+  # rated_load_n: placeholder - not from source (the source has no joint capacities; 40 N bearings x 4 not stated)
+  - {id: wing-shaft-fuselage, parent: wing_spar, child: fuselage, method: clamp, location: [756, 0, 84], embed_ok: true, rated_load_n: 200}
+  - {id: tail-shaft-fuselage, parent: tail_spar, child: fuselage, method: clamp, location: [1656, 0, 24], embed_ok: true, rated_load_n: 50}
+  # THE WING TILT JOINT. pivot = the tilt axis through the wing CG/spar: (xw, 0, zw), axis +y. Verified: rotating the 0 deg STLs by +90 deg about +y through (756, 0, 84) reproduces the 90 deg STLs to 0.000 mm (Wing_S1223, Wing_Nacelle_*, Wing_Prop_*). +90 = leading edge up, props thrust up.
+  # range [0, 95]: design report build sequence "hard stop at 0 and 95 deg"; poses: cad/manifest.json configs (0 and 90). rated_load_n: placeholder - not from source (report F-section "15 N*m static load" is a moment, not a force)
+  - id: wing-tilt
+    parent: wing_spar
+    child: wing
+    method: hinge
+    location: [756, 0, 84]
+    embed_ok: true
+    rated_load_n: 200
+    articulation: {type: revolute, pivot: [756, 0, 84], axis: [0, 1, 0], range_deg: [0, 95], poses: {cruise: 0, hover: 90}}
+  # THE TAIL TILT JOINT: same sign/axis (H_Tail_NACA0009 and Tail_* STLs reproduce to 0.000 mm). Both tilt together in the source (model.js flightForces: tailTilt = d; cad_export.py rot() applies the same tilt_deg to wing and tail). Range [0, 95] inferred from the wing's (report: tail uses "the same bearing scheme scaled down").
+  - id: tail-tilt
+    parent: tail_spar
+    child: tail
+    method: hinge
+    location: [1656, 0, 24]
+    embed_ok: true
+    rated_load_n: 50
+    articulation: {type: revolute, pivot: [1656, 0, 24], axis: [0, 1, 0], range_deg: [0, 95], poses: {cruise: 0, hover: 90}}
+  - {id: wing-motor-1, parent: wing, child: wing_motor_1, method: glued, location: [796, -999, 96], embed_ok: true, rated_load_n: 50}   # nacelle bonded into the wing; location and rating placeholder - not from source
+  - {id: wing-prop-1, parent: wing_motor_1, child: wing_prop_1, method: press-fit, location: [616.40821, -1000, 84], rated_load_n: 30}   # prop disc on the spinner base; rating placeholder - not from source
+  - {id: wing-motor-2, parent: wing, child: wing_motor_2, method: glued, location: [735.060516, -400, 96], embed_ok: true, rated_load_n: 50}   # nacelle bonded into the wing; location and rating placeholder - not from source
+  - {id: wing-prop-2, parent: wing_motor_2, child: wing_prop_2, method: press-fit, location: [555.468726, -400, 84], rated_load_n: 30}   # prop disc on the spinner base; rating placeholder - not from source
+  - {id: wing-motor-3, parent: wing, child: wing_motor_3, method: glued, location: [735.060516, 400, 96], embed_ok: true, rated_load_n: 50}   # nacelle bonded into the wing; location and rating placeholder - not from source
+  - {id: wing-prop-3, parent: wing_motor_3, child: wing_prop_3, method: press-fit, location: [555.468726, 400, 84], rated_load_n: 30}   # prop disc on the spinner base; rating placeholder - not from source
+  - {id: wing-motor-4, parent: wing, child: wing_motor_4, method: glued, location: [796, 999, 96], embed_ok: true, rated_load_n: 50}   # nacelle bonded into the wing; location and rating placeholder - not from source
+  - {id: wing-prop-4, parent: wing_motor_4, child: wing_prop_4, method: press-fit, location: [616.40821, 1000, 84], rated_load_n: 30}   # prop disc on the spinner base; rating placeholder - not from source
+  - {id: tail-motor-1, parent: tail, child: tail_motor_1, method: glued, location: [1670.115693, -344.605064, 24], embed_ok: true, rated_load_n: 50}   # nacelle bonded into the tail; location and rating placeholder - not from source
+  - {id: tail-prop-1, parent: tail_motor_1, child: tail_prop_1, method: press-fit, location: [1550.888184, -344.605064, 24], rated_load_n: 30}   # prop disc on the spinner base; rating placeholder - not from source
+  - {id: tail-motor-2, parent: tail, child: tail_motor_2, method: glued, location: [1670.115693, 344.605064, 24], embed_ok: true, rated_load_n: 50}   # nacelle bonded into the tail; location and rating placeholder - not from source
+  - {id: tail-prop-2, parent: tail_motor_2, child: tail_prop_2, method: press-fit, location: [1550.888184, 344.605064, 24], rated_load_n: 30}   # prop disc on the spinner base; rating placeholder - not from source
+  - {id: battery-bay, parent: fuselage, child: battery, method: clamp, location: [454.635, 0, 0], embed_ok: true, rated_load_n: 100}   # rating placeholder - not from source
+  - {id: electronics-bay, parent: fuselage, child: electronics, method: clamp, location: [250, 0, 0], embed_ok: true, rated_load_n: 100}   # rating placeholder - not from source
+  - {id: payload-bay, parent: fuselage, child: payload, method: clamp, location: [960, 0, 0], embed_ok: true, rated_load_n: 100}   # rating placeholder - not from source
+  - {id: gear-lump-1, parent: fuselage, child: gear_lump_1, method: bolted, location: [540, 0, -80], embed_ok: true, rated_load_n: 50}   # rating placeholder - not from source
+  - {id: gear-lump-2, parent: fuselage, child: gear_lump_2, method: bolted, location: [1476, 0, -80], embed_ok: true, rated_load_n: 50}   # rating placeholder - not from source
+
+notes: >
+  Source conflicts and simplifications are listed in designs/tiltwing-cakir/README.md. The source has no joint
+  capacities; every rated_load_n here is a placeholder - not from source.
