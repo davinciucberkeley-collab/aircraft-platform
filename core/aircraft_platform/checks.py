@@ -25,7 +25,11 @@ from .geometry import component_parts, lifting_surface_properties
 from .mass import mass_properties
 
 G = 9.80665
+RHO_DEFAULT = 1.225  # ISA sea level, kg/m^3 (physical constant, matches the schema default)
 STD = "design-standards.yaml#"
+# Convention from design-standards.yaml#embed_max_fraction_of_child: these may be fully contained.
+EMBED_PARENTS = {"fuselage", "pod"}
+EMBED_CHILDREN = {"battery", "esc", "flight_controller", "receiver", "payload", "servo"}
 
 
 # ---------------------------------------------------------------- tier 0
@@ -40,15 +44,18 @@ def tier0_schema(design: Design) -> TierReport:
     ids = [c["id"] for c in design.components]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:
-        res.append(CheckResult("T0.unique_ids", FAIL, f"duplicate component ids: {sorted(dupes)}"))
+        res.append(CheckResult("T0.unique_ids", FAIL, f"duplicate component ids: {sorted(dupes)}",
+                               "schema/plane.schema.json"))
     known = set(ids)
     bad = [a for a in design.data.get("attachments", []) if a["parent"] not in known or a["child"] not in known]
     if bad:
         res.append(CheckResult("T0.attachment_refs", FAIL,
                                "attachments reference unknown components: " +
-                               ", ".join(f"{a['parent']}->{a['child']}" for a in bad)))
+                               ", ".join(f"{a['parent']}->{a['child']}" for a in bad),
+                               "schema/plane.schema.json"))
     if design.data.get("root") not in known:
-        res.append(CheckResult("T0.root", FAIL, f"root '{design.data.get('root')}' is not a component"))
+        res.append(CheckResult("T0.root", FAIL, f"root '{design.data.get('root')}' is not a component",
+                               "schema/plane.schema.json"))
     return TierReport(0, "schema", res)
 
 
@@ -96,6 +103,7 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     tol = g["attach_tolerance_mm"]["value"]
     max_int = g["interference_max_mm3"]["value"]
     max_frac = g["glued_overlap_max_fraction"]["value"]
+    embed_frac = g["embed_max_fraction_of_child"]["value"]
     meshes = {cid: component_parts(design.component(cid), design.base_dir) for cid in (c["id"] for c in design.components)}
     atts = design.data.get("attachments", [])
     res: list[CheckResult] = []
@@ -103,7 +111,8 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     # watertight geometry
     leaky = [cid for cid, ps in meshes.items() if not all(p.is_watertight for p in ps)]
     res.append(CheckResult("T1.watertight", FAIL if leaky else PASS,
-                           f"non-watertight: {leaky}" if leaky else "all component meshes are closed"))
+                           f"non-watertight: {leaky}" if leaky else "all component meshes are closed",
+                           STD + "interference_max_mm3"))
 
     # connectivity
     adj = defaultdict(set)
@@ -119,7 +128,7 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     res.append(CheckResult("T1.connectivity", FAIL if loose else PASS,
                            f"not attached to '{root}' (would fall off): {loose}" if loose
                            else f"all {len(meshes)} components connect to '{root}'",
-                           STD + "geometry"))
+                           STD + "attach_tolerance_mm"))
 
     # each attachment: parts actually touch, joint point on both, overlap sane
     attached_pairs = set()
@@ -127,6 +136,13 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
         p, c = a["parent"], a["child"]
         attached_pairs.add(frozenset((p, c)))
         label = a.get("id") or f"{p}->{c}"
+        ptype, ctype = design.component(p)["type"], design.component(c)["type"]
+        embed = a.get("embed_ok", False)
+        if embed and "propeller" in (ptype, ctype):
+            res.append(CheckResult("T1.attachment_overlap", FAIL,
+                                   f"{label}: a propeller can never be an embed_ok joint (its swept disc must not pass into a part)",
+                                   STD + "embed_max_fraction_of_child"))
+            continue
         ov = _overlap_volume(meshes[p], meshes[c])
         if ov <= 0:
             d = _min_distance(meshes[p], meshes[c])
@@ -135,17 +151,27 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
                                        f"{label}: parts are {d:.1f} mm apart (tolerance {tol} mm)",
                                        STD + "attach_tolerance_mm", {"gap_mm": round(d, 2)}))
                 continue
+        elif embed:
+            if not (ptype in EMBED_PARENTS and ctype in EMBED_CHILDREN):
+                child_vol = sum(x.volume for x in meshes[c])
+                frac = ov / child_vol if child_vol else 1.0
+                if frac > embed_frac:
+                    res.append(CheckResult("T1.attachment_overlap", FAIL,
+                                           f"{label}: embed_ok joint overlaps {frac:.0%} of the child {c} (limit {embed_frac:.0%})",
+                                           STD + "embed_max_fraction_of_child", {"overlap_fraction_of_child": round(frac, 3)}))
+                    continue
         else:
             smaller = min(sum(x.volume for x in meshes[p]), sum(x.volume for x in meshes[c]))
             frac = ov / smaller if smaller else 0
-            if not a.get("embed_ok", False) and frac > max_frac:
+            if frac > max_frac:
                 res.append(CheckResult("T1.attachment_overlap", FAIL,
                                        f"{label}: parts overlap {frac:.0%} of the smaller part; set embed_ok if intended",
                                        STD + "glued_overlap_max_fraction", {"overlap_fraction": round(frac, 3)}))
                 continue
         loc = a.get("location")
         if loc is None:
-            res.append(CheckResult("T1.attachment_location", WARN, f"{label}: no joint location given"))
+            res.append(CheckResult("T1.attachment_location", FAIL, f"{label}: no joint location given",
+                                   "schema/plane.schema.json"))
             continue
         dp, dc = _point_distance(meshes[p], loc), _point_distance(meshes[c], loc)
         if max(dp, dc) > tol:
@@ -153,7 +179,8 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
                                    f"{label}: joint point is {dp:.1f} mm from {p} and {dc:.1f} mm from {c}",
                                    STD + "attach_tolerance_mm"))
         else:
-            res.append(CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint OK"))
+            res.append(CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint OK",
+                                   STD + "attach_tolerance_mm"))
 
     # interference between non-attached parts
     ids = list(meshes)
@@ -200,7 +227,7 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
         load = _subtree_mass(design, a["parent"], a["child"]) / 1000 * G * n
         rated = a.get("rated_load_n")
         if rated is None:
-            res.append(CheckResult("T2.joint_load", WARN, f"{label}: carries {load:.1f} N at {n}g, no rated_load_n given",
+            res.append(CheckResult("T2.joint_load", FAIL, f"{label}: carries {load:.1f} N at {n}g, no rated_load_n given",
                                    STD + "landing_load_factor", {"load_n": round(load, 2)}))
         elif rated < load:
             res.append(CheckResult("T2.joint_load", FAIL, f"{label}: {load:.1f} N at {n}g exceeds rating {rated} N",
@@ -223,13 +250,17 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
             f = axis * m["propulsion"]["max_thrust_n"]
             force += f
             torque += np.cross((pos - cg) / 1000, f)
-        span_ref = max(1e-6, float(np.linalg.norm(force)) * 0.05)  # 5 cm lever at full thrust
+        ag = std["aero"]
+        lever = ag["hover_moment_reference_lever_m"]["value"]
+        pass_r, fail_r = ag["hover_moment_pass_ratio"]["value"], ag["hover_moment_fail_ratio"]["value"]
+        span_ref = max(1e-6, float(np.linalg.norm(force)) * lever)
         imbalance = float(np.linalg.norm(torque - np.dot(torque, force) / np.dot(force, force) * force))
         ratio = imbalance / span_ref
-        status = PASS if ratio < 0.2 else WARN if ratio < 1 else FAIL
+        status = PASS if ratio < pass_r else WARN if ratio < fail_r else FAIL
         res.append(CheckResult("T2.hover_moment", status,
                                f"equal-thrust hover moment about CG {imbalance:.2f} N*m "
-                               f"({ratio:.0%} of a 5 cm thrust offset)", "",
+                               f"({ratio:.0%} of a {lever * 100:g} cm thrust offset)",
+                               STD + "hover_moment_pass_ratio",
                                {"moment_nm": round(imbalance, 3)}))
     return TierReport(2, "physics", res)
 
@@ -252,7 +283,7 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
     if lifting and design.data["morphology"]["lift"] != "multirotor":
         main_c, main = max(lifting, key=lambda cp: cp[1]["area_mm2"])
         s_m2 = main["area_mm2"] / 1e6
-        rho = flight.get("air_density_kgm3", 1.225)
+        rho = flight.get("air_density_kgm3", RHO_DEFAULT)
         clmax = flight.get("cl_max", a["cl_max_default"]["value"])
         v_stall = math.sqrt(2 * weight_n / (rho * s_m2 * clmax))
         wl = mass / (main["area_mm2"] / 1e4)  # g/dm^2
@@ -272,12 +303,12 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         for c, p in lifting:
             k = slope(p["aspect_ratio"]) * p["area_mm2"]
             if c is not main_c:
-                k *= 0.9 * ((1 - deps) if p["x_ac_mm"] > main["x_ac_mm"] else 1.0)
+                k *= a["aft_surface_efficiency"]["value"] * ((1 - deps) if p["x_ac_mm"] > main["x_ac_mm"] else 1.0)
             num += k * p["x_ac_mm"]; den += k
         x_np = num / den
         sm = (x_np - mp["cg_mm"][0]) / main["mac_mm"]
         lo, hi = a["static_margin"]["min"], a["static_margin"]["max"]
-        st = PASS if lo <= sm <= hi else (FAIL if sm < 0 else WARN)
+        st = PASS if lo <= sm <= hi else FAIL
         res.append(CheckResult("T3.static_margin", st,
                                f"{sm:.1%} MAC (NP x={x_np:.0f} mm, CG x={mp['cg_mm'][0]:.0f} mm; target {lo:.0%}-{hi:.0%}; "
                                "fuselage effect not modelled)",
@@ -287,7 +318,8 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         res.append(CheckResult("T3.lateral_cg", PASS if lat <= lim else FAIL,
                                f"CG y offset {lat:.1%} of span (limit {lim:.0%})", STD + "lateral_cg_max_fraction_span"))
     elif design.data["morphology"]["lift"] != "multirotor":
-        res.append(CheckResult("T3.stall", FAIL, "no lifting surface found on a winged design"))
+        res.append(CheckResult("T3.stall", FAIL, "no lifting surface found on a winged design",
+                               STD + "cl_max_default"))
 
     if design.data["morphology"].get("vtol_method", "none") != "none" or design.data["morphology"]["lift"] == "multirotor":
         thrust = sum(c["propulsion"]["max_thrust_n"] for c in design.components
@@ -301,33 +333,65 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
 
 
 # ---------------------------------------------------------------- tier 4
+SHEET_METHODS = {"laser-cut", "waterjet", "cnc-router"}
+MFG = "manufacturing.yaml"
+
+
+def _fits(extents: list[float], bed: list[float], sheet: bool) -> bool:
+    """extents/bed are sorted ascending. Sheet processes (2 bed values, or a sheet method) compare the two
+    largest extents to the bed and the smallest extent only to a third value if one is given."""
+    e = sorted(extents)
+    v = sorted(bed)
+    if sheet or len(v) == 2:
+        if len(v) < 2 or e[2] > max(v[-2:]) or e[1] > min(v[-2:]):
+            return False
+        return len(v) < 3 or e[0] <= v[0]
+    return all(x <= y for x, y in zip(e, v))
+
+
 def tier4_manufacturing(design: Design) -> TierReport:
     import yaml
     path = REPO_ROOT / "standards" / "manufacturing.yaml"
     if not path.exists():
-        return TierReport(4, "manufacturing", [CheckResult("T4.capabilities", SKIP, "standards/manufacturing.yaml not written yet")])
+        return TierReport(4, "manufacturing", [CheckResult("T4.capabilities", SKIP, "standards/manufacturing.yaml not written yet", MFG)])
     caps = yaml.safe_load(path.read_text()) or {}
     machines = {m["id"]: m for m in caps.get("machines", [])}
-    methods = {m for mm in machines.values() for m in mm.get("methods", [])} | {"purchased", "hand-cut", "foamboard"}
+    free_methods = set(caps.get("machine_optional_methods", []))
+    all_methods = {m for mm in machines.values() for m in mm.get("methods", [])} | free_methods
     res = []
     for c in design.components:
         mf = c.get("manufacturing")
         if not mf:
-            res.append(CheckResult("T4.method", WARN, f"{c['id']}: no manufacturing method", "manufacturing.yaml"))
+            res.append(CheckResult("T4.method", WARN, f"{c['id']}: no manufacturing method", MFG))
             continue
-        if mf["method"] not in methods:
-            res.append(CheckResult("T4.method", FAIL, f"{c['id']}: no available machine does {mf['method']}", "manufacturing.yaml"))
-            continue
-        mach = machines.get(mf.get("machine", ""))
-        if mach and "build_volume_mm" in mach:
-            ext = sorted(np.ptp(np.vstack([p.vertices for p in component_parts(c, design.base_dir)]), axis=0))
-            vol = sorted(mach["build_volume_mm"])
-            if any(e > v for e, v in zip(ext, vol)):
-                res.append(CheckResult("T4.fits_machine", FAIL,
-                                       f"{c['id']}: {[round(x) for x in ext]} mm does not fit {mach['id']} {vol}",
-                                       "manufacturing.yaml#" + mach["id"]))
+        method, mid = mf["method"], mf.get("machine")
+        if mid is not None:
+            mach = machines.get(mid)
+            if mach is None:
+                res.append(CheckResult("T4.machine", FAIL, f"{c['id']}: machine '{mid}' is not in standards/manufacturing.yaml", MFG))
                 continue
-        res.append(CheckResult("T4.method", PASS, f"{c['id']}: {mf['method']}", "manufacturing.yaml"))
+            if method not in mach.get("methods", []):
+                res.append(CheckResult("T4.method", FAIL,
+                                       f"{c['id']}: {mid} does not do {method} (it does {mach.get('methods', [])})",
+                                       f"{MFG}#{mid}"))
+                continue
+            bed = mach.get("build_volume_mm")
+            if not bed:
+                res.append(CheckResult("T4.fits_machine", WARN, f"{c['id']}: {mid} has no build_volume_mm, fit not checked",
+                                       f"{MFG}#{mid}"))
+                continue
+            ext = [float(x) for x in np.ptp(np.vstack([p.vertices for p in component_parts(c, design.base_dir)]), axis=0)]
+            if not _fits(ext, bed, method in SHEET_METHODS):
+                res.append(CheckResult("T4.fits_machine", FAIL,
+                                       f"{c['id']}: {sorted(round(x) for x in ext)} mm does not fit {mid} bed {sorted(bed)}",
+                                       f"{MFG}#{mid}"))
+                continue
+            res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method} on {mid}, fits", f"{MFG}#{mid}"))
+            continue
+        if method not in all_methods:
+            res.append(CheckResult("T4.method", FAIL, f"{c['id']}: no available machine does {method}", MFG))
+            continue
+        res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method}", MFG))
     return TierReport(4, "manufacturing", res)
 
 
@@ -339,13 +403,18 @@ def tier5_standards(design: Design, std: dict, mp: dict) -> TierReport:
         CheckResult("T5.part107_mass", PASS if m < r["faa_part107_max_mass_g"]["value"] else FAIL,
                     f"{m:.0f} g vs Part 107 limit {r['faa_part107_max_mass_g']['value']} g", STD + "faa_part107_max_mass_g"),
         CheckResult("T5.registration", PASS,
-                    f"{'above' if m > r['faa_registration_mass_g']['value'] else 'below'} the 250 g FAA registration threshold (informational)",
+                    f"{'above' if m > r['faa_registration_mass_g']['value'] else 'below'} the {r['faa_registration_mass_g']['value']} g FAA registration threshold (informational)",
                     STD + "faa_registration_mass_g"),
     ]
     return TierReport(5, "standards", res)
 
 
 # ---------------------------------------------------------------- runner
+# Criterion for results that are not tied to one rule (crashes, blocked tiers).
+TIER_CRITERION = {1: STD + "interference_max_mm3", 2: STD + "landing_load_factor", 3: STD + "static_margin",
+                  4: "manufacturing.yaml", 5: STD + "faa_part107_max_mass_g"}
+
+
 def validate(design: Design, max_tier: int = 5) -> Scorecard:
     std = load_standards()
     tiers = [tier0_schema(design)]
@@ -356,7 +425,7 @@ def validate(design: Design, max_tier: int = 5) -> Scorecard:
         try:
             return fn()
         except Exception as e:  # noqa: BLE001
-            return TierReport(tier, name, [CheckResult(f"T{tier}.error", FAIL, f"{type(e).__name__}: {e}")])
+            return TierReport(tier, name, [CheckResult(f"T{tier}.error", FAIL, f"{type(e).__name__}: {e}", TIER_CRITERION[tier])])
 
     if max_tier >= 1:
         tiers.append(run(1, "geometry", lambda: tier1_geometry(design, std)))
@@ -364,7 +433,7 @@ def validate(design: Design, max_tier: int = 5) -> Scorecard:
         mp = mass_properties(design)
     except Exception as e:  # noqa: BLE001
         later = [(2, "physics"), (3, "aero"), (4, "manufacturing"), (5, "standards")]
-        tiers += [TierReport(t, n, [CheckResult(f"T{t}.blocked", FAIL, f"mass properties failed: {e}")])
+        tiers += [TierReport(t, n, [CheckResult(f"T{t}.blocked", FAIL, f"mass properties failed: {e}", TIER_CRITERION[t])])
                   for t, n in later if t <= max_tier]
         return Scorecard(design.id, tiers)
 

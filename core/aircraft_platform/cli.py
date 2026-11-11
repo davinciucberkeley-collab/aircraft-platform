@@ -56,15 +56,15 @@ def cli():
 
 @cli.command("validate")
 @click.argument("path")
-@click.option("--tier", "max_tier", type=int, default=5, show_default=True,
-              help="Highest validation tier to run.")
+@click.option("--tier", "max_tier", type=click.Choice(["0", "1", "2", "3", "4", "5", "all"]), default="5",
+              show_default=True, help="Highest validation tier to run (all = 5).")
 @click.option("--format", "fmt", type=click.Choice(["md", "json"]), default="md", show_default=True)
 @click.option("--out", "out_file", type=click.Path(dir_okay=False), default=None,
               help="Write the scorecard to FILE instead of stdout.")
 def validate_cmd(path, max_tier, fmt, out_file):
     """Run the validation tiers on PATH and print the scorecard."""
     design = _load(path)
-    card = validate(design, max_tier=max_tier)
+    card = validate(design, max_tier=5 if max_tier == "all" else int(max_tier))
     text = card.to_markdown() if fmt == "md" else _dumps(card.to_dict()) + "\n"
     if out_file:
         Path(out_file).parent.mkdir(parents=True, exist_ok=True)

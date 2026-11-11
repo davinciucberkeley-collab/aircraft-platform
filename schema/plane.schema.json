@@ -93,7 +93,7 @@
         "geometry": {"$ref": "#/$defs/geometry"},
         "position": {"description": "Component origin in body frame (mm). For box/cylinder: centre. For lifting_surface: root leading edge.", "$ref": "#/$defs/vec3"},
         "rotation_deg": {"description": "Intrinsic roll, pitch, yaw about x, y, z (deg).", "$ref": "#/$defs/vec3"},
-        "mass_g": {"type": "number", "minimum": 0},
+        "mass_g": {"type": "number", "exclusiveMinimum": 0},
         "cg_offset": {"description": "CG relative to the component's geometric centroid (mm). Default [0,0,0].", "$ref": "#/$defs/vec3"},
         "material": {"type": "string"},
         "manufacturing": {
@@ -163,7 +163,7 @@
     },
     "attachment": {
       "type": "object",
-      "required": ["parent", "child", "method"],
+      "required": ["parent", "child", "method", "location", "rated_load_n"],
       "additionalProperties": false,
       "properties": {
         "id": {"type": "string"},

@@ -74,7 +74,7 @@ class Scorecard:
 
     @property
     def accepted(self) -> bool:
-        return all(t.status != FAIL for t in self.tiers)
+        return all(r.status not in (FAIL, SKIP) for t in self.tiers for r in t.results)
 
     def to_dict(self) -> dict:
         return {

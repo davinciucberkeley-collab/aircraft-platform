@@ -4,11 +4,14 @@ retrieved: 2026-11-11
 source_urls:
   - https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
   - https://jacobsinstitute.berkeley.edu/student-resources/other-spaces/
+# Methods a part may use without naming a machine (bought, or cut by hand/with no shop machine).
+machine_optional_methods: [purchased, hand-cut, foamboard]
 machines:
   - id: jacobs-laser
     name: "Universal Systems laser cutter (32 x 18 in bed)"
     count: 3
     methods: [laser-cut]
+    build_volume_mm: [813, 457]   # two values = bed X x Y only (sheet process); from the bed size in notes
     materials: [plywood, acrylic]
     notes: "Bed 32 x 18 in (813 x 457 mm) per the page; max thickness not stated, so no z dimension. Page also says similar materials are allowed."
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
@@ -17,6 +20,7 @@ machines:
     name: "Universal Systems laser cutter (48 x 25 in bed)"
     count: 1
     methods: [laser-cut]
+    build_volume_mm: [1219, 635]   # two values = bed X x Y only (sheet process); from the bed size in notes
     materials: [wood, acrylic]
     notes: "Bed 48 x 25 in (1219 x 635 mm) per the page; max thickness not stated."
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
@@ -25,6 +29,7 @@ machines:
     name: "FabLight fiber laser cutter"
     count: 1
     methods: [laser-cut]
+    build_volume_mm: [1270, 635]   # two values = bed X x Y only (sheet process); from the bed size in notes
     materials: [metal sheet, metal tube]
     notes: "Metal shop in the basement. Cutting area 50 x 25 in (1270 x 635 mm) per the page; max thickness not stated. Also engraves steel, stainless, aluminum, brass, bronze, copper and titanium."
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
@@ -65,6 +70,7 @@ machines:
     name: "ShopBot PRSalpha CNC router"
     count: 1
     methods: [cnc-router]
+    build_volume_mm: [1219, 2438]   # two values = bed X x Y only (sheet process); from the bed size in notes
     materials: []
     notes: "Bed 4 ft x 8 ft (1219 x 2438 mm) per the page. Max thickness and allowed materials not stated."
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
@@ -89,6 +95,7 @@ machines:
     name: "OMAX 2626 waterjet cutter"
     count: 1
     methods: [waterjet]
+    build_volume_mm: [660, 660]   # two values = bed X x Y only (sheet process); from the bed size in notes
     materials: [nearly anything except tempered glass]
     notes: "Metal shop. Cutting area 26 x 26 in (660 x 660 mm) per the page. Max thickness not stated."
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/

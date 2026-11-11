@@ -19,7 +19,7 @@ plans/ reviews/  agent plans and review scorecards
 ## Quick start
 
 ```bash
-pip install -e ".[sim,mcp,dev]"
+pip install -e ".[mcp,dev]"
 plane list
 plane validate designs/example-tailsitter-wing     # scorecard; exit 0 = accepted
 plane new my-concept --from example-tailsitter-wing

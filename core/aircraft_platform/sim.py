@@ -58,12 +58,8 @@ def _component_inertia(mass_kg: float, parts, cg_mm: np.ndarray) -> np.ndarray:
 def _build(design: Design):
     """Returns (xml, info) where info maps attachment ids to equality names."""
     r, quat, up_body = _landing_rotation(design)
-    std_h = 0.3
-    try:
-        from .design import load_standards
-        std_h = float(load_standards()["sim"]["drop_height_m"]["value"])
-    except Exception:
-        pass
+    from .design import load_standards
+    std_h = float(load_standards()["sim"]["drop_height_m"]["value"])
 
     comps = []
     for c in design.components:
@@ -149,21 +145,21 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
     try:
         import mujoco
     except ImportError:
-        return [CheckResult("T2.sim", SKIP, "mujoco not installed; dynamic simulation skipped")]
+        return [CheckResult("T2.sim", SKIP, "mujoco not installed; dynamic simulation skipped", STD + "drop_height_m")]
 
-    cfg = std.get("sim", {})
-    dur = float(cfg.get("duration_s", {}).get("value", 2.0))
-    v_max = float(cfg.get("rest_speed_max_mps", {}).get("value", 0.05))
-    tip_max = float(cfg.get("tip_angle_max_deg", {}).get("value", 30.0))
+    cfg = std["sim"]
+    dur = float(cfg["duration_s"]["value"])
+    v_max = float(cfg["rest_speed_max_mps"]["value"])
+    tip_max = float(cfg["tip_angle_max_deg"]["value"])
 
     try:
         xml, info = _build(design)
         model = mujoco.MjModel.from_xml_string(xml)
     except Exception as e:  # noqa: BLE001
         msg = f"could not build simulation model: {e}"
-        return [CheckResult("T2.sim_stable", FAIL, msg, STD + "sim"),
-                CheckResult("T2.sim_drop_loads", SKIP, "no model"),
-                CheckResult("T2.sim_rest", SKIP, "no model")]
+        return [CheckResult("T2.sim_stable", FAIL, msg, STD + "duration_s"),
+                CheckResult("T2.sim_drop_loads", SKIP, "no model", STD + "drop_height_m"),
+                CheckResult("T2.sim_rest", SKIP, "no model", STD + "drop_height_m")]
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
 
@@ -197,19 +193,19 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
         rated = a.get("rated_load_n")
         d = {"peak_n": round(peak, 2)}
         if rated is None:
-            res.append(CheckResult("T2.sim_drop_loads", WARN, f"{label}: peak {peak:.1f} N in drop test, no rated_load_n given",
-                                   STD + "sim", d))
+            res.append(CheckResult("T2.sim_drop_loads", FAIL, f"{label}: peak {peak:.1f} N in drop test, no rated_load_n given",
+                                   STD + "landing_load_factor", d))
         elif peak > rated:
             res.append(CheckResult("T2.sim_drop_loads", FAIL, f"{label}: peak {peak:.1f} N in drop test exceeds rating {rated} N",
-                                   STD + "sim", d))
+                                   STD + "landing_load_factor", d))
         else:
             res.append(CheckResult("T2.sim_drop_loads", PASS, f"{label}: peak {peak:.1f} N <= {rated} N in drop test",
-                                   STD + "sim", d))
+                                   STD + "landing_load_factor", d))
 
     # b. rest
     root = info["root"] or design.components[0]["id"]
     if nan:
-        res.append(CheckResult("T2.sim_rest", SKIP, "simulation went unstable", STD + "sim"))
+        res.append(CheckResult("T2.sim_rest", SKIP, "simulation went unstable", STD + "drop_height_m"))
     else:
         bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, root)
         vel = np.zeros(6)
@@ -237,9 +233,9 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
 
     # c. stability
     if nan:
-        res.append(CheckResult("T2.sim_stable", FAIL, "simulation produced NaN/inf states", STD + "sim"))
+        res.append(CheckResult("T2.sim_stable", FAIL, "simulation produced NaN/inf states", STD + "drop_height_m"))
     elif warn_count:
-        res.append(CheckResult("T2.sim_stable", FAIL, f"MuJoCo raised {warn_count} instability warning(s) during the run", STD + "sim"))
+        res.append(CheckResult("T2.sim_stable", FAIL, f"MuJoCo raised {warn_count} instability warning(s) during the run", STD + "drop_height_m"))
     else:
-        res.append(CheckResult("T2.sim_stable", PASS, f"{n_steps} steps, no NaN or solver warnings", STD + "sim"))
+        res.append(CheckResult("T2.sim_stable", PASS, f"{n_steps} steps, no NaN or solver warnings", STD + "drop_height_m"))
     return res

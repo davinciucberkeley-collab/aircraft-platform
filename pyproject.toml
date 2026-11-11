@@ -7,10 +7,10 @@ name = "aircraft-platform"
 version = "0.1.0"
 description = "Shared schema, validators, CLI and MCP server for our aircraft designs"
 requires-python = ">=3.10"
-dependencies = ["pyyaml", "jsonschema", "numpy", "scipy", "trimesh", "manifold3d", "rtree", "click"]
+dependencies = ["pyyaml", "jsonschema", "numpy", "scipy", "trimesh", "manifold3d", "rtree", "click", "mujoco>=3"]
 
 [project.optional-dependencies]
-sim = ["mujoco>=3"]
+sim = []  # kept for compatibility: mujoco is now a core dependency
 mcp = ["mcp>=1.2"]
 dev = ["pytest"]
 

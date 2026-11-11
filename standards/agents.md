@@ -46,7 +46,7 @@ Instructions can go to Haiku only if they include all of:
 
 - One reviewer instance per task, kept alive (`SendMessage`) for every review in that task. Don't spawn a new reviewer per item.
 - Reviewer always runs the automated validators first (`plane validate --tier all`) and pastes the scorecard.
-- Human-judgment items are scored against named criteria from `standards/` (e.g. `design-standards.md#static-margin`), each as PASS / FAIL / N/A with a one-line reason.
+- Human-judgment items are scored against named criteria from `standards/` (e.g. `design-standards.yaml#static_margin`), each as PASS / FAIL / N/A with a one-line reason.
 - Output format: see `standards/review-scorecard.md`.
 
 ## Cost check

@@ -15,8 +15,8 @@ Every review — human or agent — returns this. No free-form "looks good."
 ## Criteria (judgment items)
 | Criterion (link into standards/) | Result | Reason |
 |---|---|---|
-| design-standards.md#static-margin | PASS | 11% MAC, within 5–15% |
-| manufacturing.md#laser-cut-max-sheet | N/A | no laser-cut parts |
+| design-standards.yaml#static_margin | PASS | 11% MAC, within 5–15% |
+| manufacturing.yaml#jacobs-laser | N/A | no laser-cut parts |
 
 ## Blocking issues
 1. ...
@@ -26,5 +26,5 @@ Every review — human or agent — returns this. No free-form "looks good."
 ```
 
 Rules:
-- A design is **accepted** only when every automated tier it claims is PASS and no blocking criterion is FAIL.
-- Every row cites a criterion that exists in `standards/`. If you want to judge something that has no criterion, propose the criterion in "Non-blocking suggestions" instead.
+- A design is **accepted** only when no automated result is FAIL or SKIP and no blocking criterion is FAIL (the validator's `accepted` flag applies this).
+- Every row cites a criterion that exists in `standards/`. Link forms: `design-standards.yaml#<leaf key>` (e.g. `static_margin`), `manufacturing.yaml#<machine id>`, `schema/plane.schema.json`, or `requirements.<field>` for a design's own requirement. A test resolves every criterion the validator emits. If you want to judge something that has no criterion, propose the criterion in "Non-blocking suggestions" instead.

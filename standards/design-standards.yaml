@@ -17,6 +17,10 @@ geometry:
     value: 0.02
     rule: Attached parts without embed_ok may overlap at most this fraction of the smaller part's volume.
     source: internal convention
+  embed_max_fraction_of_child:
+    value: 0.35
+    rule: An embed_ok joint may overlap at most this fraction of the CHILD's volume, unless the parent is a fuselage or pod and the child is a battery, esc, flight_controller, receiver, payload or servo (those may be fully contained). Propellers may never use embed_ok.
+    source: internal convention
 
 structure:
   landing_load_factor:
@@ -35,12 +39,28 @@ aero:
     max: 0.15
     rule: Static margin (neutral point minus CG, over main-wing MAC) for fixed-wing cruise.
     source: MIT 16.01 design rules; uavmodel DIY UAV guide (knowledge/sources/std-mit-unified-desrules.md, std-uavmodel-diy-uav-airframe.md)
-    note: MIT states it per chord c; confirm it means MAC.
+    note: MIT states it per chord c; the MIT page defines c as the average wing chord, so MAC is the right reference (std-mit-unified-desrules.md). Outside [min, max] on either side is a FAIL.
   hover_thrust_to_weight_min:
     value: 1.5
     rule: VTOL designs need total lift-motor thrust at least this multiple of weight.
     source: pending
     note: Sources range 1.2-1.5 (forum citing a paper) to 2.0 (heuristic); ArduPilot/PX4 give none. Candidate change to 2.0 once the underlying paper is read.
+  hover_moment_reference_lever_m:
+    value: 0.05
+    rule: Reference lever arm for the hover moment check; imbalance is compared with total lift thrust times this lever.
+    source: internal convention
+  hover_moment_pass_ratio:
+    value: 0.2
+    rule: Equal-thrust hover moment about the CG below this fraction of thrust x reference lever is a PASS.
+    source: internal convention
+  hover_moment_fail_ratio:
+    value: 1.0
+    rule: Hover moment at or above this fraction of thrust x reference lever is a FAIL; between pass and fail ratios is a WARN.
+    source: internal convention
+  aft_surface_efficiency:
+    value: 0.9
+    rule: Lift-slope multiplier for lifting surfaces other than the main wing in the neutral point estimate (dynamic pressure and interference loss).
+    source: internal convention
   lateral_cg_max_fraction_span:
     value: 0.02
     rule: "|CG y| no more than this fraction of the main-wing span."
