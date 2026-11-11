@@ -1,0 +1,767 @@
+# A3: C0 (v0.4.0) with a printed nacelle and hub cap on each lift rotor to cut stopped-rotor drag. Derived from designs/c0-lift-cruise.
+# Baseline: variant numbers are from the v0.3.1 baseline (6.182 kg, 20 m/s) per DECISIONS.md; every part the variant did not change keeps C0 v0.4.0. See README.md.
+# Frame: same transform as C0 (body x aft from the pod nose, x = 600 - 1000 X_cad), see designs/c0-lift-cruise/README.md.
+schema_version: "0.1"
+id: c0-a3
+name: A3 aligned, faired stopped lift rotors (derived from C0 v0.4.0)
+authors: ["UC Berkeley DBF capstone team (source repo dbf-combined)", "converted for aircraft-platform by a tactician agent"]
+status: concept
+description: >
+  C0 airframe with a printed NACA 0022 nacelle around each lift motor mount and a rotating hub cap on each lift prop; a magnetic detent
+  (and, in phase 2, a reed switch plus Lua nudge) parks each two-blade prop fore-aft in cruise so the stopped rotors cost less drag.
+  Variant numbers come from the team's A3 variant (v0.3.1 baseline) applied as deltas on C0 v0.4.0. Phase 2 (reed wiring) mass is
+  included, as in the source headline numbers. Nothing built or flown.
+lineage:
+  derived_from: [c0-lift-cruise]
+  inspired_by:
+    - "dbf-combined@1244ebc concepts/concepts.json (id a3)"
+    - "dbf-combined@1244ebc concepts/variants/a3/design.md"
+    - "dbf-combined@1244ebc concepts/variants/a3/geometry.json"
+    - "dbf-combined@1244ebc concepts/variants/a3/metrics.json"
+    - "dbf-combined@1244ebc concepts/variants/a3/analysis/final_runs.json (cited by metrics.json)"
+    - "dbf-combined@1244ebc fusion/variants/build_a3_fusion.py"
+    - "dbf-combined@1244ebc DECISIONS.md (baseline table, self-inconsistency 5)"
+morphology:
+  lift: fixed-wing
+  vtol_method: lift-plus-cruise
+  tail: other   # H-tail on twin booms with two fins; the enum has no twin-boom H-tail
+  propulsion_count: 5
+requirements:
+  mtow_g: 7688   # C0 sizing 7438 + 250 g variant delta (concepts/variants/a3/metrics.json mass_kg 6.432 - C0 6.182, incl. phase-2 wiring); source MTOW 6.432 kg is v0.3.1 and is not used
+  payload_g: 0          # docs/DESIGN-BASIS.md R12 (no payload, no ballast) via cad/README.md
+  cruise_speed_mps: 18  # analysis/results.json base.Vc
+  stall_speed_max_mps: 12   # R11, aero_results.json stall.V_stall_req_mps
+  endurance_min: 10     # R10, aero_results.json mission.R10_req_min (10 min of cruise)
+  budget_usd: 2000      # CLAUDE.md of the source: fixed $2,000 budget
+flight:
+  cl_max: 1.115         # analysis/results.json base.CLmax = aero_results.json CL_max_3D.adopted
+  air_density_kgm3: 1.225   # analysis/results.json base.rho
+root: pod
+materials:
+  xps-foam:
+    density_g_cm3: 0.032
+    notes: "XPS FOAMULAR (analysis/sizing.mjs rhoFoam 32 kg/m3, SRC-15); skinned with Scotch packing tape"
+  petg:
+    density_g_cm3: 1.27
+    notes: "ELEGOO PETG; 1.27 g/cm3 is an EST typical value (cad/verification.txt)"
+  pa6-cf20:
+    notes: "Polymaker Fiberon PA6-CF20 for motor mounts and pusher cup (HDT 173 C); density not extracted from the source"
+  al-6061-t6:
+    density_g_cm3: 2.7
+    notes: "6061-T6 (SOLIDWORKS library, yield 275 MPa, E 69 GPa; cad/params.txt matSig matE matRho)"
+
+components:
+  # Foam pod, canopy, battery tray, FC tray and printed frames (CAD pod profile is an ellipse nose / parallel / smoothstep taper to R30; modelled here as a plain R80 x 1000 cylinder)
+  # src: mass_budget.json rows Fuselage_Pod 387.3 + Canopy 31.6 + Battery_Tray 35.0 + FC_Tray 11.6 + Pod frames 74.0 = 539.5 (group "Fuselage pod" 567.2 less pitot 27.7); geometry params.txt fusL 1.000 fusR 0.080 comp=Fuselage_Pod (nose at CAD X +0.600, axis Y -0.030)
+  # cg_offset x = 435.9 - 500: group centroid 0.4359 m from the nose (mass_budget.json calibration.stations.pod_from_nose)
+  - id: pod
+    type: fuselage
+    geometry: {cylinder: {radius: 80, length: 1000, axis: x}}
+    position: [500, 0, -30]
+    mass_g: 539.5
+    cg_offset: [-64.1, 0, 0]
+    material: xps-foam
+    manufacturing: {method: hotwire-foam}
+
+  # Main wing, one mirrored surface: two 1.12 m XPS panels + saddle, ailerons (26 % chord, outer 55 % span, not modelled separately), tape skin, printed hardpoints. Slab hull, not the NACA 2415 section.
+  # src: mass_budget.json group "Wing" 1809.4 g minus Spar_Tube 478.3 and Wing_Joiner 197.1 = 1133.97; planform params.txt chord 0.322333, panelLen 1.12 + saddle 0.08 per side = span 2.4 m, tc 0.15, foilWing NACA 2415; LE at CAD X 0 -> x 600; slab centred on the spar axis (sparY 0.006044)
+  # cg_offset x = -20.9: wing-group centroid 0.124 m aft of the LE (analysis/results.json C0.cg.items Wing) with the spar (675.4 g at x 696.7) removed, minus the slab centroid x 761.2 (calc)
+  - id: wing
+    type: wing
+    geometry: {lifting_surface: {span: 2400, root_chord: 322.333, tip_chord: 322.333, sweep_le_deg: 0, dihedral_deg: 0, thickness_ratio: 0.15, airfoil: "NACA 2415", mirrored: true, lifting: true}}
+    position: [600, 0, 6.044]
+    mass_g: 1133.97
+    cg_offset: [-20.906, 0, 0]
+    material: xps-foam
+    manufacturing: {method: hotwire-foam}
+
+  # Two 0.8 m spar sockets (OD 25.4) and the 0.76 m slip-fit joiner (OD 22.2) lumped as one 25.4 mm tube across the full 1.76 m (the 160 mm centre gap is the joiner only)
+  # src: mass_budget.json Spar_Tube 478.3 + Wing_Joiner 197.1 = 675.4 (equals analysis/results.json base.m_spar 0.67524); params.txt sparX -0.0967 (30 % chord), sparOD 0.0254, sparLen 0.8, joinLen 0.76
+  - id: spar
+    type: structure
+    geometry: {cylinder: {radius: 12.7, length: 1760, axis: y}}
+    position: [696.7, 0, 6.044]
+    mass_g: 675.4
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "OnlineMetals 6061-T6 tube 1.000 x 0.058 in x 96 in (sockets) + 0.875 x 0.058 in x 36 in (joiner)"}
+
+  # Port boom: 1046.0 mm front tube + 485.9 mm rear stub joined by a printed splice plug (plug mass included)
+  # src: mass_budget.json (Boom_Front 385.7 + Boom_Rear_Stub 179.5)/2 = 282.6 plus Splice_Plug 50.0/2 = 25.0; extent params.txt xFront 0.407727 .. xStub0 -1.074133 (analysis/results.json C0.geo.booms x1 0.4577, x0 -1.0741), yIn 0.4337, boom axis CAD Y -0.032938
+  - id: boom_l
+    type: boom
+    geometry: {cylinder: {radius: 12.7, length: 1531.86, axis: x}}
+    position: [908.203, -433.7, -32.938]
+    mass_g: 307.6
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "OnlineMetals 6061-T6 tube 1.000 x 0.035 in x 72 in"}
+
+  # Front boom clamp (PETG, upper + lower half) bonded to the spar collar; top meets the wing lower surface at 30 % chord
+  # src: mass_budget.json Boom_Clamp_F_Upper 22.67 + Lower 27.33 = 50.0 for two sets, /2; mesh bounds Boom_Clamp_F_Upper/Lower; comp= position params.txt (X -0.0967, Y -0.032938, Z +-0.4337)
+  - id: boom_clamp_f_l
+    type: structure
+    geometry: {box: {size: [34, 46, 31.5]}}
+    position: [696.7, -433.7, -33.888]
+    mass_g: 25
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Rear boom clamp (PETG) bolted to the rear hardpoint plate at 80 % chord (top is inside the wing slab because the slab is thicker than the real section there)
+  # src: mass_budget.json Boom_Clamp_R_Upper 51.27 + Lower 26.73 = 78.0 for two sets, /2; mesh bounds Boom_Clamp_R_Upper/Lower; comp= X -0.257867
+  - id: boom_clamp_r_l
+    type: structure
+    geometry: {box: {size: [34, 46, 42.7]}}
+    position: [857.867, -433.7, -28.288]
+    mass_g: 39
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Lift-unit motor mount (PA6-CF upper half + lower cap) with the lift ESC mass lumped in (ESC position is not in the CAD)
+  # src: mass_budget.json Motor_Mount_Upper 209.27/4 + Motor_Mount_Cap 125.56/4 + ESC 25.0 (EST, results.json params.mEsc 0.025; the ESC row is 125 g for 5 ESCs); mesh bounds Motor_Mount_Upper/Cap; comp= X 0.407727
+  - id: lift_mount_fl
+    type: structure
+    geometry: {box: {size: [70, 46, 36]}}
+    position: [192.273, -433.7, -29.938]
+    mass_g: 108.708
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # SunnySky X4110S 400KV lift motor (body 48 dia x 32 high; the 12 mm shaft stub is not modelled), thrust up
+  # src: mass_budget.json Lift_Motor 660/4 = 165.0; params.txt motorD 0.048, motorH 0.032, comp=Lift_Motor Y -0.011938; max_thrust_n = analysis/results.json C0.struct.Tmax 30.694814 (3130 gf, params.Tmax_g)
+  - id: lift_motor_fl
+    type: motor
+    geometry: {cylinder: {radius: 24, length: 32, axis: z}}
+    position: [192.273, -433.7, 4.062]
+    mass_g: 165
+    manufacturing: {method: purchased, part_number: "SunnySky X4110S 400KV", cost_usd: 46.99}
+    propulsion: {max_thrust_n: 30.695, axis: [0, 0, 1], role: lift}
+
+  # Swept disc of the 17 in JeeFly 1755 lift prop (stopped in cruise) with its steel prop plate
+  # src: mass_budget.json Lift_Prop 128/4 = 32 (EST) + Prop_Plate 22.3/4; params.txt liftProp 0.4318, comp=Lift_Prop Y +0.020062, propT 0.008
+  - id: lift_prop_fl
+    type: propeller
+    geometry: {cylinder: {radius: 215.9, length: 8, axis: z}}
+    position: [192.273, -433.7, 24.062]
+    mass_g: 37.575
+    manufacturing: {method: purchased, part_number: "JeeFly 1755 carbon prop (pair, amazon.com/dp/B0FJ21V736)", cost_usd: 9.3}
+
+  # Gear clamp (PETG, upper + lower) on the boom with the blind leg socket
+  # src: mass_budget.json Gear_Clamp_Upper 57.79/4 + Lower 90.21/4 = 37.0; mesh bounds Gear_Clamp_Upper/Lower; comp= X 0.317727
+  - id: gear_clamp_fl
+    type: landing_gear
+    geometry: {box: {size: [34, 46, 45.4]}}
+    position: [282.273, -433.7, -38.938]
+    mass_g: 37
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Landing leg: 205 mm 25.4 mm aluminium tube, dome foot and 3:1 teardrop fairing mass lumped in (fairing and foot geometry not modelled)
+  # src: mass_budget.json Landing_Leg 245.14/4 + Gear_Fairing 100/4 + Dome feet 24/4; params.txt legLen 0.205 legOD 0.0254, comp=Landing_Leg Y -0.252638 (foot bottom, ground clearance of the pusher disc 44.8 mm per cad/verification.txt)
+  - id: leg_fl
+    type: landing_gear
+    geometry: {cylinder: {radius: 12.7, length: 205, axis: z}}
+    position: [282.273, -433.7, -150.138]
+    mass_g: 92.285
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "OnlineMetals 6061-T6 tube 1.000 x 0.058 in x 96 in"}
+
+  # Lift-unit motor mount (PA6-CF upper half + lower cap) with the lift ESC mass lumped in (ESC position is not in the CAD)
+  # src: mass_budget.json Motor_Mount_Upper 209.27/4 + Motor_Mount_Cap 125.56/4 + ESC 25.0 (EST, results.json params.mEsc 0.025; the ESC row is 125 g for 5 ESCs); mesh bounds Motor_Mount_Upper/Cap; comp= X -0.588233
+  - id: lift_mount_rl
+    type: structure
+    geometry: {box: {size: [70, 46, 36]}}
+    position: [1188.233, -433.7, -29.938]
+    mass_g: 108.708
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # SunnySky X4110S 400KV lift motor (body 48 dia x 32 high; the 12 mm shaft stub is not modelled), thrust up
+  # src: mass_budget.json Lift_Motor 660/4 = 165.0; params.txt motorD 0.048, motorH 0.032, comp=Lift_Motor Y -0.011938; max_thrust_n = analysis/results.json C0.struct.Tmax 30.694814 (3130 gf, params.Tmax_g)
+  - id: lift_motor_rl
+    type: motor
+    geometry: {cylinder: {radius: 24, length: 32, axis: z}}
+    position: [1188.233, -433.7, 4.062]
+    mass_g: 165
+    manufacturing: {method: purchased, part_number: "SunnySky X4110S 400KV", cost_usd: 46.99}
+    propulsion: {max_thrust_n: 30.695, axis: [0, 0, 1], role: lift}
+
+  # Swept disc of the 17 in JeeFly 1755 lift prop (stopped in cruise) with its steel prop plate
+  # src: mass_budget.json Lift_Prop 128/4 = 32 (EST) + Prop_Plate 22.3/4; params.txt liftProp 0.4318, comp=Lift_Prop Y +0.020062, propT 0.008
+  - id: lift_prop_rl
+    type: propeller
+    geometry: {cylinder: {radius: 215.9, length: 8, axis: z}}
+    position: [1188.233, -433.7, 24.062]
+    mass_g: 37.575
+    manufacturing: {method: purchased, part_number: "JeeFly 1755 carbon prop (pair, amazon.com/dp/B0FJ21V736)", cost_usd: 9.3}
+
+  # Gear clamp (PETG, upper + lower) on the boom with the blind leg socket
+  # src: mass_budget.json Gear_Clamp_Upper 57.79/4 + Lower 90.21/4 = 37.0; mesh bounds Gear_Clamp_Upper/Lower; comp= X -0.498233
+  - id: gear_clamp_rl
+    type: landing_gear
+    geometry: {box: {size: [34, 46, 45.4]}}
+    position: [1098.233, -433.7, -38.938]
+    mass_g: 37
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Landing leg: 205 mm 25.4 mm aluminium tube, dome foot and 3:1 teardrop fairing mass lumped in (fairing and foot geometry not modelled)
+  # src: mass_budget.json Landing_Leg 245.14/4 + Gear_Fairing 100/4 + Dome feet 24/4; params.txt legLen 0.205 legOD 0.0254, comp=Landing_Leg Y -0.252638 (foot bottom, ground clearance of the pusher disc 44.8 mm per cad/verification.txt)
+  - id: leg_rl
+    type: landing_gear
+    geometry: {cylinder: {radius: 12.7, length: 205, axis: z}}
+    position: [1098.233, -433.7, -150.138]
+    mass_g: 92.285
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "OnlineMetals 6061-T6 tube 1.000 x 0.058 in x 96 in"}
+
+  # Tail clamp (PETG upper + cap) carrying the stabiliser, with the two crush sleeves
+  # src: mass_budget.json Tail_Clamp_Upper 37.88 + Cap 34.12 = 72.0, /2 = 36.0, plus Crush_Sleeve 1.2/2 = 0.6; mesh bounds Tail_Clamp_Upper/Cap; comp= X -0.888033
+  - id: tail_clamp_l
+    type: structure
+    geometry: {box: {size: [50, 46, 30.7]}}
+    position: [1488.033, -433.7, -32.588]
+    mass_g: 36.6
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Fin root shoe (PETG) screwed through the stabiliser into the tail clamp
+  # src: mass_budget.json Fin_Shoe 42.0/2; mesh bounds Fin_Shoe (x -168..+1.6, y 0..23, z +-23 mm) at comp= X -0.854133, Y -0.005986
+  - id: fin_shoe_l
+    type: structure
+    geometry: {box: {size: [169.6, 46, 23]}}
+    position: [1537.3, -433.7, 5.514]
+    mass_g: 21
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Vertical fin with its 30 % chord rudder (rudder not modelled separately), lofted
+  # src: mass_budget.json Fin 13.4/2 + Rudder 1.9/2; params.txt vH 0.207979, vC 0.166383, foilTail NACA 0009 t 0.09; tip chord and LE sweep read off mesh/Fin.STL (tip x -0.0582..-0.1318 m), see README (README prose says 65 % tip chord, the mesh says 44 %)
+  - id: fin_l
+    type: tail_surface
+    geometry: {lifting_surface: {span: 207.979, root_chord: 166.383, tip_chord: 73.6, sweep_le_deg: 15.64, thickness_ratio: 0.09, airfoil: "NACA 0009", mirrored: false, lifting: false}}
+    position: [1454.133, -433.7, -2.986]
+    rotation_deg: [90, 0, 0]
+    mass_g: 7.65
+    material: xps-foam
+    manufacturing: {method: hotwire-foam}
+
+  # Starboard boom: 1046.0 mm front tube + 485.9 mm rear stub joined by a printed splice plug (plug mass included)
+  # src: mass_budget.json (Boom_Front 385.7 + Boom_Rear_Stub 179.5)/2 = 282.6 plus Splice_Plug 50.0/2 = 25.0; extent params.txt xFront 0.407727 .. xStub0 -1.074133 (analysis/results.json C0.geo.booms x1 0.4577, x0 -1.0741), yIn 0.4337, boom axis CAD Y -0.032938
+  - id: boom_r
+    type: boom
+    geometry: {cylinder: {radius: 12.7, length: 1531.86, axis: x}}
+    position: [908.203, 433.7, -32.938]
+    mass_g: 307.6
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "OnlineMetals 6061-T6 tube 1.000 x 0.035 in x 72 in"}
+
+  # Front boom clamp (PETG, upper + lower half) bonded to the spar collar; top meets the wing lower surface at 30 % chord
+  # src: mass_budget.json Boom_Clamp_F_Upper 22.67 + Lower 27.33 = 50.0 for two sets, /2; mesh bounds Boom_Clamp_F_Upper/Lower; comp= position params.txt (X -0.0967, Y -0.032938, Z +-0.4337)
+  - id: boom_clamp_f_r
+    type: structure
+    geometry: {box: {size: [34, 46, 31.5]}}
+    position: [696.7, 433.7, -33.888]
+    mass_g: 25
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Rear boom clamp (PETG) bolted to the rear hardpoint plate at 80 % chord (top is inside the wing slab because the slab is thicker than the real section there)
+  # src: mass_budget.json Boom_Clamp_R_Upper 51.27 + Lower 26.73 = 78.0 for two sets, /2; mesh bounds Boom_Clamp_R_Upper/Lower; comp= X -0.257867
+  - id: boom_clamp_r_r
+    type: structure
+    geometry: {box: {size: [34, 46, 42.7]}}
+    position: [857.867, 433.7, -28.288]
+    mass_g: 39
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Lift-unit motor mount (PA6-CF upper half + lower cap) with the lift ESC mass lumped in (ESC position is not in the CAD)
+  # src: mass_budget.json Motor_Mount_Upper 209.27/4 + Motor_Mount_Cap 125.56/4 + ESC 25.0 (EST, results.json params.mEsc 0.025; the ESC row is 125 g for 5 ESCs); mesh bounds Motor_Mount_Upper/Cap; comp= X 0.407727
+  - id: lift_mount_fr
+    type: structure
+    geometry: {box: {size: [70, 46, 36]}}
+    position: [192.273, 433.7, -29.938]
+    mass_g: 108.708
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # SunnySky X4110S 400KV lift motor (body 48 dia x 32 high; the 12 mm shaft stub is not modelled), thrust up
+  # src: mass_budget.json Lift_Motor 660/4 = 165.0; params.txt motorD 0.048, motorH 0.032, comp=Lift_Motor Y -0.011938; max_thrust_n = analysis/results.json C0.struct.Tmax 30.694814 (3130 gf, params.Tmax_g)
+  - id: lift_motor_fr
+    type: motor
+    geometry: {cylinder: {radius: 24, length: 32, axis: z}}
+    position: [192.273, 433.7, 4.062]
+    mass_g: 165
+    manufacturing: {method: purchased, part_number: "SunnySky X4110S 400KV", cost_usd: 46.99}
+    propulsion: {max_thrust_n: 30.695, axis: [0, 0, 1], role: lift}
+
+  # Swept disc of the 17 in JeeFly 1755 lift prop (stopped in cruise) with its steel prop plate
+  # src: mass_budget.json Lift_Prop 128/4 = 32 (EST) + Prop_Plate 22.3/4; params.txt liftProp 0.4318, comp=Lift_Prop Y +0.020062, propT 0.008
+  - id: lift_prop_fr
+    type: propeller
+    geometry: {cylinder: {radius: 215.9, length: 8, axis: z}}
+    position: [192.273, 433.7, 24.062]
+    mass_g: 37.575
+    manufacturing: {method: purchased, part_number: "JeeFly 1755 carbon prop (pair, amazon.com/dp/B0FJ21V736)", cost_usd: 9.3}
+
+  # Gear clamp (PETG, upper + lower) on the boom with the blind leg socket
+  # src: mass_budget.json Gear_Clamp_Upper 57.79/4 + Lower 90.21/4 = 37.0; mesh bounds Gear_Clamp_Upper/Lower; comp= X 0.317727
+  - id: gear_clamp_fr
+    type: landing_gear
+    geometry: {box: {size: [34, 46, 45.4]}}
+    position: [282.273, 433.7, -38.938]
+    mass_g: 37
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Landing leg: 205 mm 25.4 mm aluminium tube, dome foot and 3:1 teardrop fairing mass lumped in (fairing and foot geometry not modelled)
+  # src: mass_budget.json Landing_Leg 245.14/4 + Gear_Fairing 100/4 + Dome feet 24/4; params.txt legLen 0.205 legOD 0.0254, comp=Landing_Leg Y -0.252638 (foot bottom, ground clearance of the pusher disc 44.8 mm per cad/verification.txt)
+  - id: leg_fr
+    type: landing_gear
+    geometry: {cylinder: {radius: 12.7, length: 205, axis: z}}
+    position: [282.273, 433.7, -150.138]
+    mass_g: 92.285
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "OnlineMetals 6061-T6 tube 1.000 x 0.058 in x 96 in"}
+
+  # Lift-unit motor mount (PA6-CF upper half + lower cap) with the lift ESC mass lumped in (ESC position is not in the CAD)
+  # src: mass_budget.json Motor_Mount_Upper 209.27/4 + Motor_Mount_Cap 125.56/4 + ESC 25.0 (EST, results.json params.mEsc 0.025; the ESC row is 125 g for 5 ESCs); mesh bounds Motor_Mount_Upper/Cap; comp= X -0.588233
+  - id: lift_mount_rr
+    type: structure
+    geometry: {box: {size: [70, 46, 36]}}
+    position: [1188.233, 433.7, -29.938]
+    mass_g: 108.708
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # SunnySky X4110S 400KV lift motor (body 48 dia x 32 high; the 12 mm shaft stub is not modelled), thrust up
+  # src: mass_budget.json Lift_Motor 660/4 = 165.0; params.txt motorD 0.048, motorH 0.032, comp=Lift_Motor Y -0.011938; max_thrust_n = analysis/results.json C0.struct.Tmax 30.694814 (3130 gf, params.Tmax_g)
+  - id: lift_motor_rr
+    type: motor
+    geometry: {cylinder: {radius: 24, length: 32, axis: z}}
+    position: [1188.233, 433.7, 4.062]
+    mass_g: 165
+    manufacturing: {method: purchased, part_number: "SunnySky X4110S 400KV", cost_usd: 46.99}
+    propulsion: {max_thrust_n: 30.695, axis: [0, 0, 1], role: lift}
+
+  # Swept disc of the 17 in JeeFly 1755 lift prop (stopped in cruise) with its steel prop plate
+  # src: mass_budget.json Lift_Prop 128/4 = 32 (EST) + Prop_Plate 22.3/4; params.txt liftProp 0.4318, comp=Lift_Prop Y +0.020062, propT 0.008
+  - id: lift_prop_rr
+    type: propeller
+    geometry: {cylinder: {radius: 215.9, length: 8, axis: z}}
+    position: [1188.233, 433.7, 24.062]
+    mass_g: 37.575
+    manufacturing: {method: purchased, part_number: "JeeFly 1755 carbon prop (pair, amazon.com/dp/B0FJ21V736)", cost_usd: 9.3}
+
+  # Gear clamp (PETG, upper + lower) on the boom with the blind leg socket
+  # src: mass_budget.json Gear_Clamp_Upper 57.79/4 + Lower 90.21/4 = 37.0; mesh bounds Gear_Clamp_Upper/Lower; comp= X -0.498233
+  - id: gear_clamp_rr
+    type: landing_gear
+    geometry: {box: {size: [34, 46, 45.4]}}
+    position: [1098.233, 433.7, -38.938]
+    mass_g: 37
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Landing leg: 205 mm 25.4 mm aluminium tube, dome foot and 3:1 teardrop fairing mass lumped in (fairing and foot geometry not modelled)
+  # src: mass_budget.json Landing_Leg 245.14/4 + Gear_Fairing 100/4 + Dome feet 24/4; params.txt legLen 0.205 legOD 0.0254, comp=Landing_Leg Y -0.252638 (foot bottom, ground clearance of the pusher disc 44.8 mm per cad/verification.txt)
+  - id: leg_rr
+    type: landing_gear
+    geometry: {cylinder: {radius: 12.7, length: 205, axis: z}}
+    position: [1098.233, 433.7, -150.138]
+    mass_g: 92.285
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "OnlineMetals 6061-T6 tube 1.000 x 0.058 in x 96 in"}
+
+  # Tail clamp (PETG upper + cap) carrying the stabiliser, with the two crush sleeves
+  # src: mass_budget.json Tail_Clamp_Upper 37.88 + Cap 34.12 = 72.0, /2 = 36.0, plus Crush_Sleeve 1.2/2 = 0.6; mesh bounds Tail_Clamp_Upper/Cap; comp= X -0.888033
+  - id: tail_clamp_r
+    type: structure
+    geometry: {box: {size: [50, 46, 30.7]}}
+    position: [1488.033, 433.7, -32.588]
+    mass_g: 36.6
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Fin root shoe (PETG) screwed through the stabiliser into the tail clamp
+  # src: mass_budget.json Fin_Shoe 42.0/2; mesh bounds Fin_Shoe (x -168..+1.6, y 0..23, z +-23 mm) at comp= X -0.854133, Y -0.005986
+  - id: fin_shoe_r
+    type: structure
+    geometry: {box: {size: [169.6, 46, 23]}}
+    position: [1537.3, 433.7, 5.514]
+    mass_g: 21
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Vertical fin with its 30 % chord rudder (rudder not modelled separately), lofted
+  # src: mass_budget.json Fin 13.4/2 + Rudder 1.9/2; params.txt vH 0.207979, vC 0.166383, foilTail NACA 0009 t 0.09; tip chord and LE sweep read off mesh/Fin.STL (tip x -0.0582..-0.1318 m), see README (README prose says 65 % tip chord, the mesh says 44 %)
+  - id: fin_r
+    type: tail_surface
+    geometry: {lifting_surface: {span: 207.979, root_chord: 166.383, tip_chord: 73.6, sweep_le_deg: 15.64, thickness_ratio: 0.09, airfoil: "NACA 0009", mirrored: false, lifting: false}}
+    position: [1454.133, 433.7, -2.986]
+    rotation_deg: [90, 0, 0]
+    mass_g: 7.65
+    material: xps-foam
+    manufacturing: {method: hotwire-foam}
+
+  # Port aileron servo with its printed L-tray, control horn and pushrod (box = union of the Servo and Servo_Tray meshes)
+  # src: mass_budget.json "Servos (5)" 265.6: Servo 43.2 + Servo_Tray 5.1 + Control_Horn 0.76 + Horn_Backplate 1.1/3 (tail only) + Pushrod (aileron 6.5/2, elevator 3.2, rudder 9.5/2); box from mesh bounds at comp= placements in params.txt (servoL/W/H 0.0386/0.0188/0.0349)
+  - id: servo_ail_l
+    type: servo
+    geometry: {box: {size: [53.6, 40.9, 33.9]}}
+    position: [777.3, -656.95, -4.95]
+    mass_g: 52.31
+    manufacturing: {method: purchased, part_number: "EMAX ES3005HV", cost_usd: 19.99}
+
+  # Starboard aileron servo with its printed L-tray, control horn and pushrod (box = union of the Servo and Servo_Tray meshes)
+  # src: mass_budget.json "Servos (5)" 265.6: Servo 43.2 + Servo_Tray 5.1 + Control_Horn 0.76 + Horn_Backplate 1.1/3 (tail only) + Pushrod (aileron 6.5/2, elevator 3.2, rudder 9.5/2); box from mesh bounds at comp= placements in params.txt (servoL/W/H 0.0386/0.0188/0.0349)
+  - id: servo_ail_r
+    type: servo
+    geometry: {box: {size: [53.6, 40.9, 33.9]}}
+    position: [777.3, 656.95, -4.95]
+    mass_g: 52.31
+    manufacturing: {method: purchased, part_number: "EMAX ES3005HV", cost_usd: 19.99}
+
+  # Elevator servo with its printed L-tray, control horn and pushrod (box = union of the Servo and Servo_Tray meshes)
+  # src: mass_budget.json "Servos (5)" 265.6: Servo 43.2 + Servo_Tray 5.1 + Control_Horn 0.76 + Horn_Backplate 1.1/3 (tail only) + Pushrod (aileron 6.5/2, elevator 3.2, rudder 9.5/2); box from mesh bounds at comp= placements in params.txt (servoL/W/H 0.0386/0.0188/0.0349)
+  - id: servo_elev
+    type: servo
+    geometry: {box: {size: [53.6, 40.9, 33.9]}}
+    position: [1480.1, -0.55, 10.95]
+    mass_g: 52.63
+    manufacturing: {method: purchased, part_number: "EMAX ES3005HV", cost_usd: 19.99}
+
+  # Starboard rudder servo with its printed L-tray, control horn and pushrod (box = union of the Servo and Servo_Tray meshes)
+  # src: mass_budget.json "Servos (5)" 265.6: Servo 43.2 + Servo_Tray 5.1 + Control_Horn 0.76 + Horn_Backplate 1.1/3 (tail only) + Pushrod (aileron 6.5/2, elevator 3.2, rudder 9.5/2); box from mesh bounds at comp= placements in params.txt (servoL/W/H 0.0386/0.0188/0.0349)
+  - id: servo_rud_r
+    type: servo
+    geometry: {box: {size: [53.6, 40.9, 33.9]}}
+    position: [1480.1, 381.05, 10.95]
+    mass_g: 54.18
+    manufacturing: {method: purchased, part_number: "EMAX ES3005HV", cost_usd: 19.99}
+
+  # Port rudder servo with its printed L-tray, control horn and pushrod (box = union of the Servo and Servo_Tray meshes)
+  # src: mass_budget.json "Servos (5)" 265.6: Servo 43.2 + Servo_Tray 5.1 + Control_Horn 0.76 + Horn_Backplate 1.1/3 (tail only) + Pushrod (aileron 6.5/2, elevator 3.2, rudder 9.5/2); box from mesh bounds at comp= placements in params.txt (servoL/W/H 0.0386/0.0188/0.0349)
+  - id: servo_rud_l
+    type: servo
+    geometry: {box: {size: [53.6, 40.9, 33.9]}}
+    position: [1499.1, -381.05, 10.95]
+    mass_g: 54.18
+    manufacturing: {method: purchased, part_number: "EMAX ES3005HV", cost_usd: 19.99}
+
+  # Horizontal stabiliser with its 30 % chord elevator (elevator not modelled separately), seated on the two tail clamps
+  # src: mass_budget.json H_Tail 23.2 + Elevator 3.7; params.txt hSpan 0.9174 (CAD; analysis/results.json C0.geo.hSpan is 0.8674 = boom spacing, aero uses that), hC 0.12502, tailT 0.011252, comp=H_Tail Y -0.011612
+  - id: h_tail
+    type: tail_surface
+    geometry: {lifting_surface: {span: 917.4, root_chord: 125.02, tip_chord: 125.02, sweep_le_deg: 0, dihedral_deg: 0, thickness_ratio: 0.09, airfoil: "NACA 0009", mirrored: true, lifting: true}}
+    position: [1454.133, 0, -11.612]
+    mass_g: 26.9
+    material: xps-foam
+    manufacturing: {method: hotwire-foam}
+
+  # Pitot clamp (PETG) bonded into the port wing lower surface at 15.5 % chord, 1.0 m out
+  # src: mass_budget.json Pitot_Clamp 9.9 (group "Fuselage pod" in the source); params.txt pitotX -0.05 pitotZ -1.0, mesh bounds Pitot_Clamp
+  - id: pitot_clamp
+    type: other
+    geometry: {box: {size: [20, 20, 21.5]}}
+    position: [650, -1000, -29.093]
+    mass_g: 9.9
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Pitot tube, 250 mm, pointing forward
+  # src: mass_budget.json Pitot_Tube 17.8; params.txt pitotL 0.25 pitotD 0.006; mesh bounds Pitot_Tube (x 0..250 mm from comp X -0.05, i.e. x 400..650)
+  - id: pitot_tube
+    type: other
+    geometry: {cylinder: {radius: 3, length: 250, axis: x}}
+    position: [525, -1000, -27.843]
+    mass_g: 17.8
+    material: al-6061-t6
+    manufacturing: {method: hand-cut, part_number: "6 mm aluminium tube (CAD Pitot_Tube; airspeed sensor RMRC MS4525DO + pitot is a separate BOM line)"}
+
+  # 6S 6500 mAh LiPo (22.2 V, 144.3 Wh), strapped in the battery bay with +-30 mm of CG slide
+  # src: mass_budget.json Battery_6S_LiPo 820.0 (fixed vendor mass); params.txt battX 0.255, battL/H/W 0.155/0.050/0.048 (EST dims), battY -0.052; analysis/results.json C0.pick (Wh 144.3, usd 69.495 per pack)
+  - id: battery
+    type: battery
+    geometry: {box: {size: [155, 48, 50]}}
+    position: [345, 0, -52]
+    mass_g: 820
+    manufacturing: {method: purchased, part_number: "Ovonic 6S 6500 mAh 100C (2-pack listing, one flown)", cost_usd: 69.5}
+
+  # CoreWing F405 Wing V2 on the FC tray in the avionics bay
+  # src: mass_budget.json Flight_Controller 40.0; mesh bounds Flight_Controller at comp= X 0.4075, Y -0.009
+  - id: flight_controller
+    type: flight_controller
+    geometry: {box: {size: [52, 32, 17]}}
+    position: [192.5, 0, -0.5]
+    mass_g: 40
+    manufacturing: {method: purchased, part_number: "CoreWing F405 Wing APP V2", cost_usd: 67.18}
+
+  # Lump: GPS, receiver, Remote ID, airspeed sensor, telemetry and printed GPS pad. Box size and exact station are placeholders (not in the CAD).
+  # src: mass_budget.json "Avionics not modelled" 357.0 (EST) + GPS pad/harness anchors 21.0 (EST); station: analysis/results.json C0.cg.items Avionics x 0.375 (= 225 mm from the nose) moved to 240 mm so the lump does not overlap the FC; box size placeholder - not from source
+  - id: avionics_other
+    type: other
+    geometry: {box: {size: [30, 60, 30]}}
+    position: [240, 0, -20]
+    mass_g: 378
+    manufacturing: {method: purchased, part_number: "multiple, see docs/purchasing/C0_BOM.csv Avionics lines (RMRC SAM-M10Q-5883 GPS, BeeID Remote ID, RP3 V2 receiver, MS4525DO airspeed)"}
+
+  # Lump: all wiring and connectors (really spread along booms and wing). Box size is a placeholder.
+  # src: mass_budget.json Wiring 370.0 (EST: results.json params.mWiring 0.25 + 4 x mWirePerLift 0.03); station analysis/results.json C0.cg.items Wiring x -0.1 (CAD X) = x 700; box size and z placeholder - not from source
+  - id: wiring
+    type: other
+    geometry: {box: {size: [100, 60, 40]}}
+    position: [700, 0, -50]
+    mass_g: 370
+    manufacturing: {method: purchased, part_number: "wire, connectors, BEC per docs/purchasing/C0_BOM.csv Airframe lines"}
+
+  # Lump: 139 screws, 40 nuts, 28 washers, 67 inserts (really all over the airframe). Box size is a placeholder.
+  # src: mass_budget.json "Fasteners and inserts" 221.0 bottom-up (the sizing carries 164); station mass_budget.json calibration.stations.fasteners_frac_chord -0.8291 x chord = 267 mm aft of the wing LE -> x 867; box size and z placeholder - not from source
+  - id: fasteners
+    type: other
+    geometry: {box: {size: [20, 20, 20]}}
+    position: [867, 0, -50]
+    mass_g: 221
+    manufacturing: {method: purchased, part_number: "Bolt Depot A2 metric fasteners + ruthex RX-M3x5.7 inserts (docs/purchasing/C0_BOM.csv)", cost_usd: 32.37}
+
+  # Pusher motor cup (PA6-CF) in the pod tail ring; the 5th ESC (25 g EST) is lumped in
+  # src: mass_budget.json Pusher_Cup 31.39 + 1 of the 5 ESCs (25 g EST); mesh bounds Pusher_Cup (x 0..30, R27.8) at comp= X -0.4, Y -0.030 -> x 970..1000
+  - id: pusher_cup
+    type: structure
+    geometry: {cylinder: {radius: 27.8, length: 30, axis: x}}
+    position: [985, 0, -30]
+    mass_g: 56.39
+    material: pa6-cf20
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # SunnySky X4110S 400KV pusher motor (body only, 12 mm shaft stub not modelled), thrust aft
+  # src: mass_budget.json Pusher_Motor 165.0; params.txt pushMotorD 0.048 pushMotorL 0.032, comp=Pusher_Motor X -0.4 -> body x 1000..1032; max_thrust_n is NOT a maximum: no source (pusher-battery-servo.md: no thrust table for 14x8.5EP); value = cruise drag analysis/results.json C0.sized.D_cruise 8.376 N
+  - id: pusher_motor
+    type: motor
+    geometry: {cylinder: {radius: 24, length: 32, axis: x}}
+    position: [1016, 0, -30]
+    mass_g: 165
+    manufacturing: {method: purchased, part_number: "SunnySky X4110S 400KV", cost_usd: 46.99}
+    propulsion: {max_thrust_n: 8.376, axis: [-1, 0, 0], role: cruise}  # force on the aircraft points forward (-x); fixed 2026-11-11, was [1,0,0]
+
+  # Swept disc of the APC 14x8.5EP pusher prop with M6 adapter, washer and bullet nut lumped in
+  # src: mass_budget.json Pusher_Prop_14in 37.0 + Pusher_Adapter 11.1 + Prop_Washer 4.3 + N04_M6_Bullet_Nut 8.1; params.txt pushProp 0.3556, comp=Pusher_Prop_14in X -0.437 -> x 1037..1045
+  - id: pusher_prop
+    type: propeller
+    geometry: {cylinder: {radius: 177.8, length: 8, axis: x}}
+    position: [1041, 0, -30]
+    mass_g: 60.5
+    manufacturing: {method: purchased, part_number: "APC 14x8.5EP pusher prop", cost_usd: 6.79}
+
+  # Printed PETG nacelle (NACA 0022 plan section, chord 260 mm truncated x/c 0.06..0.75) around the lift motor mount and bell; two clamshell halves. Modelled as a SOLID box hull of the envelope, the real part is a 0.8 mm shell
+  # src: concepts/variants/a3/geometry.json add Lift_Nacelle_L* envelope: local x +66.4 (nose) .. -113.0 (tail) about the rotor axis = 179.4 mm, max half-thickness 28.6 mm (width 57.2), height y -0.0455..+0.0170 (v0.3.1) shifted -2.9 mm to the v0.4.0 boom axis (-32.938 vs -30.0) = z -48.4..14.1; mass 37.5 g + glue 1.0 + 6 x M3x10 2.7 + 6 inserts 0.9 (concepts/variants/a3/design.md section 5) + 22/4 = 5.5 g phase-2 reed, wire, resistor (inventory.json mass_delta_kg phase2 0.250 vs phase1 0.228) = 47.6 g
+  - id: nacelle_fl
+    type: structure
+    geometry: {box: {size: [179.4, 57.2, 62.5]}}
+    position: [215.573, -433.7, -17.2]
+    mass_g: 47.6
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
+  # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
+  - id: cap_fl
+    type: structure
+    geometry: {cylinder: {radius: 26.5, length: 11.84, axis: z}}
+    position: [192.273, -433.7, 33.98]
+    mass_g: 14.85
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Printed PETG nacelle (NACA 0022 plan section, chord 260 mm truncated x/c 0.06..0.75) around the lift motor mount and bell; two clamshell halves. Modelled as a SOLID box hull of the envelope, the real part is a 0.8 mm shell
+  # src: concepts/variants/a3/geometry.json add Lift_Nacelle_L* envelope: local x +66.4 (nose) .. -113.0 (tail) about the rotor axis = 179.4 mm, max half-thickness 28.6 mm (width 57.2), height y -0.0455..+0.0170 (v0.3.1) shifted -2.9 mm to the v0.4.0 boom axis (-32.938 vs -30.0) = z -48.4..14.1; mass 37.5 g + glue 1.0 + 6 x M3x10 2.7 + 6 inserts 0.9 (concepts/variants/a3/design.md section 5) + 22/4 = 5.5 g phase-2 reed, wire, resistor (inventory.json mass_delta_kg phase2 0.250 vs phase1 0.228) = 47.6 g
+  - id: nacelle_fr
+    type: structure
+    geometry: {box: {size: [179.4, 57.2, 62.5]}}
+    position: [215.573, 433.7, -17.2]
+    mass_g: 47.6
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
+  # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
+  - id: cap_fr
+    type: structure
+    geometry: {cylinder: {radius: 26.5, length: 11.84, axis: z}}
+    position: [192.273, 433.7, 33.98]
+    mass_g: 14.85
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Printed PETG nacelle (NACA 0022 plan section, chord 260 mm truncated x/c 0.06..0.75) around the lift motor mount and bell; two clamshell halves. Modelled as a SOLID box hull of the envelope, the real part is a 0.8 mm shell
+  # src: concepts/variants/a3/geometry.json add Lift_Nacelle_L* envelope: local x +66.4 (nose) .. -113.0 (tail) about the rotor axis = 179.4 mm, max half-thickness 28.6 mm (width 57.2), height y -0.0455..+0.0170 (v0.3.1) shifted -2.9 mm to the v0.4.0 boom axis (-32.938 vs -30.0) = z -48.4..14.1; mass 37.5 g + glue 1.0 + 6 x M3x10 2.7 + 6 inserts 0.9 (concepts/variants/a3/design.md section 5) + 22/4 = 5.5 g phase-2 reed, wire, resistor (inventory.json mass_delta_kg phase2 0.250 vs phase1 0.228) = 47.6 g
+  - id: nacelle_rl
+    type: structure
+    geometry: {box: {size: [179.4, 57.2, 62.5]}}
+    position: [1211.533, -433.7, -17.2]
+    mass_g: 47.6
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
+  # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
+  - id: cap_rl
+    type: structure
+    geometry: {cylinder: {radius: 26.5, length: 11.84, axis: z}}
+    position: [1188.233, -433.7, 33.98]
+    mass_g: 14.85
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Printed PETG nacelle (NACA 0022 plan section, chord 260 mm truncated x/c 0.06..0.75) around the lift motor mount and bell; two clamshell halves. Modelled as a SOLID box hull of the envelope, the real part is a 0.8 mm shell
+  # src: concepts/variants/a3/geometry.json add Lift_Nacelle_L* envelope: local x +66.4 (nose) .. -113.0 (tail) about the rotor axis = 179.4 mm, max half-thickness 28.6 mm (width 57.2), height y -0.0455..+0.0170 (v0.3.1) shifted -2.9 mm to the v0.4.0 boom axis (-32.938 vs -30.0) = z -48.4..14.1; mass 37.5 g + glue 1.0 + 6 x M3x10 2.7 + 6 inserts 0.9 (concepts/variants/a3/design.md section 5) + 22/4 = 5.5 g phase-2 reed, wire, resistor (inventory.json mass_delta_kg phase2 0.250 vs phase1 0.228) = 47.6 g
+  - id: nacelle_rr
+    type: structure
+    geometry: {box: {size: [179.4, 57.2, 62.5]}}
+    position: [1211.533, 433.7, -17.2]
+    mass_g: 47.6
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+  # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
+  # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
+  - id: cap_rr
+    type: structure
+    geometry: {cylinder: {radius: 26.5, length: 11.84, axis: z}}
+    position: [1188.233, 433.7, 33.98]
+    mass_g: 14.85
+    material: petg
+    manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+
+attachments:
+  # from source: Wing root saddle screwed to the pod (4 x M3x12, F08). Rating is NOT a screw rating: it is the joiner capacity at yield expressed as total wing lift: analysis/results.json C0.struct.MS_J 1.4126 x (2 x feaWingForce 189.64 N, params.txt) = 535.8 N
+  - {id: wing-pod, parent: pod, child: wing, method: bolted, location: [700, 0, 6], embed_ok: true, rated_load_n: 535.8}
+  # from source: Modelling artefact: the CAD pod has a slot for the wing saddle and joiner, the cylinder pod does not, so the spar is attached to the pod as well. Same load path and rating as wing-pod (joiner yield capacity, struct.MS_J 1.4126)
+  - {id: spar-pod, parent: pod, child: spar, method: press-fit, location: [696.7, 0, 6.044], embed_ok: true, rated_load_n: 535.8}
+  # from source: Spar sockets bonded in the Ø26.0 hot-wired channel (FT05). Rating = joiner yield capacity as total wing lift (struct.MS_J 1.4126 x 2 x 189.64 N)
+  - {id: spar-wing, parent: wing, child: spar, method: glued, location: [696.7, 500, 6.044], embed_ok: true, rated_load_n: 535.8}
+  # placeholder — not from source: 2 x F06 M3x35 into the spar-collar inserts; 50 N per M3 into printed insert (placeholder)
+  - {id: wing-clampf-l, parent: wing, child: boom_clamp_f_l, method: bolted, location: [696.7, -433.7, -18.13], embed_ok: false, rated_load_n: 100}
+  # from source: Boom cantilevered from the front clamp: yield-equivalent tip load = struct.Tmax 30.6948 N x struct.MS_B 7.4367 = 228.3 N (tube yield, analysis/results.json C0.struct; not a clamp slip rating)
+  - {id: clampf-boom-l, parent: boom_clamp_f_l, child: boom_l, method: clamp, location: [696.7, -433.7, -32.938], embed_ok: true, rated_load_n: 228.3}
+  # placeholder — not from source: 2 x F04 M3x40 to the rear hardpoint plate; 50 N per M3 (placeholder)
+  - {id: wing-clampr-l, parent: wing, child: boom_clamp_r_l, method: bolted, location: [857.867, -433.7, -12], embed_ok: true, rated_load_n: 100}
+  # placeholder — not from source: Split clamp, 2 x F04; placeholder
+  - {id: clampr-boom-l, parent: boom_clamp_r_l, child: boom_l, method: clamp, location: [857.867, -433.7, -32.938], embed_ok: true, rated_load_n: 100}
+  # placeholder — not from source: Split clamp 4 x F02 M3x16; 50 N per M3 (placeholder)
+  - {id: boom-mount-fl, parent: boom_l, child: lift_mount_fl, method: clamp, location: [192.273, -433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: 4 x F01 M3x8 into the PA6-CF floor; 50 N per M3 (placeholder)
+  - {id: mount-motor-fl, parent: lift_mount_fl, child: lift_motor_fl, method: bolted, location: [192.273, -433.7, -11.938], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: 2 x M3x16 prop plate screws (F02, provisional); 50 N per M3 (placeholder)
+  - {id: motor-prop-fl, parent: lift_motor_fl, child: lift_prop_fl, method: bolted, location: [192.273, -433.7, 20.062], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: Split clamp 4 x F03 M3x20; 50 N per M3 (placeholder)
+  - {id: boom-gear-fl, parent: boom_l, child: gear_clamp_fl, method: clamp, location: [282.273, -433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: Leg in blind socket with 1 x F05 M3x30 cross-bolt; 50 N (placeholder)
+  - {id: gear-leg-fl, parent: gear_clamp_fl, child: leg_fl, method: bolted, location: [282.273, -433.7, -50], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: Split clamp 4 x F02 M3x16; 50 N per M3 (placeholder)
+  - {id: boom-mount-rl, parent: boom_l, child: lift_mount_rl, method: clamp, location: [1188.233, -433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: 4 x F01 M3x8 into the PA6-CF floor; 50 N per M3 (placeholder)
+  - {id: mount-motor-rl, parent: lift_mount_rl, child: lift_motor_rl, method: bolted, location: [1188.233, -433.7, -11.938], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: 2 x M3x16 prop plate screws (F02, provisional); 50 N per M3 (placeholder)
+  - {id: motor-prop-rl, parent: lift_motor_rl, child: lift_prop_rl, method: bolted, location: [1188.233, -433.7, 20.062], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: Split clamp 4 x F03 M3x20; 50 N per M3 (placeholder)
+  - {id: boom-gear-rl, parent: boom_l, child: gear_clamp_rl, method: clamp, location: [1098.233, -433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: Leg in blind socket with 1 x F05 M3x30 cross-bolt; 50 N (placeholder)
+  - {id: gear-leg-rl, parent: gear_clamp_rl, child: leg_rl, method: bolted, location: [1098.233, -433.7, -50], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: 4 x F02 M3x16; 50 N per M3 (placeholder)
+  - {id: clamp-tail-boom-l, parent: tail_clamp_l, child: boom_l, method: clamp, location: [1488.033, -433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: 2 x F02 per side through the crush sleeves; 50 N per M3 (placeholder)
+  - {id: clamp-tail-stab-l, parent: tail_clamp_l, child: h_tail, method: bolted, location: [1488.033, -433.7, -17.24], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: 2 x F02 fin shoe flange through the stabiliser; 50 N per M3 (placeholder)
+  - {id: stab-shoe-l, parent: h_tail, child: fin_shoe_l, method: bolted, location: [1500, -433.7, -5.986], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: Fin root bonded in the shoe; placeholder
+  - {id: shoe-fin-l, parent: fin_shoe_l, child: fin_l, method: glued, location: [1500, -433.7, 5], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: 2 x F06 M3x35 into the spar-collar inserts; 50 N per M3 into printed insert (placeholder)
+  - {id: wing-clampf-r, parent: wing, child: boom_clamp_f_r, method: bolted, location: [696.7, 433.7, -18.13], embed_ok: false, rated_load_n: 100}
+  # from source: Boom cantilevered from the front clamp: yield-equivalent tip load = struct.Tmax 30.6948 N x struct.MS_B 7.4367 = 228.3 N (tube yield, analysis/results.json C0.struct; not a clamp slip rating)
+  - {id: clampf-boom-r, parent: boom_clamp_f_r, child: boom_r, method: clamp, location: [696.7, 433.7, -32.938], embed_ok: true, rated_load_n: 228.3}
+  # placeholder — not from source: 2 x F04 M3x40 to the rear hardpoint plate; 50 N per M3 (placeholder)
+  - {id: wing-clampr-r, parent: wing, child: boom_clamp_r_r, method: bolted, location: [857.867, 433.7, -12], embed_ok: true, rated_load_n: 100}
+  # placeholder — not from source: Split clamp, 2 x F04; placeholder
+  - {id: clampr-boom-r, parent: boom_clamp_r_r, child: boom_r, method: clamp, location: [857.867, 433.7, -32.938], embed_ok: true, rated_load_n: 100}
+  # placeholder — not from source: Split clamp 4 x F02 M3x16; 50 N per M3 (placeholder)
+  - {id: boom-mount-fr, parent: boom_r, child: lift_mount_fr, method: clamp, location: [192.273, 433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: 4 x F01 M3x8 into the PA6-CF floor; 50 N per M3 (placeholder)
+  - {id: mount-motor-fr, parent: lift_mount_fr, child: lift_motor_fr, method: bolted, location: [192.273, 433.7, -11.938], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: 2 x M3x16 prop plate screws (F02, provisional); 50 N per M3 (placeholder)
+  - {id: motor-prop-fr, parent: lift_motor_fr, child: lift_prop_fr, method: bolted, location: [192.273, 433.7, 20.062], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: Split clamp 4 x F03 M3x20; 50 N per M3 (placeholder)
+  - {id: boom-gear-fr, parent: boom_r, child: gear_clamp_fr, method: clamp, location: [282.273, 433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: Leg in blind socket with 1 x F05 M3x30 cross-bolt; 50 N (placeholder)
+  - {id: gear-leg-fr, parent: gear_clamp_fr, child: leg_fr, method: bolted, location: [282.273, 433.7, -50], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: Split clamp 4 x F02 M3x16; 50 N per M3 (placeholder)
+  - {id: boom-mount-rr, parent: boom_r, child: lift_mount_rr, method: clamp, location: [1188.233, 433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: 4 x F01 M3x8 into the PA6-CF floor; 50 N per M3 (placeholder)
+  - {id: mount-motor-rr, parent: lift_mount_rr, child: lift_motor_rr, method: bolted, location: [1188.233, 433.7, -11.938], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: 2 x M3x16 prop plate screws (F02, provisional); 50 N per M3 (placeholder)
+  - {id: motor-prop-rr, parent: lift_motor_rr, child: lift_prop_rr, method: bolted, location: [1188.233, 433.7, 20.062], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: Split clamp 4 x F03 M3x20; 50 N per M3 (placeholder)
+  - {id: boom-gear-rr, parent: boom_r, child: gear_clamp_rr, method: clamp, location: [1098.233, 433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: Leg in blind socket with 1 x F05 M3x30 cross-bolt; 50 N (placeholder)
+  - {id: gear-leg-rr, parent: gear_clamp_rr, child: leg_rr, method: bolted, location: [1098.233, 433.7, -50], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: 4 x F02 M3x16; 50 N per M3 (placeholder)
+  - {id: clamp-tail-boom-r, parent: tail_clamp_r, child: boom_r, method: clamp, location: [1488.033, 433.7, -32.938], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: 2 x F02 per side through the crush sleeves; 50 N per M3 (placeholder)
+  - {id: clamp-tail-stab-r, parent: tail_clamp_r, child: h_tail, method: bolted, location: [1488.033, 433.7, -17.24], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: 2 x F02 fin shoe flange through the stabiliser; 50 N per M3 (placeholder)
+  - {id: stab-shoe-r, parent: h_tail, child: fin_shoe_r, method: bolted, location: [1500, 433.7, -5.986], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: Fin root bonded in the shoe; placeholder
+  - {id: shoe-fin-r, parent: fin_shoe_r, child: fin_r, method: glued, location: [1500, 433.7, 5], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: 4 x F10 M2x10 to the printed tray; 20 N per M2 (placeholder)
+  - {id: servo-ail_l, parent: wing, child: servo_ail_l, method: bolted, location: [777.3, -656.95, -4.95], embed_ok: true, rated_load_n: 80}
+  # placeholder — not from source: 4 x F10 M2x10 to the printed tray; 20 N per M2 (placeholder)
+  - {id: servo-ail_r, parent: wing, child: servo_ail_r, method: bolted, location: [777.3, 656.95, -4.95], embed_ok: true, rated_load_n: 80}
+  # placeholder — not from source: 4 x F10 M2x10 to the printed tray; 20 N per M2 (placeholder)
+  - {id: servo-elev, parent: h_tail, child: servo_elev, method: bolted, location: [1480.1, -0.55, -5.99], embed_ok: false, rated_load_n: 80}
+  # placeholder — not from source: 4 x F10 M2x10 to the printed tray; 20 N per M2 (placeholder)
+  - {id: servo-rud_r, parent: h_tail, child: servo_rud_r, method: bolted, location: [1480.1, 381.05, -5.99], embed_ok: false, rated_load_n: 80}
+  # placeholder — not from source: 4 x F10 M2x10 to the printed tray; 20 N per M2 (placeholder)
+  - {id: servo-rud_l, parent: h_tail, child: servo_rud_l, method: bolted, location: [1499.1, -381.05, -5.99], embed_ok: false, rated_load_n: 80}
+  # placeholder — not from source: Bonded into the wing lower surface; placeholder
+  - {id: wing-pitotclamp, parent: wing, child: pitot_clamp, method: glued, location: [650, -1000, -18.34], embed_ok: false, rated_load_n: 20}
+  # placeholder — not from source: Tube in the clamp bore; placeholder
+  - {id: pitotclamp-tube, parent: pitot_clamp, child: pitot_tube, method: clamp, location: [650, -1000, -27.843], embed_ok: true, rated_load_n: 20}
+  # placeholder — not from source: ShareGoo straps through two slots in the battery tray (no fasteners, J18); placeholder
+  - {id: pod-battery, parent: pod, child: battery, method: zip-tie, location: [345, 0, -52], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: Four M3 into the FC tray (F07, provisional); placeholder
+  - {id: pod-fc, parent: pod, child: flight_controller, method: bolted, location: [192.5, 0, -0.5], embed_ok: true, rated_load_n: 100}
+  # placeholder — not from source: Lump; placeholder
+  - {id: pod-avionics, parent: pod, child: avionics_other, method: zip-tie, location: [240, 0, -20], embed_ok: true, rated_load_n: 50}
+  # placeholder — not from source: Lump; placeholder
+  - {id: pod-wiring, parent: pod, child: wiring, method: tape, location: [700, 0, -50], embed_ok: true, rated_load_n: 20}
+  # placeholder — not from source: Lump; placeholder
+  - {id: pod-fasteners, parent: pod, child: fasteners, method: tape, location: [867, 0, -50], embed_ok: true, rated_load_n: 20}
+  # placeholder — not from source: 4 x F07 M3x8 radial screws into inserts in the tail ring; 50 N per M3 (placeholder)
+  - {id: pod-cup, parent: pod, child: pusher_cup, method: bolted, location: [985, 0, -30], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: 4 x F01 M3x8; 50 N per M3 (placeholder)
+  - {id: cup-pusher, parent: pusher_cup, child: pusher_motor, method: bolted, location: [1000, 0, -30], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: M6 bolt-on adapter + bullet nut (J03b); placeholder. The disc plane sits 5 mm aft of the motor body on the adapter, see validator-comparison.md
+  - {id: pusher-prop, parent: pusher_motor, child: pusher_prop, method: bolted, location: [1034.5, 0, -30], embed_ok: false, rated_load_n: 100}
+  # placeholder — not from source: 4 x M3x10 into 4 heat-set inserts in the motor-mount sides (concepts/variants/a3/geometry.json modify Motor_Mount_*); 50 N per M3 (placeholder). Nacelle envelope contains the mount, so embed_ok
+  - {id: mount-nacelle_fl, parent: lift_mount_fl, child: nacelle_fl, method: bolted, location: [192.273, -433.7, -30], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: the nacelle has a 25.8 mm bore for the 25.4 mm boom (concepts/variants/a3/geometry.json Lift_Nacelle ops step 6), slip fit, not load carrying; placeholder
+  - {id: boom-nacelle_fl, parent: boom_l, child: nacelle_fl, method: slot-tab, location: [192.273, -433.7, -32.938], embed_ok: true, rated_load_n: 20}
+  # placeholder — not from source: 4 x M3x16 on the supplied prop hub pattern (est dia 16, concepts/variants/a3/design.md section 4); 50 N per M3 (placeholder)
+  - {id: prop-cap_fl, parent: lift_prop_fl, child: cap_fl, method: bolted, location: [192.273, -433.7, 28.062], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: 4 x M3x10 into 4 heat-set inserts in the motor-mount sides (concepts/variants/a3/geometry.json modify Motor_Mount_*); 50 N per M3 (placeholder). Nacelle envelope contains the mount, so embed_ok
+  - {id: mount-nacelle_fr, parent: lift_mount_fr, child: nacelle_fr, method: bolted, location: [192.273, 433.7, -30], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: the nacelle has a 25.8 mm bore for the 25.4 mm boom (concepts/variants/a3/geometry.json Lift_Nacelle ops step 6), slip fit, not load carrying; placeholder
+  - {id: boom-nacelle_fr, parent: boom_r, child: nacelle_fr, method: slot-tab, location: [192.273, 433.7, -32.938], embed_ok: true, rated_load_n: 20}
+  # placeholder — not from source: 4 x M3x16 on the supplied prop hub pattern (est dia 16, concepts/variants/a3/design.md section 4); 50 N per M3 (placeholder)
+  - {id: prop-cap_fr, parent: lift_prop_fr, child: cap_fr, method: bolted, location: [192.273, 433.7, 28.062], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: 4 x M3x10 into 4 heat-set inserts in the motor-mount sides (concepts/variants/a3/geometry.json modify Motor_Mount_*); 50 N per M3 (placeholder). Nacelle envelope contains the mount, so embed_ok
+  - {id: mount-nacelle_rl, parent: lift_mount_rl, child: nacelle_rl, method: bolted, location: [1188.233, -433.7, -30], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: the nacelle has a 25.8 mm bore for the 25.4 mm boom (concepts/variants/a3/geometry.json Lift_Nacelle ops step 6), slip fit, not load carrying; placeholder
+  - {id: boom-nacelle_rl, parent: boom_l, child: nacelle_rl, method: slot-tab, location: [1188.233, -433.7, -32.938], embed_ok: true, rated_load_n: 20}
+  # placeholder — not from source: 4 x M3x16 on the supplied prop hub pattern (est dia 16, concepts/variants/a3/design.md section 4); 50 N per M3 (placeholder)
+  - {id: prop-cap_rl, parent: lift_prop_rl, child: cap_rl, method: bolted, location: [1188.233, -433.7, 28.062], embed_ok: false, rated_load_n: 200}
+  # placeholder — not from source: 4 x M3x10 into 4 heat-set inserts in the motor-mount sides (concepts/variants/a3/geometry.json modify Motor_Mount_*); 50 N per M3 (placeholder). Nacelle envelope contains the mount, so embed_ok
+  - {id: mount-nacelle_rr, parent: lift_mount_rr, child: nacelle_rr, method: bolted, location: [1188.233, 433.7, -30], embed_ok: true, rated_load_n: 200}
+  # placeholder — not from source: the nacelle has a 25.8 mm bore for the 25.4 mm boom (concepts/variants/a3/geometry.json Lift_Nacelle ops step 6), slip fit, not load carrying; placeholder
+  - {id: boom-nacelle_rr, parent: boom_r, child: nacelle_rr, method: slot-tab, location: [1188.233, 433.7, -32.938], embed_ok: true, rated_load_n: 20}
+  # placeholder — not from source: 4 x M3x16 on the supplied prop hub pattern (est dia 16, concepts/variants/a3/design.md section 4); 50 N per M3 (placeholder)
+  - {id: prop-cap_rr, parent: lift_prop_rr, child: cap_rr, method: bolted, location: [1188.233, 433.7, 28.062], embed_ok: false, rated_load_n: 200}
