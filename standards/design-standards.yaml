@@ -25,6 +25,10 @@ geometry:
     value: 0.99
     rule: An embed_ok joint may exceed embed_max_fraction_of_child only if at least this fraction of the child's volume lies inside the parent (a bay). A part poking through its parent is never a bay.
     source: internal convention
+  articulation_sweep_step_deg:
+    value: 15.0
+    rule: Each articulated joint is also checked at every step of this size across its range (others held at 0 deg), so clipping between named poses is caught.
+    source: internal convention
 
 structure:
   landing_load_factor:

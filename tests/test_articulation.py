@@ -58,10 +58,9 @@ def test_flap_clipping_only_at_90_fails_and_names_pose():
     assert sc.tiers[0].status == PASS
     clips = fails(sc, "T1.interference")
     assert clips, "flap swinging through the fuselage must be caught"
-    assert all("pose hover (90°)" in r.message for r in clips)
-    assert any("fuselage and flap overlap" in r.message for r in clips), [r.message for r in clips]
+    assert any("pose hover (90°)" in r.message and "fuselage and flap overlap" in r.message for r in clips), [r.message for r in clips]
     # the 0 deg configuration itself is clean, so no un-prefixed failure exists
-    assert all(r.message.startswith("pose ") or r.message.startswith("range ") for r in fails(sc))
+    assert all(r.message.startswith(("pose ", "range ", "sweep ")) for r in fails(sc))
     assert statuses(sc, "T1.articulation") == [PASS]
 
 

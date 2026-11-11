@@ -54,7 +54,7 @@ Lift-motor, lift-prop, boom, tail, fin, servo, spar and wing values; joint ratin
 
 - Nacelle shell (28 g) is **not geometry**: a solid cylinder would swallow the mount and clip the wing tip (schema has no hollow bodies). Its mass is lumped into the mount.
 - Nacelle mount is an estimated box [155, 40, 40] (source gives ring OD 57 x 6 mm and barrel OD 38.6 mm only).
-- Tip motor `max_thrust_n` 4.9 N is the cruise thrust per prop from `design.md` section 2, **not a maximum** (same convention as C0's pusher). Thrust axis [1, 0, 0] is copied from C0's pusher; see the note in `validator-comparison.md`.
+- Tip motor `max_thrust_n` 4.9 N is the cruise thrust per prop from `design.md` section 2, **not a maximum** (same convention as C0's pusher). Thrust axis is [-1, 0, 0] (force forward, body x aft; corrected 2026-11-11 from [1, 0, 0], see `validator-comparison.md`).
 - `wing-tip_*` is parented tip_tube -> wing (the tube protrudes 22 mm past the wing tip, so the other direction trips the 35 % embed limit; same workaround class as C0's clamps).
 - Placeholders: all new joint ratings except `spar-tip_*` are `placeholder — not from source` using C0's rule (50 N per M3, per grub screw). `spar-tip_*` = 14.3 N nacelle load at 4.5 g x tube reserve factor 13.8 = 197 N (tube yield equivalent, not a joint rating).
 

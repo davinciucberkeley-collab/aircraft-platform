@@ -41,11 +41,10 @@ C0's `T1.attachment_contact pusher-prop` (5 mm gap) and the `T2` rows for `pushe
 
 - **Propeller cannot be in an embed joint, protruding tubes trip the embed limit.** The tip tube sticks out 22 mm beyond the wing tip, so as the child of the wing it was 94 % inside (limit 35 % unless >= 99 %). Swapped to tube = parent (C0's README documents the same direction effect).
 - **No hollow bodies**, so the nacelle shell has no geometry (mass lumped into the mount).
-- **Thrust axis sign.** The schema says `axis` is the thrust direction with body x aft, but C0's pusher uses [1, 0, 0], which points aft. A forward-thrusting propulsor would be [-1, 0, 0]. A1 copies C0's value so both stay consistent. The role is `cruise`, which no tier reads, so nothing changes today; the conductor should decide which sign is right before any cruise check exists.
+- **Thrust axis sign (resolved 2026-11-11).** `axis` is the thrust direction in body coordinates, with body x aft, so forward thrust is [-1, 0, 0]. The tip motors use [-1, 0, 0]; an earlier copy of [1, 0, 0] (which points aft) was wrong and is fixed. The role is `cruise`, which no tier reads.
 - **No power, drag or yaw checks**, so A1's one-motor-out yaw hazard (half the required balancing thrust, `A1D` section 5) and 21 % higher hover power are invisible to the validator.
 
 ## 4. For the conductor
 
 - A1 on v0.4.0 fails stall and sits at 1.53 hover T/W; a decision on whether the A-series should be re-based on v0.4.0 (`DECISIONS.md` D1) changes all of this.
 - Decide whether CG should be re-solved per baseline (A1 needs about 38 mm more battery shift) or kept as the documented number.
-- Axis sign convention, above.

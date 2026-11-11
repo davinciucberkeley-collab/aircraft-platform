@@ -106,13 +106,16 @@ def _fmt_deg(x: float) -> str:
     return f"{x:g}\u00b0"
 
 
-def _configurations(design: Design) -> list[tuple[str, dict[str, float]]]:
+def _configurations(design: Design, sweep_step_deg: float) -> list[tuple[str, dict[str, float]]]:
     """Extra articulated configurations (beyond 0 deg everywhere) tier 1 must check, deduplicated.
     Each named pose: all joints at that pose if every joint defines it, else each defining joint swept alone.
-    Then both range endpoints of each joint, swept alone with the others at 0."""
+    Then both range endpoints of each joint, swept alone with the others at 0.
+    Then every sweep_step_deg step across each joint's range (min, min+step, ... max), others at 0."""
     joints = articulated_attachments(design)
     if not joints:
         return []
+    if sweep_step_deg <= 0:
+        raise ValueError("articulation_sweep_step_deg must be positive")
     labels = [att_label(a) for a in joints]
     seen = {tuple(0.0 for _ in joints)}
     out: list[tuple[str, dict[str, float]]] = []
@@ -144,6 +147,18 @@ def _configurations(design: Design) -> list[tuple[str, dict[str, float]]]:
         lo, hi = a["articulation"]["range_deg"]
         add(f"range min of {att_label(a)} ({_fmt_deg(lo)})", {att_label(a): lo})
         add(f"range max of {att_label(a)} ({_fmt_deg(hi)})", {att_label(a): hi})
+    for a in joints:
+        label = att_label(a)
+        lo, hi = a["articulation"]["range_deg"]
+        steps = []
+        k = 0
+        while lo + k * sweep_step_deg <= hi + 1e-9:
+            steps.append(lo + k * sweep_step_deg)
+            k += 1
+        if not steps or abs(steps[-1] - hi) > 1e-9:
+            steps.append(hi)
+        for v in steps:
+            add(f"sweep {label} {_fmt_deg(v)}", {label: v})
     return out
 
 
@@ -318,7 +333,7 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     # articulated joints: the same contact / overlap / interference checks in every configuration
     if articulated_attachments(design):
         res += _articulation_checks(design, std, meshes)
-        for name, ang in _configurations(design):
+        for name, ang in _configurations(design, std["geometry"]["articulation_sweep_step_deg"]["value"]):
             pm = posed_component_parts(design, ang)
             tf = pose_transforms(design, ang)
             sub = _contact_and_clash_checks(design, std, pm, tf, atts)
@@ -332,6 +347,30 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
                                        f"{name}: attachments, overlap and interference all OK",
                                        STD + "interference_max_mm3", {"configuration": name}))
     return TierReport(1, "geometry", res)
+
+
+# ---------------------------------------------------------------- hover thrust
+def _hover_up(design: Design) -> np.ndarray:
+    """'Up' in the body frame for hover. A declared hover_pose uses the posed thrust axes with body +z up;
+    a tailsitter hovers nose-up (-x); anything else is body +z."""
+    if design.data.get("flight", {}).get("hover_pose"):
+        return np.array([0.0, 0.0, 1.0])
+    if design.data["morphology"].get("vtol_method") == "tailsitter":
+        return np.array([-1.0, 0.0, 0.0])
+    return np.array([0.0, 0.0, 1.0])
+
+
+def _upward_lift(design: Design, tf: dict[str, np.ndarray], up: np.ndarray) -> list[tuple[dict, np.ndarray]]:
+    """For each lift motor (role lift or both): (motor, upward thrust vector in N). Only the component of
+    the thrust along `up` counts: max(0, dot(unit_axis, up)) * max_thrust_n, directed along `up`."""
+    out = []
+    for m in design.components:
+        if m["type"] != "motor" or m["propulsion"].get("role", "both") not in ("lift", "both"):
+            continue
+        ax = tf[m["id"]][:3, :3] @ np.array(m["propulsion"]["axis"], dtype=float)
+        ax = ax / np.linalg.norm(ax)
+        out.append((m, up * max(0.0, float(np.dot(ax, up))) * m["propulsion"]["max_thrust_n"]))
+    return out
 
 
 # ---------------------------------------------------------------- tier 2
@@ -380,27 +419,29 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
         cg = np.array(mp["cg_mm"])
         torque = np.zeros(3)
         force = np.zeros(3)
-        for m in lift_motors:
+        for m, f in _upward_lift(design, h_tf, _hover_up(design)):
             parts = posed[m["id"]]
             pos = np.mean([p.center_mass for p in parts], axis=0)
-            axis = h_tf[m["id"]][:3, :3] @ np.array(m["propulsion"]["axis"], dtype=float)
-            axis /= np.linalg.norm(axis)
-            f = axis * m["propulsion"]["max_thrust_n"]
             force += f
             torque += np.cross((pos - cg) / 1000, f)
         ag = std["aero"]
         lever = ag["hover_moment_reference_lever_m"]["value"]
         pass_r, fail_r = ag["hover_moment_pass_ratio"]["value"], ag["hover_moment_fail_ratio"]["value"]
-        span_ref = max(1e-6, float(np.linalg.norm(force)) * lever)
-        imbalance = float(np.linalg.norm(torque - np.dot(torque, force) / np.dot(force, force) * force))
-        ratio = imbalance / span_ref
-        status = PASS if ratio < pass_r else WARN if ratio < fail_r else FAIL
-        res.append(CheckResult("T2.hover_moment", status,
-                               f"equal-thrust hover moment about CG {imbalance:.2f} N*m "
-                               f"({ratio:.0%} of a {lever * 100:g} cm thrust offset)"
-                               + (f" at pose {hover_pose}" if hover_pose else ""),
-                               STD + "hover_moment_pass_ratio",
-                               {"moment_nm": round(imbalance, 3)}))
+        at_pose = f" at pose {hover_pose}" if hover_pose else ""
+        if float(np.linalg.norm(force)) < 1e-9:
+            res.append(CheckResult("T2.hover_moment", FAIL,
+                                   "no lift motor has upward thrust at hover, so the hover moment is undefined" + at_pose,
+                                   STD + "hover_moment_pass_ratio"))
+        else:
+            span_ref = max(1e-6, float(np.linalg.norm(force)) * lever)
+            imbalance = float(np.linalg.norm(torque - np.dot(torque, force) / np.dot(force, force) * force))
+            ratio = imbalance / span_ref
+            status = PASS if ratio < pass_r else WARN if ratio < fail_r else FAIL
+            res.append(CheckResult("T2.hover_moment", status,
+                                   f"equal-thrust hover moment about CG {imbalance:.2f} N*m "
+                                   f"({ratio:.0%} of a {lever * 100:g} cm thrust offset)" + at_pose,
+                                   STD + "hover_moment_pass_ratio",
+                                   {"moment_nm": round(imbalance, 3)}))
     return TierReport(2, "physics", res)
 
 
@@ -468,18 +509,14 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
     if design.data["morphology"].get("vtol_method", "none") != "none" or design.data["morphology"]["lift"] == "multirotor":
         hover_pose = flight.get("hover_pose")
         h_tf = pose_transforms(design, pose_angles(design, hover_pose))
-        thrust = 0.0
-        for c in design.components:
-            if c["type"] == "motor" and c["propulsion"].get("role", "both") in ("lift", "both"):
-                if hover_pose:  # only the part of the thrust that points up counts, with the axis turned by the pose
-                    ax = h_tf[c["id"]][:3, :3] @ np.array(c["propulsion"]["axis"], dtype=float)
-                    thrust += c["propulsion"]["max_thrust_n"] * max(0.0, float(ax[2] / np.linalg.norm(ax)))
-                else:
-                    thrust += c["propulsion"]["max_thrust_n"]
+        lift = _upward_lift(design, h_tf, _hover_up(design))
+        thrust = sum(float(np.linalg.norm(f)) for _, f in lift)
+        rated = sum(m["propulsion"]["max_thrust_n"] for m, _ in lift)
         tw = thrust / weight_n if weight_n else 0
         lim = a["hover_thrust_to_weight_min"]["value"]
         res.append(CheckResult("T3.hover_tw", PASS if tw >= lim else FAIL,
-                               f"hover T/W {tw:.2f} (minimum {lim})" + (f" at pose {hover_pose}" if hover_pose else ""), STD + "hover_thrust_to_weight_min",
+                               f"hover T/W {tw:.2f} (upward thrust {thrust:.1f} N of {rated:.1f} N rated; minimum {lim})"
+                               + (f" at pose {hover_pose}" if hover_pose else ""), STD + "hover_thrust_to_weight_min",
                                {"thrust_to_weight": round(tw, 3)}))
     return TierReport(3, "aero", res)
 

@@ -90,3 +90,7 @@ Conclusion: the pose labels, range endpoints and per-pose contact check work on 
 - The hover-moment check needs trim thrust to be meaningful for any design with unequal motors.
 - Confirm the payload, electronics and battery layout and joint ratings with whoever owns TiltWing; the CG here is solved, not designed.
 - Articulation semantics worth confirming: range endpoints are swept per joint, so a coupled tilt wing gets two unflown extra configurations (gap 4).
+
+## Update 2026-11-11 (sweep checks)
+
+Tier 1 now also sweeps each articulated joint in 15° steps (`design-standards.yaml#articulation_sweep_step_deg`). TiltWing gains `sweep wing-tilt 15°…60°` interference rows. They are the same root-strip clipping as the pose rows above, class (b) validator/schema limitation: the schema has no lifting-surface root offset, so the wing slab starts inside the fuselage at every angle. The scratch variant with the CAD root offsets was clear at 0°, 90° and 95°; re-check it across the sweep once the schema gains `root_offset`.
