@@ -222,7 +222,8 @@ def test_n2c_inhouse_method_without_machine_fails(mutate):
 
 
 def test_n4_machine_without_build_volume_skips_and_blocks(mutate):
-    sc = mutate(lambda d: _comp(d, "wing").__setitem__("manufacturing", {"method": "3d-print-fdm", "machine": "jacobs-fdm"}))
+    # jacobs-sla still has no build_volume_mm (FDM printers got one from the team on 2026-11-11)
+    sc = mutate(lambda d: _comp(d, "flight_controller").__setitem__("manufacturing", {"method": "3d-print-sla", "machine": "jacobs-sla"}))
     assert SKIP in statuses(sc, "T4.fits_machine")
     assert not sc.accepted
     msgs = [r.message for t in sc.tiers for r in t.results if r.check_id == "T4.fits_machine"]

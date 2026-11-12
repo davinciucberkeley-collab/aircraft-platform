@@ -5,7 +5,10 @@ source_urls:
   - https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
   - https://jacobsinstitute.berkeley.edu/student-resources/other-spaces/
 # Methods a part may use without naming a machine (bought, or cut by hand/with no shop machine).
-machine_optional_methods: [purchased, hand-cut, foamboard]
+# Methods that need no machine entry (no fixed bed to check against).
+# hotwire-foam and composite-layup: team statement 2026-11-11 ("Jacobs has basically everything you could want"),
+# hot-wire confirmed explicitly; composite-layup inferred from the same statement — confirm with the team.
+machine_optional_methods: [purchased, hand-cut, foamboard, hotwire-foam, composite-layup]
 machines:
   - id: jacobs-laser
     name: "Universal Systems laser cutter (32 x 18 in bed)"
@@ -40,6 +43,7 @@ machines:
     methods: [3d-print-fdm]
     materials: [PLA]
     notes: "All-purpose makerspace printers. Page says PLA filament; count and build volume not stated."
+    build_volume_mm: [256, 256, 256]  # conservative floor: team statement 2026-11-11, Jacobs + lab printers give 256 mm and larger; not from the published page
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
     verified: true
   - id: jacobs-fdm-lulzbot
@@ -48,6 +52,7 @@ machines:
     methods: [3d-print-fdm]
     materials: []
     notes: "All-purpose makerspace. Page says large build volume without dimensions; materials not stated."
+    build_volume_mm: [256, 256, 256]  # conservative floor: team statement 2026-11-11, Jacobs + lab printers give 256 mm and larger; not from the published page
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
     verified: true
   - id: jacobs-fdm-fortus
@@ -56,6 +61,7 @@ machines:
     methods: [3d-print-fdm]
     materials: [engineering-grade thermoplastics]
     notes: "Advanced Prototyping Lab. Page says large build volume without dimensions."
+    build_volume_mm: [256, 256, 256]  # conservative floor: team statement 2026-11-11, Jacobs + lab printers give 256 mm and larger; not from the published page
     source_url: https://jacobsinstitute.berkeley.edu/our-spaces-at-a-glance/labs-and-equipment/
     verified: true
   - id: jacobs-sla
