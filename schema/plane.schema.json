@@ -19,9 +19,10 @@
     "schema_version": {
       "enum": [
         "0.1",
-        "0.2"
+        "0.2",
+        "0.3"
       ],
-      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.1 files validate unchanged."
+      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.1 and 0.2 files validate unchanged."
     },
     "id": {
       "$ref": "#/$defs/slug"
@@ -279,6 +280,14 @@
         "material": {
           "type": "string"
         },
+        "cavities": {
+          "description": "v0.3. Solid box or cylinder shapes subtracted from the component's local mesh before rotation_deg is applied. A cavity may break through the outer surface (an opening).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/cavity"
+          }
+        },
         "manufacturing": {
           "type": "object",
           "required": [
@@ -358,6 +367,85 @@
           }
         }
       ]
+    },
+    "cavity": {
+      "type": "object",
+      "required": [
+        "geometry",
+        "position"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "geometry": {
+          "description": "Box or cylinder only (v0.3).",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "box"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "box": {
+                  "type": "object",
+                  "required": [
+                    "size"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "size": {
+                      "description": "[lx, ly, lz] mm",
+                      "$ref": "#/$defs/vec3"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "cylinder"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "cylinder": {
+                  "type": "object",
+                  "required": [
+                    "radius",
+                    "length"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "radius": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "length": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "axis": {
+                      "enum": [
+                        "x",
+                        "y",
+                        "z"
+                      ],
+                      "default": "x"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "position": {
+          "description": "Cavity centre relative to the component's position, in the component's local frame (before rotation_deg).",
+          "$ref": "#/$defs/vec3"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
     },
     "geometry": {
       "oneOf": [

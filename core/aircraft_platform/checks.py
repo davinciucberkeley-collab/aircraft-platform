@@ -45,6 +45,11 @@ def tier0_schema(design: Design) -> TierReport:
         res.append(CheckResult("T0.version", FAIL,
                                "articulation / flight.hover_pose / flight.cruise_pose need schema_version \"0.2\"",
                                "schema/plane.schema.json"))
+    uses_v03 = any(c.get("cavities") for c in design.data.get("components", []))
+    if uses_v03 and design.data.get("schema_version") != "0.3":
+        res.append(CheckResult("T0.version", FAIL,
+                               "cavities need schema_version \"0.3\"",
+                               "schema/plane.schema.json"))
     ids = [c["id"] for c in design.components]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:

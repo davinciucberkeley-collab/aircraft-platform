@@ -48,43 +48,67 @@ def lifting_surface_halves(ls: dict) -> list[np.ndarray]:
     return halves
 
 
-def component_mesh(component: dict, base_dir=None) -> trimesh.Trimesh:
-    g = component["geometry"]
+def _primitive(g: dict) -> trimesh.Trimesh:
+    """Box or cylinder (schema geometry or cavity), centred on the local origin."""
     if "box" in g:
-        m = trimesh.creation.box(extents=g["box"]["size"])
-    elif "cylinder" in g:
-        cyl = g["cylinder"]
-        m = trimesh.creation.cylinder(radius=cyl["radius"], height=cyl["length"], sections=32)
-        axis = cyl.get("axis", "x")
-        if axis == "x":
-            m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
-        elif axis == "y":
-            m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
-    elif "lifting_surface" in g:
-        parts = [trimesh.convex.convex_hull(v) for v in lifting_surface_halves(g["lifting_surface"])]
-        m = trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
-    elif "mesh" in g:
-        from pathlib import Path
-        m = trimesh.load(Path(base_dir or ".") / g["mesh"]["file"], force="mesh")
-    else:
-        raise ValueError(f"{component['id']}: unknown geometry")
-    m = m.copy()
-    m.apply_transform(_transform(component))
+        return trimesh.creation.box(extents=g["box"]["size"])
+    cyl = g["cylinder"]
+    m = trimesh.creation.cylinder(radius=cyl["radius"], height=cyl["length"], sections=32)
+    axis = cyl.get("axis", "x")
+    if axis == "x":
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+    elif axis == "y":
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
     return m
 
 
-def component_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
-    """Watertight convex pieces (wings split per half) for boolean operations."""
+def _local_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
+    """Untransformed parts of a component (wings split per half), local frame."""
     g = component["geometry"]
     if "lifting_surface" in g:
-        t = _transform(component)
-        out = []
-        for v in lifting_surface_halves(g["lifting_surface"]):
-            m = trimesh.convex.convex_hull(v)
-            m.apply_transform(t)
-            out.append(m)
-        return out
-    return [component_mesh(component, base_dir)]
+        return [trimesh.convex.convex_hull(v) for v in lifting_surface_halves(g["lifting_surface"])]
+    if "mesh" in g:
+        from pathlib import Path
+        return [trimesh.load(Path(base_dir or ".") / g["mesh"]["file"], force="mesh")]
+    if "box" in g or "cylinder" in g:
+        return [_primitive(g)]
+    raise ValueError(f"{component['id']}: unknown geometry")
+
+
+def _apply_cavities(meshes: list[trimesh.Trimesh], component: dict) -> list[trimesh.Trimesh]:
+    """Subtract each cavity (schema 0.3) from every part, in the component's local frame (before rotation)."""
+    cavities = component.get("cavities") or []
+    if not cavities:
+        return meshes
+    out = []
+    for m in meshes:
+        for cav in cavities:
+            tool = _primitive(cav["geometry"])
+            tool.apply_translation(cav["position"])
+            diff = trimesh.boolean.difference([m, tool], engine="manifold")
+            if diff is None or len(diff.faces) == 0:
+                raise ValueError(f"{component['id']}: a cavity removes the whole part "
+                                 f"(cavity at {cav['position']})")
+            m = diff
+        out.append(m)
+    return out
+
+
+def component_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
+    """Watertight pieces (wings split per half) in the body frame, with cavities subtracted before the transform."""
+    parts = _apply_cavities(_local_parts(component, base_dir), component)
+    t = _transform(component)
+    out = []
+    for m in parts:
+        m = m.copy()
+        m.apply_transform(t)
+        out.append(m)
+    return out
+
+
+def component_mesh(component: dict, base_dir=None) -> trimesh.Trimesh:
+    parts = component_parts(component, base_dir)
+    return trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
 
 
 # ---------------------------------------------------------------- articulation (schema 0.2)
