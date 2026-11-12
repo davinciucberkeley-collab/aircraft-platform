@@ -5,7 +5,7 @@ One shared place, format and toolset for our aircraft designs, so everything we 
 **One schema; every tool reads and writes it.**
 
 ```
-schema/        plane.schema.json — the design language (v0.2; v0.1 files still validate)
+schema/        plane.schema.json — the design language (v0.3: articulated joints, hollow-part cavities; v0.1–v0.2 files still validate)
 core/          Python library: load, validate (tiers 0–5), mass properties, export, sim
                + the `plane` CLI and `plane-mcp` MCP server (thin wrappers over core)
 designs/       one folder per design: designs/<id>/plane.yaml
@@ -35,7 +35,7 @@ Claude Code: `claude mcp add aircraft-platform -- plane-mcp` (see docs/mcp.md).
 | Tier | Checks |
 |---|---|
 | 0 Schema | file matches `schema/plane.schema.json`; ids and references valid |
-| 1 Geometry | every part connects to the root; attached parts touch; no clipping or prop strikes between unattached parts. Articulated joints (schema 0.2, e.g. a tilting wing): the contact, overlap and interference checks repeat in every named pose and at both range endpoints, results name the pose; `T1.articulation` checks poses lie in range and the pivot sits on both parts |
+| 1 Geometry | every part connects to the root; attached parts touch; no clipping or prop strikes between unattached parts. Articulated joints (schema 0.2, e.g. a tilting wing): the contact, overlap and interference checks repeat in every named pose, at both range endpoints and in 15° sweep steps, results name the pose; `T1.articulation` checks poses lie in range and the pivot sits on both parts |
 | 2 Physics | static joint loads (limit × ultimate factor); hover moment balance (at `flight.hover_pose` if the design names one); MuJoCo drop test (0° configuration): joint forces vs ratings, comes to rest upright, numerically stable |
 | 3 Aero | mass vs MTOW, wing loading, stall speed, static margin (at `flight.cruise_pose`), lateral CG, hover thrust-to-weight (thrust axes turned to `flight.hover_pose`) |
 | 4 Manufacturing | every part's method exists at Jacobs; parts fit the machine |
@@ -47,7 +47,7 @@ Thresholds live only in `standards/design-standards.yaml`, each with a source (o
 
 See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exact instructions, builders and scouts (Haiku) execute, one reviewer (Opus) scores against named criteria. The clearer the goal, the cheaper the model.
 
-## Known limits (v0.2)
+## Known limits (v0.3)
 
 - Aero is first-order: neutral point ignores the fuselage; no VLM yet (AeroSandbox is the planned upgrade).
 - Lifting surfaces are tapered slabs, not real airfoils, for collision purposes.
