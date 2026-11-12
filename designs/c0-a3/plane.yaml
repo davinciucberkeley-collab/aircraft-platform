@@ -1,7 +1,7 @@
 # A3: C0 (v0.4.0) with a printed nacelle and hub cap on each lift rotor to cut stopped-rotor drag. Derived from designs/c0-lift-cruise.
 # Baseline: variant numbers are from the v0.3.1 baseline (6.182 kg, 20 m/s) per DECISIONS.md; every part the variant did not change keeps C0 v0.4.0. See README.md.
 # Frame: same transform as C0 (body x aft from the pod nose, x = 600 - 1000 X_cad), see designs/c0-lift-cruise/README.md.
-schema_version: "0.1"
+schema_version: "0.3"
 id: c0-a3
 name: A3 aligned, faired stopped lift rotors (derived from C0 v0.4.0)
 authors: ["UC Berkeley DBF capstone team (source repo dbf-combined)", "converted for aircraft-platform by a tactician agent"]
@@ -554,13 +554,18 @@ components:
 
   # Printed PETG nacelle (NACA 0022 plan section, chord 260 mm truncated x/c 0.06..0.75) around the lift motor mount and bell; two clamshell halves. Modelled as a SOLID box hull of the envelope, the real part is a 0.8 mm shell
   # src: concepts/variants/a3/geometry.json add Lift_Nacelle_L* envelope: local x +66.4 (nose) .. -113.0 (tail) about the rotor axis = 179.4 mm, max half-thickness 28.6 mm (width 57.2), height y -0.0455..+0.0170 (v0.3.1) shifted -2.9 mm to the v0.4.0 boom axis (-32.938 vs -30.0) = z -48.4..14.1; mass 37.5 g + glue 1.0 + 6 x M3x10 2.7 + 6 inserts 0.9 (concepts/variants/a3/design.md section 5) + 22/4 = 5.5 g phase-2 reed, wire, resistor (inventory.json mass_delta_kg phase2 0.250 vs phase1 0.228) = 47.6 g
+  # Tail cut 6 mm short of the front gear clamp (x 259.273) per concepts/variants/a3/design.md section 4 'tail cut ... 6 mm clearance'; the source's own envelope contradicted that claim. Mass not reduced (conservative).
   - id: nacelle_fl
     type: structure
-    geometry: {box: {size: [179.4, 57.2, 62.5]}}
-    position: [215.573, -433.7, -17.2]
+    geometry: {box: {size: [133.4, 57.2, 62.5]}}
+    position: [192.573, -433.7, -17.2]
     mass_g: 47.6
     material: petg
     manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+    cavities:
+      - geometry: {cylinder: {radius: 25.75, length: 40, axis: z}}
+        position: [-0.3, 0, 25.262]
+        description: "motor bay, 1.75 mm radial clearance (concepts/variants/a3/geometry.json Lift_Nacelle lid hole), open top"
 
   # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
   # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
@@ -574,13 +579,18 @@ components:
 
   # Printed PETG nacelle (NACA 0022 plan section, chord 260 mm truncated x/c 0.06..0.75) around the lift motor mount and bell; two clamshell halves. Modelled as a SOLID box hull of the envelope, the real part is a 0.8 mm shell
   # src: concepts/variants/a3/geometry.json add Lift_Nacelle_L* envelope: local x +66.4 (nose) .. -113.0 (tail) about the rotor axis = 179.4 mm, max half-thickness 28.6 mm (width 57.2), height y -0.0455..+0.0170 (v0.3.1) shifted -2.9 mm to the v0.4.0 boom axis (-32.938 vs -30.0) = z -48.4..14.1; mass 37.5 g + glue 1.0 + 6 x M3x10 2.7 + 6 inserts 0.9 (concepts/variants/a3/design.md section 5) + 22/4 = 5.5 g phase-2 reed, wire, resistor (inventory.json mass_delta_kg phase2 0.250 vs phase1 0.228) = 47.6 g
+  # Tail cut 6 mm short of the front gear clamp (x 259.273) per concepts/variants/a3/design.md section 4 'tail cut ... 6 mm clearance'; the source's own envelope contradicted that claim. Mass not reduced (conservative).
   - id: nacelle_fr
     type: structure
-    geometry: {box: {size: [179.4, 57.2, 62.5]}}
-    position: [215.573, 433.7, -17.2]
+    geometry: {box: {size: [133.4, 57.2, 62.5]}}
+    position: [192.573, 433.7, -17.2]
     mass_g: 47.6
     material: petg
     manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+    cavities:
+      - geometry: {cylinder: {radius: 25.75, length: 40, axis: z}}
+        position: [-0.3, 0, 25.262]
+        description: "motor bay, 1.75 mm radial clearance (concepts/variants/a3/geometry.json Lift_Nacelle lid hole), open top"
 
   # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
   # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
@@ -601,6 +611,10 @@ components:
     mass_g: 47.6
     material: petg
     manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+    cavities:
+      - geometry: {cylinder: {radius: 25.75, length: 40, axis: z}}
+        position: [-23.3, 0, 25.262]
+        description: "motor bay, 1.75 mm radial clearance (concepts/variants/a3/geometry.json Lift_Nacelle lid hole), open top"
 
   # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
   # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
@@ -621,6 +635,10 @@ components:
     mass_g: 47.6
     material: petg
     manufacturing: {method: 3d-print-fdm, machine: jacobs-fdm}
+    cavities:
+      - geometry: {cylinder: {radius: 25.75, length: 40, axis: z}}
+        position: [-23.3, 0, 25.262]
+        description: "motor bay, 1.75 mm radial clearance (concepts/variants/a3/geometry.json Lift_Nacelle lid hole), open top"
 
   # Rotating hub cap (printed, spinner-style, skirt r 26.5, top plate to r 14) over bell top, prop adapter and hub, with its 2 detent magnets, glue and 4 M3x16 screws; spins with the prop (revolute in the source, fixed here like the prop disc)
   # src: concepts/variants/a3/geometry.json add Lift_Cap_L* 9.4 g + 2 rotating magnets 0.75 g each + 1 fixed magnet in the nacelle lid 0.75 g + 4 net M3x16 3.2 g (concepts/variants/a3/design.md section 5); outer profile y 18.5..42.8 (v0.3.1) = z 15.6..39.9 in v0.4.0, but only the part above the swept prop disc (z 28.06..39.9) is modelled, because the schema forbids a propeller disc passing into a part and the skirt below it (z 15.6..28.06, clears the bell by 1.55 mm, blade slots) is inside the disc volume. Mass includes the fixed lid magnet so the per-rotor total is 62.5 g
