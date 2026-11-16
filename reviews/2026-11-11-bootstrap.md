@@ -379,3 +379,59 @@ Over all 104 parts the largest volume deviation from the GLB is 0.37% (cge-001).
 1. Motor→prop chain (m2): require each intermediate to be on the child side of the motor, away from the root, so a prop on the motor mount doesn't count.
 2. Revolved bodies are 24-segment facets (-1.14% volume against analytic). Consider 48 segments in `dbf_geometry` for tight-clearance pairs.
 3. README: split "66 derived" into 49 + 17 placeholder-stress-area.
+
+## Round 6 (b757287)
+
+Reviewer: same Opus instance (R1). Commits reviewed: 0887923, 106eae6, 7070357, b757287 on `concept-a-import`. Round-5 cases were re-run in `/tmp/ap-review5/` (`out-r6.md` in each folder; example and concept-a copies regenerated with `mk5.py` from the current files). New attacks are in `/tmp/ap-review6/` (`mk6.py`, one folder per case with `out.md`). Nothing under `designs/` was edited.
+
+### 5. Automated
+
+- `python3 -m pytest -q`: `95 passed, 42 warnings in 25.06s`.
+- `plane validate designs/example-tailsitter-wing`: exit 0.
+- `plane validate designs/concept-a --tier all`: exit 1, Accepted: no. 66 non-PASS rows: T1 10 SKIP (kinematic_link); T2 26 joint_load SKIP, 26 sim_drop_loads SKIP, 2 sim_drop_loads FAIL (E-WNG-20 2.2 N and E-WNG-21 2.1 N vs 1.4 N), 1 sim_rest FAIL (79 deg); T3 1 static_margin FAIL (16.6%). T4 and T5 PASS. This matches the conductor's summary.
+
+### 1. Round-5 blockers
+
+| # | Round-5 blocker | Status | Evidence |
+|---|---|---|---|
+| 1 | Provenance: lens caps `[doc]`; BOND_TAU at L19 | **FIXED** | E-WNG-30R/31R/30L/31L are `rating_basis: placeholder` and quote the foam_103.md L10 disclaimer. plane.yaml now has 0 "L19" and 27 "structures_a.py L17" citations. |
+| 2 | point_mass placement | **FIXED for ordinary point masses; reopened by `distributed`** | New T1.point_mass_location. p1: "battery … is 170.0 mm from every part it is attached to". p2 and p3: off-host FAIL plus "lies inside the prop disc of prop_l". But see d1/d2: the conductor's `distributed: true` relaxation lets the same cases through. |
+| 3 | kinematic_link WARN, so accepted | **FIXED** | T1.kinematic_link is now SKIP. k1 (ordinary glued joint flagged) exits 1, Accepted: no. The flag is still allowed on any joint, with no reason field. That is fine now, because it can only block acceptance. |
+| 4 | planform not tied to geometry | **FIXED as filed, but bypassed** | New T3.planform_matches_geometry: ca-f3 (5 mm shift) FAIL "LE off by +5.0 mm (limit 4.9 mm)"; f1 (planform copied onto fuselage) FAIL; f2 (tail planform on the battery) FAIL. But c1 and c2 below get through. |
+| 5 | placeholder ratings print PASS | **FIXED** | Schema `rating_basis` (sourced 29, derived 66, placeholder 26; all 121 joints carry it). Placeholders give SKIP in both T2.joint_load and T2.sim_drop_loads, so none PASS by construction. `rating_basis` is optional in the schema, so a hand-written design can leave it off; suggestion 1. |
+| 6 | comparison doc: tip-over, NP direction, placeholder class | **FIXED** | Tip-over: (b) for the rigid drop, and (a) pending team confirmation for the static angle against A-P9 (REQUIREMENTS-A.md L42, ">= 30 deg"); the "accepted damage" claim is withdrawn. NP direction: "ours is aft of his, so our margin is larger". Placeholders: (c), with E-ASM-01/E-HRN-20 named as lumps. The doc rightly asks for my 29.1 deg calculation: CG (20.46, 2.38, 6.68) mm from `mass_properties`; pads x 307.5-337.5, z -183..+183. The narrow-side half-footprint from the CG is 183 - 6.68 = 176.3 mm, the height is 337.5 - 20.46 = 317.0 mm, and atan(176.3/317.0) = **29.1 deg** (tipping toward +z, the side the CG leans to; 30.0 deg ignores the CG z offset). That is outer pad edges; pad centres would give less. |
+
+Round-5 cases still caught: ca-m1 (glued adapter, motor_has_prop FAIL) and k0. m2 (prop on the motor mount) still gets T1.motor_has_prop PASS "motor_l -> mount_l -> prop_l"; only the contact gap fails it (still non-blocking).
+
+### 2. New attacks on the `distributed` relaxation and the planform rule (/tmp/ap-review6/)
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| d1 | Example: the **250 g battery** (33% of the aircraft) declared `point_mass: {distributed: true}` and placed **30 mm above the fuselage top, in open air** | **MISSED**: exit 0, **Accepted: yes** | "battery at (140.0, 0.0, 70.0) mm: distributed mass inside the aircraft's envelope". The convex hull of a wing with fins is mostly empty space. Only a hover-moment WARN (47%) shows. |
+| d2 | Round-5 p3 cameras (15 g payloads, 48 mm off the wing, which now FAIL) relabelled `distributed: true` | **MISSED**: exit 0, **Accepted: yes** | One keyword turns the p3 FAIL into a PASS. Nothing limits `distributed` by type (these are `payload`), by mass, or by need. |
+| d3 | 400 g payload declared distributed, at the battery's own position | Not accepted, but only through mass/stall/SM | The overlap with the battery is invisible by design; this case only shows that mass checks still bite. |
+| c1 | concept-a copy: planform moved **4.5 mm** forward (inside the 2% = 4.9 mm tolerance) | **MISSED**: T3.planform_matches_geometry PASS; **T3.static_margin FAIL 16.6% → PASS 14.8%** | 2% of chord is 1.8 points of SM on a 245 mm MAC, so the tolerance alone can flip the verdict. |
+| c2 | concept-a copy: a fake articulated "LE strip" (15 x 100 x 2 mm, 1 g, hinge range [0, 1] deg, on 100 mm of the 900 mm span) pads the LE; planform declared 260 mm chord from x -15 | **MISSED**: planform PASS "of the geometry of wng-001, wng-006-r, wng-006-l, le-strip"; **SM 11.4% PASS**; wing area +6% (stall 11.2 → 10.8 m/s) | The rule compares only the *extreme* LE/TE/span of the union, so one small articulated child anywhere moves the bound for the whole span. The strip passes every T1 check (contact, pivot, sweep) and T4. |
+
+### 3. Where E-WNG-20/21's 1.4 N comes from
+
+`rating_basis: derived`, comment "contact area 16 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)". 16 x 0.086 = 1.38 N, rounded to 1.4. Import-report agrees: kind derived. The source gives no capacity for this bond. amodel/wing.py L413 only says "balance horn root bonded to the elevon nose face (D-187)", and no structures doc checks it. The part is a 16.1 g lead strip plus two PETG/CF tabs (wing.py L378). Our horn mesh is 24.6 x 106 x 1.45 mm and ends 0.14 mm short of the elevon, so the 16 mm2 is whatever our meshes put within the assumed glue-line clearance. **The label is honest but weak**: "derived" here means a measured artefact times an EST allowable, not a designed bond area. The comparison's "(c) risk" with "the real bond may be larger" is the right class. These two FAILs are no evidence about concept A, and the peaks also come from the rigid drop. Suggestion: if the source has no bond geometry, downgrade a contact patch under ~25 mm2 to placeholder. Not blocking.
+
+### 4. Coverage of validator-comparison.md
+
+All 66 non-PASS rows are covered: 10 + 52 + 2 + 1 + 1 = 66, matching my run row for row (26 placeholder joints listed by id; the counts match). The tier counts and the "95 static joint-load PASS" (121 - 26) are correct. **Complete.**
+
+### Verdict
+
+**NOT merge-ready**, but close. Round-5 blockers 1, 3, 5 and 6 are fixed; 2 and 4 are fixed for the filed cases. The conductor's `distributed` relaxation and the bounds-only planform match each let a broken design get Accepted: yes or flip the key static-margin result (d1, d2, c1, c2).
+
+### Remaining blockers
+
+1. **`distributed: true` is an unlimited escape hatch** (d1, d2). Keep the relaxation, but bound it. Allow it only on component types `other`/`structure` with a required `items` or `reason` string (harness, hardware). Cap each distributed mass at a new `geometry.distributed_mass_max_fraction` in design-standards.yaml (e.g. 0.05 of total mass, `source: internal convention`; concept A's 26.08 g and 18.4 g are 2.1% and 1.5%). Change "inside the convex hull" to within `attach_tolerance_mm` of *some* solid part, or inside the union of solids: HRD-001 sits inside wng-001, and HRN-001 is 0.9 mm from avn-008, so concept A still passes. Add d1 and d2 as tests.
+2. **The planform match is bounds-only and too loose for SM** (c1, c2). (a) Compare per spanwise station: slice the component plus its articulated children at, say, 10 stations, and require the local LE/TE to match the planform outline. A 100 mm strip then fails 9 of 10 stations. (b) Tighten `planform_match_tolerance_fraction` for LE/TE so the allowed shift is well under one SM point (≤ 0.5% chord = 1.2 mm here), or compute the NP from the *measured* LE/TE instead of the declared ones. (c) Count only articulated children that are control surfaces (an articulated part that lies within the planform's span and chord), not any articulated part. Add c1 and c2 as tests.
+
+### Suggestions (non-blocking)
+
+1. Make `rating_basis` required in schema 0.4 attachments, so a hand-written rating can't skip the label.
+2. Motor→prop chain via the mount (m2) still passes T1.motor_has_prop; restrict intermediates to the child side of the motor.
+3. E-WNG-20/21: see section 3.
