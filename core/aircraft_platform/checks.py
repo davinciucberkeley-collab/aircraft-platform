@@ -55,6 +55,10 @@ def tier0_schema(design: Design) -> TierReport:
         res.append(CheckResult("T0.version", FAIL,
                                "point_mass geometry needs schema_version \"0.4\"",
                                "schema/plane.schema.json"))
+    if any(a.get("kinematic_link") for a in design.data.get("attachments", [])) and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "attachment kinematic_link needs schema_version \"0.4\"",
+                               "schema/plane.schema.json"))
     ids = [c["id"] for c in design.components]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:
@@ -261,6 +265,36 @@ def _articulation_checks(design: Design, std: dict, meshes: dict) -> list[CheckR
     return res
 
 
+PROP_CHAIN_METHODS = ("bolted", "press-fit")   # joints an adapter may use between motor and propeller
+PROP_CHAIN_TYPES = ("other", "structure")      # component types an adapter may be
+PROP_CHAIN_MAX_INTERMEDIATE = 2
+
+
+def _motor_prop_path(design: Design, motor: str, atts: list[dict]) -> list[str] | None:
+    """Component ids from `motor` to a propeller: a direct attachment (any method), or a chain through at most
+    PROP_CHAIN_MAX_INTERMEDIATE parts of type other/structure where every joint is bolted or press-fit.
+    None if there is no such path. Breadth-first, so the shortest chain is reported."""
+    nbrs = defaultdict(list)
+    for a in atts:
+        nbrs[a["parent"]].append((a["child"], a["method"]))
+        nbrs[a["child"]].append((a["parent"], a["method"]))
+    queue = deque([([motor], [])])
+    while queue:
+        path, methods = queue.popleft()
+        for nxt, method in nbrs[path[-1]]:
+            if nxt in path:
+                continue
+            new_path, new_methods = path + [nxt], methods + [method]
+            if design.component(nxt)["type"] == "propeller":
+                if len(new_path) == 2 or all(m in PROP_CHAIN_METHODS for m in new_methods):
+                    return new_path
+                continue
+            if (design.component(nxt)["type"] in PROP_CHAIN_TYPES and method in PROP_CHAIN_METHODS
+                    and len(new_path) - 1 <= PROP_CHAIN_MAX_INTERMEDIATE):
+                queue.append((new_path, new_methods))
+    return None
+
+
 def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict, atts: list[dict],
                               cache: _PairCache | None = None) -> list[CheckResult]:
     """Attachment contact / overlap / containment, motor-prop pairing and interference for ONE configuration.
@@ -354,17 +388,32 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
     for comp in design.components:
         if "propulsion" not in comp:
             continue
-        nbrs = adj[comp["id"]]
-        has = any(design.component(n)["type"] == "propeller" for n in nbrs)
-        res.append(CheckResult("T1.motor_has_prop", PASS if has else FAIL,
-                               f"{comp['id']}: drives an attached propeller" if has
-                               else f"{comp['id']}: has a propulsion block but no attached component of type propeller",
-                               STD + "embed_max_fraction_of_child"))
+        path = _motor_prop_path(design, comp["id"], atts)
+        if path is None:
+            res.append(CheckResult("T1.motor_has_prop", FAIL,
+                                   f"{comp['id']}: has a propulsion block but no propeller attached directly or through "
+                                   f"up to {PROP_CHAIN_MAX_INTERMEDIATE} bolted or press-fit other/structure parts",
+                                   STD + "embed_max_fraction_of_child"))
+        elif len(path) == 2:
+            res.append(CheckResult("T1.motor_has_prop", PASS, f"{comp['id']}: drives an attached propeller",
+                                   STD + "embed_max_fraction_of_child"))
+        else:
+            res.append(CheckResult("T1.motor_has_prop", PASS,
+                                   f"{' -> '.join(path)}: drives its propeller through an adapter chain",
+                                   STD + "embed_max_fraction_of_child", {"path": path}))
 
     # interference between non-attached parts (broad phase first: only boxes that overlap get the exact boolean)
+    # kinematic_link children are moved by a linkage the schema does not model: a pair of one such child and a
+    # part moved by this configuration is not checked here, and is reported once as a WARN (never silently dropped)
+    linked = {a["child"] for a in atts if a.get("kinematic_link")}
+    moved = {cid for cid in meshes if not np.allclose(tf[cid], np.eye(4))}
+    unchecked = []
     clashes = []
     for a_, b_ in _broad_phase(meshes):
         if frozenset((a_, b_)) in attached_pairs:
+            continue
+        if (a_ in linked and b_ in moved) or (b_ in linked and a_ in moved):
+            unchecked.append((a_, b_))
             continue
         v = cache.overlap(meshes, tf, a_, b_)
         if v > max_int:
@@ -377,6 +426,12 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
     if not clashes:
         res.append(CheckResult("T1.interference", PASS, "no clipping between unattached parts",
                                STD + "interference_max_mm3"))
+    if unchecked:
+        ids = sorted({i for pair in unchecked for i in pair})
+        shown = ", ".join(ids[:6]) + (", \u2026" if len(ids) > 6 else "")
+        res.append(CheckResult("T1.kinematic_link", WARN,
+                               f"{len(unchecked)} pair(s) not checked \u2014 linkage path not modelled: {shown}",
+                               "schema/plane.schema.json", {"pairs": [list(p) for p in unchecked]}))
     return res
 
 
@@ -427,6 +482,11 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
                 r.message = f"{name}: {r.message}"
                 r.data = {**r.data, "configuration": name}
             res += fails
+            for r in sub:
+                if r.status == WARN:
+                    r.message = f"{name}: {r.message}"
+                    r.data = {**r.data, "configuration": name}
+                    res.append(r)
             if not fails:
                 res.append(CheckResult("T1.pose", PASS,
                                        f"{name}: attachments, overlap and interference all OK",

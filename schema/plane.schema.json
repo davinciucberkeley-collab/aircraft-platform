@@ -23,7 +23,7 @@
         "0.3",
         "0.4"
       ],
-      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.4 adds the point_mass geometry (mass at a point, no extent); 0.1-0.3 files validate unchanged."
+      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.4 adds the point_mass geometry (mass at a point, no extent) and attachment.kinematic_link; 0.1-0.3 files validate unchanged."
     },
     "id": {
       "$ref": "#/$defs/slug"
@@ -648,6 +648,11 @@
           "type": "boolean",
           "default": false,
           "description": "true if the child is meant to pass into the parent (spar into slot, motor into pod)."
+        },
+        "kinematic_link": {
+          "type": "boolean",
+          "default": false,
+          "description": "v0.4. true if the child is moved by a linkage the schema does not model (e.g. a servo pushrod driven by an elevon horn). Tier-1 pose and sweep interference skips pairs of this child with a part moved by that pose and reports them as one WARN per pose (T1.kinematic_link). Static (0 deg) checks are unchanged."
         },
         "rated_load_n": {
           "type": "number",

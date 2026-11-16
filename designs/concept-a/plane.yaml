@@ -1260,7 +1260,8 @@ attachments:
   - {id: E-WNG-31R, parent: wng-001, child: wng-008-rl, method: glued, location: [141.368, 286.749, -10.018], rated_load_n: 88.6}
   # E-WNG-4R CT-EPOXY (WNG-001 -> WNG-009-R): damper housing bonded in the core notch at the elevon tip, axis on the hinge line (FIXES2)
   # rating [derived] contact area 67 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
-  - {id: E-WNG-4R, parent: wng-001, child: wng-009-r, method: glued, location: [177.225, 366.458, -0.457], rated_load_n: 5.7}
+  # kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against the moved parts'
+  - {id: E-WNG-4R, parent: wng-001, child: wng-009-r, method: glued, location: [177.225, 366.458, -0.457], rated_load_n: 5.7, kinematic_link: true}
   # E-WNG-5R CT-EPOXY (WNG-006-R -> WNG-010-R): damper rotor flange bonded on the elevon tip face (FIXES2)
   # rating [derived] contact area 25 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
   - {id: E-WNG-5R, parent: wng-006-r, child: wng-010-r, method: glued, location: [186.323, 349.5, -2.251], rated_load_n: 2.2}
@@ -1275,7 +1276,8 @@ attachments:
   - {id: E-WNG-31L, parent: wng-001, child: wng-008-ll, method: glued, location: [141.368, -283.251, -10.018], rated_load_n: 88.6}
   # E-WNG-4L CT-EPOXY (WNG-001 -> WNG-009-L): damper housing bonded in the core notch at the elevon tip, axis on the hinge line (FIXES2)
   # rating [derived] contact area 70 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
-  - {id: E-WNG-4L, parent: wng-001, child: wng-009-l, method: glued, location: [177.201, -363.167, 0.339], rated_load_n: 6}
+  # kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against the moved parts'
+  - {id: E-WNG-4L, parent: wng-001, child: wng-009-l, method: glued, location: [177.201, -363.167, 0.339], rated_load_n: 6, kinematic_link: true}
   # E-WNG-5L CT-EPOXY (WNG-006-L -> WNG-010-L): damper rotor flange bonded on the elevon tip face (FIXES2)
   # rating [derived] contact area 24 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
   - {id: E-WNG-5L, parent: wng-006-l, child: wng-010-l, method: glued, location: [185.718, -349.5, -2.425], rated_load_n: 2.1}
@@ -1485,7 +1487,8 @@ attachments:
   - {id: E-MEC-02, parent: mec-001-r, child: mec-002-r, method: bolted, location: [140.563, 195.69, 6.7], rated_load_n: 931.5}
   # E-MEC-03 CT-CLEVIS (MEC-002-R -> MEC-003-R): rod Z-bend in the arm tip hole (vertical pin)
   # rating [doc] redesign/qp/A/structures/qp5_checks.md s1 pushrod buckling, Pcr 73 N at the CAD rod length 52.5 mm (D-194)
-  - {id: E-MEC-03, parent: mec-002-r, child: mec-003-r, method: hinge, location: [141.723, 187.987, 8.701], rated_load_n: 73}
+  # kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against the moved parts'
+  - {id: E-MEC-03, parent: mec-002-r, child: mec-003-r, method: hinge, location: [141.723, 187.987, 8.701], rated_load_n: 73, kinematic_link: true}
   # E-MEC-05 CT-EPOXY (WNG-006-R -> MEC-004-R): horn bonded on the elevon upper skin
   # rating [derived] contact area 8 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
   - {id: E-MEC-05, parent: wng-006-r, child: mec-004-r, method: glued, location: [189.659, 188.66, -0.508], rated_load_n: 0.7}
@@ -1506,7 +1509,8 @@ attachments:
   - {id: E-MEC-07, parent: mec-001-l, child: mec-002-l, method: bolted, location: [140.342, -195.814, 6.7], rated_load_n: 931.5}
   # E-MEC-08 CT-CLEVIS (MEC-002-L -> MEC-003-L): rod Z-bend in the arm tip hole (vertical pin)
   # rating [doc] redesign/qp/A/structures/qp5_checks.md s1 pushrod buckling, Pcr 73 N at the CAD rod length 52.5 mm (D-194)
-  - {id: E-MEC-08, parent: mec-002-l, child: mec-003-l, method: hinge, location: [141.723, -188.013, 8.701], rated_load_n: 73}
+  # kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against the moved parts'
+  - {id: E-MEC-08, parent: mec-002-l, child: mec-003-l, method: hinge, location: [141.723, -188.013, 8.701], rated_load_n: 73, kinematic_link: true}
   # E-MEC-10 CT-EPOXY (WNG-006-L -> MEC-004-L): horn bonded on the elevon upper skin
   # rating [derived] contact area 8 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
   - {id: E-MEC-10, parent: wng-006-l, child: mec-004-l, method: glued, location: [189.575, -187.935, -0.502], rated_load_n: 0.7}

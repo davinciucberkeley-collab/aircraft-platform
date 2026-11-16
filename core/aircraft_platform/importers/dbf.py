@@ -29,6 +29,10 @@ from . import dbf_geometry as geo
 from . import dbf_ratings as rt
 
 DEFAULT_OUT = REPO_ROOT / "designs" / "concept-a"
+# Children moved by a linkage the schema does not model (servo pushrods, elevon damper stators). The source's pose
+# check leaves them out: "Not checked against the moved parts (linkage path not modelled)" in
+# redesign/qp/A/cad/out/REPORT.md. Their attachments get kinematic_link: true (schema 0.4).
+KINEMATIC_LINK_CHILDS = {"MEC-003-L", "MEC-003-R", "WNG-009-L", "WNG-009-R"}
 G = 9.80665
 
 # ----------------------------------------------------------------------------- semantic tables
@@ -509,6 +513,9 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
         if r["embed"]:
             fields.append("embed_ok: true")
         fields.append(f"rated_load_n: {_n(val, 1)}")
+        if child in KINEMATIC_LINK_CHILDS:
+            add("  # kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against the moved parts'")
+            fields.append("kinematic_link: true")
         if e["id"] in elevon:
             j = elevon[e["id"]]
             piv = [x * 1000 for x in j["origin"]]
