@@ -488,3 +488,44 @@ It still says "66 not PASS" (now 67), still lists T3.static_margin as "16.6% …
 1. validate.yml "Score every design" is red on main already (pre-existing); see CI above.
 2. d4: two 1.9% `other` lumps floating in the hull are accepted by design. Consider requiring distributed masses to lie inside a solid part or within `attach_tolerance_mm` of one, which concept A's two lumps satisfy (round 5).
 3. Earlier suggestions still open: `rating_basis` optional; motor→prop chain via the mount (m2).
+
+## Round 8 (8ff06ec) — final merge sign-off
+
+Reviewer: same Opus instance (R1). Commit reviewed: 8ff06ec on `concept-a-import` (on top of d913e22). Attacks were re-run in `/tmp/ap-review7/` (`out-r8.md` in each folder; s4b and s5 are new, built with `mk7.py`). Nothing under `designs/` was edited.
+
+### Automated
+
+- `python3 -m pytest -q`: `113 passed, 42 warnings in 25.21s`.
+- `plane validate designs/example-tailsitter-wing`: exit 0.
+- `plane validate designs/concept-a --tier all` (fresh run, md and JSON): exit 1. 502 rows, 67 not PASS: T1 10 SKIP (kinematic_link); T2 52 SKIP (placeholders) and 3 FAIL (E-WNG-20/21, sim_rest); T3 1 FAIL (static_margin 16.8%, NP 59 mm) and 1 WARN (planform -8.9%, measured 200905 mm^2).
+- Code changed only in geometry.py, checks.py and standards since round 7. Determinism was verified last round, and this commit does not touch the importer or the concept-a import files (`git diff d913e22 --stat`: README, checks, geometry, standards, tests, comparison doc).
+
+### Round-7 blockers
+
+| # | Blocker | Status | Evidence |
+|---|---|---|---|
+| 1 | Declared rotation sets the slicing axes (s1) | **CLOSED** | Chord is along body x and the span axis comes from the geometry. s1 (declared yaw 15 deg) now gives T3.planform_matches_geometry **FAIL** "declared span runs 15.0 deg from the measured span … limit 5 deg", and the numbers are unchanged from baseline (SM 16.8%, NP 59 mm). |
+| 2 | Gaps count as chord (s4) | **CLOSED** | Chord is the longest contiguous group. s4 (strip 60 mm ahead): the strip is ignored as detached, SM 16.8% as baseline, WARN "detached material ignored at 11 strips". s3 (plate 95 mm aft): ignored, area -6.8% (WARN), SM 17.0%. |
+| 3 | Comparison doc stale | **CLOSED** | It now matches the fresh run: 502 rows, 67 not PASS (62 SKIP, 4 FAIL, 1 WARN), SM 16.8% / NP 59 mm, measured 200905 mm^2 (-8.9%), and the planform WARN classified (c). Small omission: the WARN row's "detached material ignored at 3 strips (largest 7 mm)" is not explained. My run puts these at y = 0 and y = ±197.6 mm (6-7 mm slivers ahead of notches in the core, e.g. at the hub); together under 1500 mm^2 of chord-area. Add one sentence. |
+
+### Is the 15% bridging rule principled?
+
+- **Mechanism**: gaps up to 15% of the local envelope are bridged *only* when one side is the root's material and the other an articulated child (or a group containing the root). Any other gap is bridged only up to 3 mm. Detached material is ignored and reported. **It can't be abused without an articulated child**: non-articulated parts never enter the measurement, s4 shows a hinged piece past 15% is ignored, and material in the root mesh beyond 3 mm is dropped as detached.
+- **On concept A** the bridged gaps are exactly where the source puts the balance lead: strips 5-9 and 31-35 (|y| ≈ 241-329 mm), 23.56 mm each. That matches the WNG-007 lead strip at y 232-338 (amodel/wing.py L378; mesh bounds from round 6). So the rule reproduces a real pocket and is not a blanket fudge. By hand from common.py: S 203350 analytic vs 200905 measured (-1.2%); MAC 229.5 vs 227.5; x_ac 57.4 vs 58.6 mm (hub notch at the LE). Plausible.
+- **Value**: the 0.15 is sized from concept A (9.6%) with margin, and the standards entry says so honestly ("value internal convention, sized to cover … concept A's 23.6 mm"). The principle (a wing's planform includes its control surfaces) is the standard definition. A tighter principle would bridge only where the gap contains the child's hinge line (its articulation pivot lies between the pieces), which needs no fraction at all. Suggested, not required.
+- **What it allows (documented)**: s4b, a 1 g hinged 10 x 200 mm strip 40 mm *ahead of the LE* on a 1 mm hinged rod, is bridged and takes SM from 16.8% FAIL to **12.0% PASS**. s5, a hinged 30 mm "slat" 2 mm off the LE, likewise gives 12.0% PASS (that one is legitimate geometry if real). Both need deliberately added hinged components that appear by name in plane.yaml, in the scorecard ("…geometry of wng-001, …, rod3, fwdstrip3") and in the viewer. README "Known limits" lists "a fake hinged piece within 15% of a real control surface's chord is counted". s4b shows the piece need not be near a control surface (it was ahead of the LE), so reword to "any hinged (articulated) child of the wing within 15% of local chord, anywhere along the chord". Wording only; non-blocking.
+
+### The conductor's position
+
+I agree with it, with one condition that is already met. After rounds 5-7 every remaining hole needs a *deliberately fabricated* entry: a hinged strip, a 1 mm rod, a lump typed `other` with a written `reason` under 3%/5%. Each is visible as a named component in the design file, the scorecard and the viewer. None can be produced by an honest import or an honest modelling mistake, and none changes a result without adding something a reviewer can point at. Chasing them in code would mean deciding whether geometry is "real", which a validator can't do. The condition is that the limits are written where users will read them. README "Known limits (v0.4)" does that, and says plainly that a human reviewer must confirm the model matches the aircraft. Each limit was reproduced here (d4, s4b) and behaves as documented. The holes I treated as blockers in earlier rounds (s1, s4, the c1/c2 planform shifts, d1/d2 type disguise, placeholders printing PASS, kinematic_link accepted) needed no fake parts, and those are all closed.
+
+### Verdict
+
+**MERGE-READY.** No remaining blocker that is not already a documented limit.
+
+### Non-blocking (for a follow-up)
+
+1. README: reword the hinged-piece limit as above (s4b).
+2. validator-comparison.md: one sentence on the 3 detached LE slivers.
+3. Consider pivot-in-gap bridging instead of a 15% fraction; consider computing `envelope` (the base of the 15%) from the root and adjacent children only, since detached material currently enlarges it.
+4. Still open from earlier rounds: `rating_basis` optional in the schema; motor→prop chain via the mount (m2); validate.yml "Score every design" red on main, which predates this branch.
