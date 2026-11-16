@@ -960,7 +960,7 @@
    "kind": "placeholder",
    "parent": "WNG-001",
    "rated_load_n": 1.2,
-   "source": "placeholder - not from source: CT-TIE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.15 N, rounded up)"
+   "source": "placeholder - not from source: CT-TIE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 1.15 N, rounded up)"
   },
   "E-AVN-01": {
    "child": "AVN-001",
@@ -976,7 +976,7 @@
    "kind": "placeholder",
    "parent": "AVN-001",
    "rated_load_n": 0.1,
-   "source": "placeholder - not from source: CT-GEL-PAD has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.04 N, rounded up)"
+   "source": "placeholder - not from source: CT-GEL-PAD has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.04 N, rounded up)"
   },
   "E-AVN-03": {
    "child": "AVN-002",
@@ -984,7 +984,7 @@
    "kind": "placeholder",
    "parent": "AVN-007",
    "rated_load_n": 0.8,
-   "source": "placeholder - not from source: CT-GEL-PAD has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.75 N, rounded up)"
+   "source": "placeholder - not from source: CT-GEL-PAD has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.75 N, rounded up)"
   },
   "E-AVN-04": {
    "child": "AVN-003",
@@ -992,7 +992,7 @@
    "kind": "placeholder",
    "parent": "AVN-001",
    "rated_load_n": 0.3,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.20 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.20 N, rounded up)"
   },
   "E-AVN-05": {
    "child": "AVN-004",
@@ -1000,7 +1000,7 @@
    "kind": "placeholder",
    "parent": "AVN-001",
    "rated_load_n": 0.6,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.60 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.60 N, rounded up)"
   },
   "E-AVN-06": {
    "child": "AVN-005",
@@ -1008,7 +1008,7 @@
    "kind": "placeholder",
    "parent": "AVN-001",
    "rated_load_n": 0.2,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.13 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.13 N, rounded up)"
   },
   "E-AVN-07": {
    "child": "AVN-006",
@@ -1024,7 +1024,7 @@
    "kind": "placeholder",
    "parent": "AVN-001",
    "rated_load_n": 0.5,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.42 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.42 N, rounded up)"
   },
   "E-AVN-09": {
    "child": "AVN-002",
@@ -1336,7 +1336,7 @@
    "kind": "placeholder",
    "parent": "GER-001-UR",
    "rated_load_n": 0.1,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
   },
   "E-GER-03": {
    "child": "GER-001-UL",
@@ -1352,7 +1352,7 @@
    "kind": "placeholder",
    "parent": "GER-001-UL",
    "rated_load_n": 0.1,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
   },
   "E-GER-05": {
    "child": "GER-001-LR",
@@ -1368,7 +1368,7 @@
    "kind": "placeholder",
    "parent": "GER-001-LR",
    "rated_load_n": 0.1,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
   },
   "E-GER-07": {
    "child": "GER-001-LL",
@@ -1384,7 +1384,7 @@
    "kind": "placeholder",
    "parent": "GER-001-LL",
    "rated_load_n": 0.1,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
   },
   "E-HRN-20": {
    "child": "HRN-001",
@@ -1392,7 +1392,7 @@
    "kind": "placeholder",
    "parent": "WNG-001",
    "rated_load_n": 0.9,
-   "source": "placeholder - not from source: CT-TIE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.81 N, rounded up)"
+   "source": "placeholder - not from source: CT-TIE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.81 N, rounded up)"
   },
   "E-HRN-21": {
    "child": "HRN-002",
@@ -1400,7 +1400,7 @@
    "kind": "placeholder",
    "parent": "WNG-001",
    "rated_load_n": 0.4,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.35 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.35 N, rounded up)"
   },
   "E-HRN-30": {
    "child": "CGE-008",
@@ -1424,7 +1424,7 @@
    "kind": "placeholder",
    "parent": "WNG-001",
    "rated_load_n": 0.1,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)"
   },
   "E-HRN-33": {
    "child": "HRN-003-L",
@@ -1432,7 +1432,7 @@
    "kind": "placeholder",
    "parent": "WNG-001",
    "rated_load_n": 0.1,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)"
   },
   "E-HRN-40": {
    "child": "CGE-001",
@@ -1680,7 +1680,7 @@
    "kind": "placeholder",
    "parent": "AVN-001",
    "rated_load_n": 0.9,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.88 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.88 N, rounded up)"
   },
   "E-PRP-10": {
    "child": "PRP-004-UR",
@@ -1752,7 +1752,7 @@
    "kind": "placeholder",
    "parent": "CGE-008",
    "rated_load_n": 38.8,
-   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand; retention.load_n 38.8 N in EDGES (4.5 x g x subtree mass = 0.24 N, rounded up)"
+   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'); set to the platform's own demand; retention.load_n 38.8 N in EDGES (4.5 x g x subtree mass = 0.24 N, rounded up)"
   },
   "E-PWR-02": {
    "child": "PWR-001",
@@ -1760,7 +1760,7 @@
    "kind": "placeholder",
    "parent": "CGE-008",
    "rated_load_n": 12.0,
-   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up)"
+   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up)"
   },
   "E-PWR-03": {
    "child": "PWR-003",
@@ -1768,7 +1768,7 @@
    "kind": "placeholder",
    "parent": "CGE-008",
    "rated_load_n": 0.2,
-   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.15 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.15 N, rounded up)"
   },
   "E-PWR-04": {
    "child": "PWR-001",
@@ -1776,7 +1776,7 @@
    "kind": "placeholder",
    "parent": "PWR-002",
    "rated_load_n": 12.0,
-   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up)"
+   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up)"
   },
   "E-WNG-01": {
    "child": "WNG-002",
@@ -1832,7 +1832,7 @@
    "kind": "placeholder",
    "parent": "WNG-001",
    "rated_load_n": 1.1,
-   "source": "placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)"
   },
   "E-WNG-11": {
    "child": "WNG-006-L",
@@ -1840,7 +1840,7 @@
    "kind": "placeholder",
    "parent": "WNG-001",
    "rated_load_n": 1.1,
-   "source": "placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)"
+   "source": "placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)"
   },
   "E-WNG-20": {
    "child": "WNG-007-R",

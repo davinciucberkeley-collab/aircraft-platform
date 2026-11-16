@@ -91,8 +91,11 @@ def rating(edge: dict, parent: dict, child: dict, area_mm2: float | None) -> tup
             return round(limit * k * (1 + ms), 1), "doc", f"{STRUCT}{text}; rated = {limit:g} N x K {k:.5g} x (1 + MS {ms:g})"
         return round(d[1], 1), "doc", f"{STRUCT}{d[2]}"
     if via in PLACEHOLDER_VIA:
+        basis = ("structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'" if via == "CT-STRAP-VELCRO" else
+                 "no capacity found in qp/A/structures or the EDGES notes, see "
+                 "knowledge/sources/dbf-concept-a-joint-capacities.md")
         return None, "placeholder", (f"placeholder - not from source: {via} has no published or tested capacity "
-                                     "(structures_run.md L225 'strap ... not tested'); set to the platform's own demand")
+                                     f"({basis}); set to the platform's own demand")
     js = edge.get("joint_stack")
     if js:
         d = _fastener_d(js.get("fastener", ""))

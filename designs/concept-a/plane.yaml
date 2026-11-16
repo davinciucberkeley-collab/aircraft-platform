@@ -1234,7 +1234,7 @@ attachments:
   # rating [derived] contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)
   - {id: E-WNG-06, parent: wng-002, child: wng-005-l, method: glued, location: [57.701, -379.846, 4.374], rated_load_n: 1247.8}
   # E-WNG-10 CT-TAPE-HINGE (WNG-001 -> WNG-006-R): tape hinge, upper surface
-  # rating [placeholder] placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)
   # articulation: pivot = joint origin of E-WNG-10 x1000 (hinge line x 183.75 = (1 - ELEV_FRAC 0.25) x chord 245, mid-span of the elevon);
   # axis = -Y so that a positive angle lifts the trailing edge (the source rotates about +Y, +angle = trailing edge down);
   # range +-21 deg = joint limits (ELEV_STOP 21, amodel/common.py); poses: neutral 0, up +21, down -21
@@ -1242,7 +1242,7 @@ attachments:
      articulation: {type: revolute, pivot: [183.75, 195, 0.295], axis: [0, -1, 0], range_deg: [-21, 21],
                     poses: {neutral: 0, up: 21, down: -21}}}
   # E-WNG-11 CT-TAPE-HINGE (WNG-001 -> WNG-006-L): tape hinge, upper surface
-  # rating [placeholder] placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)
   # articulation: pivot = joint origin of E-WNG-11 x1000 (hinge line x 183.75 = (1 - ELEV_FRAC 0.25) x chord 245, mid-span of the elevon);
   # axis = -Y so that a positive angle lifts the trailing edge (the source rotates about +Y, +angle = trailing edge down);
   # range +-21 deg = joint limits (ELEV_STOP 21, amodel/common.py); poses: neutral 0, up +21, down -21
@@ -1408,7 +1408,7 @@ attachments:
   # rating [derived] 1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)
   - {id: E-PRP-08, parent: prp-004-ll, child: prp-002-ll, method: bolted, location: [-117.299, -218.411, -165.739], rated_load_n: 6390}
   # E-PRP-09 CT-TAPE-FOAM (AVN-001 -> PRP-003): ESC on the plate, foam tape + tie
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.88 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.88 N, rounded up)
   - {id: E-PRP-09, parent: avn-001, child: prp-003, method: tape, location: [99.028, 0.166, 13.88], rated_load_n: 0.9}
   # E-PRP-10 CT-A-PROP-ADAPTER (PRP-001-UR -> PRP-004-UR): T-Motor prop adapter flange on the bell top, 2 x M3 at 12 mm pitch (drawing: 2-Phi3.2, Phi5.7 counterbore)
   # rating [derived] 2 x M3 tension 5.03 mm2 (structures_a.py L228) x 450 MPa (arm_cup_checks.md steel tension allowable, EST)
@@ -1435,40 +1435,40 @@ attachments:
   # rating [derived] 1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)
   - {id: E-PRP-17, parent: prp-004-ll, child: prp-005-ll, method: bolted, location: [-129.908, -220.889, -168.918], rated_load_n: 6390}
   # E-PWR-01 CT-STRAP-VELCRO (CGE-008 -> PWR-002): buckle strap round pack and tray: over the pack top, outside the tray end walls, under the tray plate AND the 12 mm bridge tube CGE-004 (tangent to the plate underside, z
-  # rating [placeholder] placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand; retention.load_n 38.8 N in EDGES (4.5 x g x subtree mass = 0.24 N, rounded up); method note: hook-and-loop strap round the pack: nearest enum is clamp
+  # rating [placeholder] placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'); set to the platform's own demand; retention.load_n 38.8 N in EDGES (4.5 x g x subtree mass = 0.24 N, rounded up); method note: hook-and-loop strap round the pack: nearest enum is clamp
   - {id: E-PWR-01, parent: cge-008, child: pwr-002, method: clamp, location: [-16.838, -54.5, 16.049], rated_load_n: 38.8}
   # E-PWR-02 CT-STRAP-VELCRO (CGE-008 -> PWR-001): pack sits on the anti-slip pad PWR-003 on the tray floor, between the integral lips; strap PWR-002 holds it
-  # rating [placeholder] placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up); method note: hook-and-loop strap round the pack: nearest enum is clamp
+  # rating [placeholder] placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up); method note: hook-and-loop strap round the pack: nearest enum is clamp
   - {id: E-PWR-02, parent: cge-008, child: pwr-001, method: clamp, location: [-11.698, -52.5, 18.628], rated_load_n: 12}
   # E-PWR-03 CT-TAPE-FOAM (CGE-008 -> PWR-003): pad stuck on the tray plate (adhesive-backed sheet, EST)
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.15 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.15 N, rounded up)
   - {id: E-PWR-03, parent: cge-008, child: pwr-003, method: tape, location: [-10.734, -0.937, 8], rated_load_n: 0.2}
   # E-PWR-04 CT-STRAP-VELCRO (PWR-002 -> PWR-001): strap bears on the pack top face
-  # rating [placeholder] placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up); method note: hook-and-loop strap round the pack: nearest enum is clamp
+  # rating [placeholder] placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up); method note: hook-and-loop strap round the pack: nearest enum is clamp
   - {id: E-PWR-04, parent: pwr-002, child: pwr-001, method: clamp, location: [-14.971, 0.081, 38], rated_load_n: 12}
   # E-AVN-01 CT-CA (WNG-001 -> AVN-001): plate base follows the upper skin (same vertices as the core)
   # rating [derived] contact area 7314 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
   - {id: E-AVN-01, parent: wng-001, child: avn-001, method: glued, location: [85.714, 2.787, 11.981], rated_load_n: 629}
   # E-AVN-02 CT-GEL-PAD (AVN-001 -> AVN-007): four thin foam-tape pads on the plate (FC on the wing centre, not on the cage hub: SITL-FLIGHT follow-up 2; hard mount, BOARD D-186)
-  # rating [placeholder] placeholder - not from source: CT-GEL-PAD has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.04 N, rounded up); method note: adhesive vibration-isolation pad: nearest enum is tape
+  # rating [placeholder] placeholder - not from source: CT-GEL-PAD has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.04 N, rounded up); method note: adhesive vibration-isolation pad: nearest enum is tape
   - {id: E-AVN-02, parent: avn-001, child: avn-007, method: tape, location: [52.771, 7.69, 13.88], rated_load_n: 0.1}
   # E-AVN-03 CT-GEL-PAD (AVN-007 -> AVN-002): FC on the tape pads, M2 screws (hard mount; gel only if its frequency is measured at 40-70 Hz)
-  # rating [placeholder] placeholder - not from source: CT-GEL-PAD has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.75 N, rounded up); method note: adhesive vibration-isolation pad: nearest enum is tape
+  # rating [placeholder] placeholder - not from source: CT-GEL-PAD has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.75 N, rounded up); method note: adhesive vibration-isolation pad: nearest enum is tape
   - {id: E-AVN-03, parent: avn-007, child: avn-002, method: tape, location: [52.721, 7.001, 16.88], rated_load_n: 0.8}
   # E-AVN-04 CT-TAPE-FOAM (AVN-001 -> AVN-003): foam tape + tie
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.20 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.20 N, rounded up)
   - {id: E-AVN-04, parent: avn-001, child: avn-003, method: tape, location: [112.622, -46.088, 13.88], rated_load_n: 0.3}
   # E-AVN-05 CT-TAPE-FOAM (AVN-001 -> AVN-004): foam tape + tie
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.60 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.60 N, rounded up)
   - {id: E-AVN-05, parent: avn-001, child: avn-004, method: tape, location: [57.32, 40.549, 13.88], rated_load_n: 0.6}
   # E-AVN-06 CT-TAPE-FOAM (AVN-001 -> AVN-005): foam tape + tie
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.13 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.13 N, rounded up)
   - {id: E-AVN-06, parent: avn-001, child: avn-005, method: tape, location: [52.041, -45.196, 13.88], rated_load_n: 0.2}
   # E-AVN-07 CT-EPOXY (WNG-001 -> AVN-006): pitot in a groove in the LE at y = +0.41 (outside the rotor wash, EST)
   # rating [derived] contact area 391 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)
   - {id: E-AVN-07, parent: wng-001, child: avn-006, method: glued, location: [24.081, 408.596, -0.497], rated_load_n: 33.6}
   # E-AVN-08 CT-TAPE-FOAM (AVN-001 -> AVN-008): cover stands on the plate (and its front ramp on the skin ahead of the plate), foam tape + two ties; removable for FC access (D-198)
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.42 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.42 N, rounded up)
   - {id: E-AVN-08, parent: avn-001, child: avn-008, method: tape, location: [79.604, 26.644, 13.88], rated_load_n: 0.5}
   # E-AVN-09 CT-HW-SEATED (HWC-001 -> AVN-002): four M2 screws through the stack standoffs (hardware of E-AVN-03)
   # rating [derived] 4 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)
@@ -1527,34 +1527,34 @@ attachments:
   # rating [doc] redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)
   - {id: E-GER-01, parent: fin-001-r, child: ger-001-ur, method: glued, location: [286.974, 376.198, 174.417], rated_load_n: 2512.7}
   # E-GER-02 CT-TAPE-FOAM (GER-001-UR -> GER-002-UR): pad PSA on the shoe plate
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
   - {id: E-GER-02, parent: ger-001-ur, child: ger-002-ur, method: tape, location: [307.5, 380.36, 177.083], rated_load_n: 0.1}
   # E-GER-03 CT-EPOXY (FIN-001-L -> GER-001-UL): shoe cap on the tube end
   # rating [doc] redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)
   - {id: E-GER-03, parent: fin-001-l, child: ger-001-ul, method: glued, location: [286.974, -383.802, 174.417], rated_load_n: 2512.7}
   # E-GER-04 CT-TAPE-FOAM (GER-001-UL -> GER-002-UL): pad PSA on the shoe plate
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
   - {id: E-GER-04, parent: ger-001-ul, child: ger-002-ul, method: tape, location: [307.5, -379.64, 177.083], rated_load_n: 0.1}
   # E-GER-05 CT-EPOXY (FIN-001-R -> GER-001-LR): shoe cap on the tube end
   # rating [doc] redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)
   - {id: E-GER-05, parent: fin-001-r, child: ger-001-lr, method: glued, location: [287.505, 375.352, -173.974], rated_load_n: 2512.7}
   # E-GER-06 CT-TAPE-FOAM (GER-001-LR -> GER-002-LR): pad PSA on the shoe plate
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
   - {id: E-GER-06, parent: ger-001-lr, child: ger-002-lr, method: tape, location: [307.5, 379.734, -176.414], rated_load_n: 0.1}
   # E-GER-07 CT-EPOXY (FIN-001-L -> GER-001-LL): shoe cap on the tube end
   # rating [doc] redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)
   - {id: E-GER-07, parent: fin-001-l, child: ger-001-ll, method: glued, location: [287.505, -384.648, -173.974], rated_load_n: 2512.7}
   # E-GER-08 CT-TAPE-FOAM (GER-001-LL -> GER-002-LL): pad PSA on the shoe plate
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)
   - {id: E-GER-08, parent: ger-001-ll, child: ger-002-ll, method: tape, location: [307.5, -379.858, -176.677], rated_load_n: 0.1}
   # E-HRN-30 CT-EPOXY (HRN-003-R -> CGE-008): raceway bonded to the tray plate underside (top face z 6.0), lowered from above before the tray, in its foam groove (D-199)
   # rating [derived] contact area 645 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)
   - {id: E-HRN-30, parent: hrn-003-r, child: cge-008, method: glued, location: [-11.924, 18.772, 6], rated_load_n: 1290.6}
   # E-HRN-32 CT-TAPE-FOAM (WNG-001 -> HRN-003-R): raceway taped in its foam groove (D-199)
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)
   - {id: E-HRN-32, parent: wng-001, child: hrn-003-r, method: tape, location: [22.55, 21.083, -0.116], rated_load_n: 0.1}
   # E-HRN-33 CT-TAPE-FOAM (WNG-001 -> HRN-003-L): raceway taped in its foam groove (D-199)
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)
   - {id: E-HRN-33, parent: wng-001, child: hrn-003-l, method: tape, location: [22.55, -16.917, -0.116], rated_load_n: 0.1}
   # E-HRN-31 CT-EPOXY (HRN-003-L -> CGE-008): raceway bonded to the tray plate underside (top face z 6.0), lowered from above before the tray, in its foam groove (D-199)
   # rating [derived] contact area 656 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)
@@ -1584,11 +1584,11 @@ attachments:
   # rating [derived] contact area 24 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)
   - {id: E-HRN-53, parent: hrn-003-l, child: hrn-004-ll, method: glued, location: [-52.773, -23.628, -0.6], rated_load_n: 47.5}
   # E-HRN-21 CT-TAPE-FOAM (WNG-001 -> HRN-002): XT60 pair and tail taped on the skin (foam tape) and tied
-  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.35 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.35 N, rounded up)
   - {id: E-HRN-21, parent: wng-001, child: hrn-002, method: tape, location: [97.511, 63.024, 11.765], rated_load_n: 0.4}
   # E-HRN-20 CT-TIE (WNG-001 -> HRN-001): harness lump: ties and tape on the wing
-  # rating [placeholder] placeholder - not from source: CT-TIE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.81 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TIE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 0.81 N, rounded up)
   - {id: E-HRN-20, parent: wng-001, child: hrn-001, method: zip-tie, location: [30, 0, 20], rated_load_n: 0.9}
   # E-ASM-01 CT-TIE (WNG-001 -> HRD-001): hardware lump
-  # rating [placeholder] placeholder - not from source: CT-TIE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.15 N, rounded up)
+  # rating [placeholder] placeholder - not from source: CT-TIE has no published or tested capacity (no capacity found in qp/A/structures or the EDGES notes, see knowledge/sources/dbf-concept-a-joint-capacities.md); set to the platform's own demand (4.5 x g x subtree mass = 1.15 N, rounded up)
   - {id: E-ASM-01, parent: wng-001, child: hrd-001, method: zip-tie, location: [100, 0, 0], rated_load_n: 1.2}
