@@ -457,13 +457,21 @@ def _inside(parts: list[trimesh.Trimesh], p) -> bool:
 
 
 def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]) -> list[CheckResult]:
-    """Schema 0.4 point_mass placement: (i) at its position (+cg_offset) it lies inside, or within attach_tolerance_mm
-    of, a part it is attached to that has geometry; (ii) it is not inside any propeller's geometry (the prop disc).
+    """Schema 0.4 point_mass placement.
+    Strict (default): (i) at its position (+cg_offset) it lies inside, or within attach_tolerance_mm of, a part it is
+    attached to that has geometry.
+    Distributed (distributed: true, type other only, with a reason): (i) it lies inside the envelope (convex hull of all
+    non-propeller geometry), within attach_tolerance_mm, and its mass is capped per item and in total.
+    Both: (ii) it is not inside any propeller's geometry (the prop disc).
     Static configuration only: a point mass on an articulated part is not posed."""
     tol = std["geometry"]["attach_tolerance_mm"]["value"]
+    lim_each = std["geometry"]["distributed_mass_max_fraction_each"]["value"]
+    lim_total = std["geometry"]["distributed_mass_max_fraction_total"]["value"]
+    total_g = sum(c["mass_g"] for c in design.components)
     props = [c["id"] for c in design.components if c["type"] == "propeller" and c["id"] in meshes]
     res: list[CheckResult] = []
     envelope = None  # convex hull of all non-propeller geometry, built once if a distributed mass needs it
+    dist_g = 0.0
     for pm in design.components:
         if not is_point_mass(pm):
             continue
@@ -471,10 +479,23 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
         p = np.array(pm["position"], dtype=float) + np.array(pm.get("cg_offset", [0, 0, 0]), dtype=float)
         at = f"({p[0]:.1f}, {p[1]:.1f}, {p[2]:.1f}) mm"
         distributed = bool(pm["geometry"]["point_mass"].get("distributed", False))
+        problems: list[str] = []
+        extra: list[CheckResult] = []
         hosts = sorted({a["child"] if a["parent"] == cid else a["parent"] for a in atts if cid in (a["parent"], a["child"])}
                        & set(meshes))
-        problems = []
         if distributed:
+            dist_g += pm["mass_g"]
+            if pm["type"] != "other":
+                extra.append(CheckResult("T1.point_mass_location", FAIL,
+                                         f"{cid}: distributed point masses are only for type other (lumped hardware, harness); "
+                                         f"{pm['type']} parts must be modelled with geometry",
+                                         STD + "distributed_mass_max_fraction_each"))
+            share = pm["mass_g"] / total_g
+            if share > lim_each:
+                extra.append(CheckResult("T1.point_mass_location", FAIL,
+                                         f"{cid}: {pm['mass_g']:.1f} g is {share:.1%} of the {total_g:.0f} g aircraft; "
+                                         f"a distributed point mass may carry at most {lim_each:.0%}",
+                                         STD + "distributed_mass_max_fraction_each"))
             if envelope is None:
                 pts = np.vstack([m.vertices for k in meshes if k not in props for m in meshes[k]])
                 envelope = [trimesh.convex.convex_hull(pts)]
@@ -492,17 +513,22 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
         for pid in props:
             if _inside(meshes[pid], p):
                 problems.append(f"{cid} at {at} lies inside the prop disc of {pid}")
-        if not problems and distributed:
+        if problems:
+            res += [CheckResult("T1.point_mass_location", FAIL, m, STD + "attach_tolerance_mm") for m in problems]
+        elif distributed:
             res.append(CheckResult("T1.point_mass_location", PASS,
                                    f"{cid} at {at}: distributed mass inside the aircraft's envelope, outside every prop disc",
                                    STD + "attach_tolerance_mm"))
-            continue
-        if problems:
-            res += [CheckResult("T1.point_mass_location", FAIL, m, STD + "attach_tolerance_mm") for m in problems]
         else:
             res.append(CheckResult("T1.point_mass_location", PASS,
                                    f"{cid} at {at}: on or within {tol} mm of an attached part, outside every prop disc",
                                    STD + "attach_tolerance_mm"))
+        res += extra
+    if dist_g / total_g > lim_total:
+        res.append(CheckResult("T1.point_mass_location", FAIL,
+                               f"distributed point masses together carry {dist_g:.1f} g ({dist_g / total_g:.1%} of the "
+                               f"{total_g:.0f} g aircraft); the limit is {lim_total:.0%}",
+                               STD + "distributed_mass_max_fraction_total"))
     return res
 
 
@@ -682,10 +708,12 @@ def _articulated_subtree(design: Design, cid: str) -> list[str]:
 
 
 def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
-    """Schema 0.4 planform: its leading edge, trailing edge and span must match the component's real geometry.
-    Both are compared in the planform's own axes (x chordwise from the root LE, y spanwise), so rotation_deg is allowed.
-    The planform outline is the lifting_surface_halves vertices, the same points as its pseudo-component mesh."""
+    """Schema 0.4 planform: at each spanwise station (0, 25, 50, 75, 95 % of the semi-span, both sides if mirrored) the
+    real geometry's chordwise extent must match the planform's leading and trailing edge there, within
+    planform_match_tolerance_fraction x root_chord. The geometry is the component plus its articulated children at 0 deg.
+    Compared in the planform's own axes (x chordwise from the root LE, y spanwise), so rotation_deg is allowed."""
     tol = std["aero"]["planform_match_tolerance_fraction"]["value"]
+    stations = (0.0, 0.25, 0.50, 0.75, 0.95)
     res: list[CheckResult] = []
     for c in design.components:
         if "planform" not in c:
@@ -699,25 +727,64 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
         ls = pf["lifting_surface"]
         origin = np.array(pf["origin"], dtype=float)
         rot = rotation_matrix(pf.get("rotation_deg"))
-        outline = np.vstack(lifting_surface_halves(ls))
         geo_ids = _articulated_subtree(design, c["id"])
-        real_body = np.vstack([m.vertices for k in geo_ids for m in component_parts(design.component(k), design.base_dir)])
-        real = (rot.T @ (real_body - origin).T).T
         scope = f"the geometry of {', '.join(geo_ids)}"
-        diffs = {"LE": float(real[:, 0].min() - outline[:, 0].min()),
-                 "TE": float(real[:, 0].max() - outline[:, 0].max()),
-                 "span": float(np.ptp(real[:, 1]) - np.ptp(outline[:, 1]))}
-        limits = {"LE": tol * ls["root_chord"], "TE": tol * ls["root_chord"], "span": tol * ls["span"]}
-        bad = [f"{k} off by {d:+.1f} mm (limit {limits[k]:.1f} mm)" for k, d in diffs.items() if abs(d) > limits[k]]
-        data = {k: round(v, 2) for k, v in diffs.items()}
+        to_pf = np.eye(4)  # body frame -> planform frame
+        to_pf[:3, :3] = rot.T
+        to_pf[:3, 3] = -rot.T @ origin
+        parts = []
+        for k in geo_ids:
+            for m in component_parts(design.component(k), design.base_dir):
+                m = m.copy()
+                m.apply_transform(to_pf)
+                parts.append(m)
+        if not parts:
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL, f"{c['id']}: no geometry for {scope}",
+                                   STD + "planform_match_tolerance_fraction"))
+            continue
+        mirrored = ls.get("mirrored", True)
+        semi = ls["span"] / 2 if mirrored else ls["span"]
+        cr, ct = ls["root_chord"], ls["tip_chord"]
+        sweep = math.tan(math.radians(ls.get("sweep_le_deg", 0)))
+        lim = tol * cr
+        rows = []  # (label, dLE, dTE) with None for a station that has no geometry
+        for f in stations:
+            for side in ((1,) if (f == 0 or not mirrored) else (1, -1)):
+                y = side * f * semi
+                ay = abs(y)
+                le = ay * sweep  # same planform outline as lifting_surface_halves
+                te = le + cr + (ct - cr) * ay / semi
+                sign = "" if f == 0 or not mirrored else ("+" if side > 0 else "-")
+                label = f"{sign}{f * 100:.0f}%"
+                lo, hi = [], []
+                for m in parts:
+                    sec = m.section(plane_origin=[0.0, y, 0.0], plane_normal=[0.0, 1.0, 0.0])
+                    if sec is not None:
+                        xs = sec.vertices[:, 0]
+                        lo.append(float(xs.min()))
+                        hi.append(float(xs.max()))
+                rows.append((label, min(lo) - le, max(hi) - te) if lo else (label, None, None))
+        bad = []
+        for label, dle, dte in rows:
+            if dle is None:
+                bad.append((math.inf, f"{label} span: no geometry at this station"))
+                continue
+            worst = max(abs(dle), abs(dte))
+            if worst > lim:
+                bad.append((worst, f"{label} span: LE {dle:+.1f} mm, TE {dte:+.1f} mm"))
+        data = {"stations": len(rows), "limit_mm": round(lim, 2)}
         if bad:
+            bad.sort(key=lambda t: -t[0])
+            shown = "; ".join(t[1] for t in bad[:3])
             res.append(CheckResult("T3.planform_matches_geometry", FAIL,
-                                   f"{c['id']}: planform does not match {scope}: " + "; ".join(bad),
+                                   f"{c['id']}: planform does not match {scope} at {len(bad)} of {len(rows)} stations "
+                                   f"(limit {lim:.1f} mm), worst first: {shown}",
                                    STD + "planform_match_tolerance_fraction", data))
         else:
             res.append(CheckResult("T3.planform_matches_geometry", PASS,
-                                   f"{c['id']}: planform LE/TE within {limits['LE']:.1f} mm, span within {limits['span']:.1f} mm "
-                                   f"of {scope}", STD + "planform_match_tolerance_fraction", data))
+                                   f"{c['id']}: planform LE and TE match {scope} at all {len(rows)} stations "
+                                   f"(0-95% of the span from the root, within {lim:.1f} mm)",
+                                   STD + "planform_match_tolerance_fraction", data))
     return res
 
 

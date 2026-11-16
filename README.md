@@ -52,4 +52,5 @@ See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exa
 - Aero is first-order: neutral point ignores the fuselage; no VLM yet (AeroSandbox is the planned upgrade).
 - Lifting surfaces are tapered slabs, not real airfoils, for collision purposes.
 - Several thresholds are `source: pending` — see `knowledge/sources/std-SUMMARY.md`.
+- Planform match checks that the declared planform agrees with the modelled geometry; it cannot tell real geometry from fake parts added to pad it. A reviewer must confirm control surfaces are real.
 - Articulation is revolute only, and mass properties, the drop test and tiers 2–3 use the 0° configuration unless `flight.hover_pose` / `flight.cruise_pose` name a pose.

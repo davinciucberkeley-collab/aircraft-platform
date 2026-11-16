@@ -460,7 +460,14 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
                                if distributed else "")
         add(f"    description: {_s(desc)}")
         if proxy:
-            add("    geometry: {point_mass: {distributed: true}}" if distributed else "    geometry: {point_mass: {}}")
+            if distributed:
+                reason = {"HRD-001": "hardware lumps: fasteners and small hardware spread over the airframe; "
+                                     "skipped as 'mass proxy' by redesign/collision/collide.py",
+                          "HRN-001": "wiring harness routed through the arm tubes and bay; "
+                                     "skipped as 'mass proxy' by redesign/collision/collide.py"}[pid]
+                add(f"    geometry: {{point_mass: {{distributed: true, reason: {_s(reason)}}}}}")
+            else:
+                add("    geometry: {point_mass: {}}")
             add(f"    position: {_vec([x * 1000 for x in proxies[pid]['cg_declared']], 3)}")
         else:
             add(f"    geometry: {{mesh: {{file: meshes/{slug}.stl}}}}")

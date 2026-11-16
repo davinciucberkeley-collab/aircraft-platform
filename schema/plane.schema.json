@@ -582,8 +582,28 @@
                 "distributed": {
                   "type": "boolean",
                   "default": false,
-                  "description": "v0.4. Mass of items spread over the aircraft (harness, hardware) lumped at their combined CG, which may lie in open space. Its position must lie inside the aircraft's envelope (convex hull of all non-propeller geometry), not within attach_tolerance_mm of a host."
+                  "description": "v0.4. Mass of items spread over the aircraft (harness, hardware) lumped at their combined CG, which may lie in open space. Its position must lie inside the aircraft's envelope (convex hull of all non-propeller geometry), not within attach_tolerance_mm of a host. Only for component type other, and limited by standards geometry.distributed_mass_max_fraction_each / _total."
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "v0.4. Why this mass is distributed rather than modelled. Required when distributed is true."
                 }
+              },
+              "if": {
+                "properties": {
+                  "distributed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "distributed"
+                ]
+              },
+              "then": {
+                "required": [
+                  "reason"
+                ]
               },
               "description": "v0.4. Mass with no extent (a lumped hardware or harness allowance). Counted in mass and CG at `position` (+ cg_offset); never in collision, contact, interference, drop-test collision or machine-fit checks."
             }

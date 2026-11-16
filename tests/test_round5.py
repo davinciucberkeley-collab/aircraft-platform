@@ -115,8 +115,8 @@ def test_planform_shifted_5mm_aft_fails_and_other_t3_checks_still_run():
     sc = _run(_planform_box(5.0), tier=3)  # limit 2% x 245 mm = 4.9 mm
     rows = _rows(sc, "T3.planform_matches_geometry")
     assert [r.status for r in rows] == [FAIL]
-    assert "LE off by -5.0 mm (limit 4.9 mm)" in rows[0].message
-    assert "TE off by -5.0 mm (limit 4.9 mm)" in rows[0].message
+    assert "does not match the geometry of wng" in rows[0].message
+    assert "LE -5.0 mm, TE -5.0 mm" in rows[0].message
     assert "T3.stall" in {r.check_id for t in sc.tiers for r in t.results}
 
 
@@ -172,49 +172,77 @@ def test_rating_kinds_from_the_real_rating_function_map_to_basis():
 
 # ---------------------------------------------------------------- A (cont.). distributed point masses
 
-def _distributed_design(pos, distributed: bool, prop: bool = False) -> dict:
-    """Body cube (z -50..50) plus a top box (z 50..90, x/y +-20) so the envelope reaches z 90. The point mass is tied to the
-    body at `pos`, as a distributed mass (envelope test) or a normal point mass (host test)."""
-    geom = {"point_mass": {"distributed": True}} if distributed else {"point_mass": {}}
+def _dist_design(lumps, body_mass=900, prop=False, reason=True) -> dict:
+    """Body cube (z -50..50, mass body_mass) plus a top box (z 50..90, x/y +-20) so the envelope reaches z 90.
+    `lumps`: (id, position, mass_g, type, distributed). Each lump is tied to the body at its position."""
     comps = [
         {"id": "body", "type": "structure", "geometry": {"box": {"size": [100, 100, 100]}}, "position": [0, 0, 0],
-         "mass_g": 100, "manufacturing": dict(MFG)},
+         "mass_g": body_mass, "manufacturing": dict(MFG)},
         {"id": "top", "type": "structure", "geometry": {"box": {"size": [40, 40, 40]}}, "position": [0, 0, 70],
          "mass_g": 10, "manufacturing": dict(MFG)},
-        {"id": "lump", "type": "payload", "geometry": geom, "position": list(pos), "mass_g": 50,
-         "manufacturing": {"method": "purchased"}},
     ]
+    atts = [{"id": "top-tie", "parent": "body", "child": "top", "method": "glued", "location": [0, 0, 50], "rated_load_n": 20}]
+    for lid, pos, mass, typ, distributed in lumps:
+        pm = {"distributed": True, "reason": "test lump"} if distributed else {}
+        if distributed and not reason:
+            pm = {"distributed": True}
+        comps.append({"id": lid, "type": typ, "geometry": {"point_mass": pm}, "position": list(pos), "mass_g": mass,
+                      "manufacturing": {"method": "purchased"}})
+        atts.append({"id": f"{lid}-tie", "parent": "body", "child": lid, "method": "tape", "location": list(pos),
+                     "rated_load_n": 50})
     if prop:
         comps.append(_prop_at_origin())
     return {"schema_version": "0.4", "id": "dist", "name": "distributed", "status": "concept",
             "morphology": {"lift": "other", "vtol_method": "none"}, "root": "body", "components": comps,
-            "attachments": [{"id": "lump-tie", "parent": "body", "child": "lump", "method": "tape",
-                             "location": list(pos), "rated_load_n": 50},
-                            {"id": "top-tie", "parent": "body", "child": "top", "method": "glued",
-                             "location": [0, 0, 50], "rated_load_n": 20}]}
+            "attachments": atts}
 
 
 def test_distributed_point_inside_envelope_but_off_host_passes():
-    # (0, 0, 60): 10 mm above the body top (z 50), inside the hull of body + top box
-    sc = _run(_distributed_design((0, 0, 60), distributed=True), tier=1)
+    # (0, 0, 60): 10 mm above the body top (z 50), inside the hull of body + top box; 20 g of 930 g
+    sc = _run(_dist_design([("lump", (0, 0, 60), 20, "other", True)]), tier=1)
     assert statuses(sc, "T1.point_mass_location") == [PASS]
     # the same point as a normal point mass fails the host test (10 mm off the body)
-    sc_strict = _run(_distributed_design((0, 0, 60), distributed=False), tier=1)
+    sc_strict = _run(_dist_design([("lump", (0, 0, 60), 20, "other", False)]), tier=1)
     assert statuses(sc_strict, "T1.point_mass_location") == [FAIL]
 
 
 def test_distributed_point_outside_envelope_fails():
-    sc = _run(_distributed_design((0, 0, 200), distributed=True), tier=1)  # envelope top is z 90
+    sc = _run(_dist_design([("lump", (0, 0, 200), 20, "other", True)]), tier=1)  # envelope top is z 90
     rows = _rows(sc, "T1.point_mass_location")
     assert [r.status for r in rows] == [FAIL]
     assert "lies outside the aircraft's envelope by 110.0 mm" in rows[0].message
 
 
 def test_distributed_point_inside_prop_disc_fails():
-    sc = _run(_distributed_design((0, 0, 0), distributed=True, prop=True), tier=1)
+    sc = _run(_dist_design([("lump", (0, 0, 0), 20, "other", True)], prop=True), tier=1)
     rows = _rows(sc, "T1.point_mass_location")
     assert [r.status for r in rows] == [FAIL]
     assert "lies inside the prop disc of prop" in rows[0].message
+
+
+def test_distributed_on_type_payload_fails():
+    sc = _run(_dist_design([("lump", (0, 0, 40), 20, "payload", True)]), tier=1)
+    msgs = [r.message for r in _rows(sc, "T1.point_mass_location") if r.status == FAIL]
+    assert any("distributed point masses are only for type other" in m and "payload parts" in m for m in msgs), msgs
+
+
+def test_distributed_single_mass_over_3_percent_fails():
+    sc = _run(_dist_design([("lump", (0, 0, 40), 40, "other", True)], body_mass=900), tier=1)  # 40 of 950 g = 4.2%
+    msgs = [r.message for r in _rows(sc, "T1.point_mass_location") if r.status == FAIL]
+    assert any("may carry at most 3%" in m for m in msgs), msgs
+
+
+def test_distributed_two_masses_each_ok_but_5_2_percent_total_fails():
+    sc = _run(_dist_design([("lump-a", (0, 0, 40), 26, "other", True), ("lump-b", (0, 0, 60), 26, "other", True)],
+                           body_mass=938), tier=1)  # 26 g each of 1000 g = 2.6%; 52 g = 5.2% total
+    msgs = [r.message for r in _rows(sc, "T1.point_mass_location") if r.status == FAIL]
+    assert not any("may carry at most" in m for m in msgs), msgs
+    assert any("together carry 52.0 g (5.2% of the 1000 g aircraft); the limit is 5%" in m for m in msgs), msgs
+
+
+def test_distributed_without_reason_is_t0_fail():
+    sc = _run(_dist_design([("lump", (0, 0, 60), 20, "other", True)], reason=False), tier=5)
+    assert statuses(sc, "T0.schema") == [FAIL]
 
 
 # ---------------------------------------------------------------- C (cont.). planform scope includes articulated children
@@ -251,4 +279,24 @@ def test_planform_without_articulation_on_elevon_fails():
     sc = _run(_elevon_wing(articulated=False), tier=3)
     rows = _rows(sc, "T3.planform_matches_geometry")
     assert [r.status for r in rows] == [FAIL]
-    assert "the geometry of core:" in rows[0].message and "TE off by -61.2 mm" in rows[0].message
+    assert "the geometry of core at" in rows[0].message and "TE -61.2 mm" in rows[0].message
+
+
+def test_planform_shifted_3mm_fails_limit_2_45mm():
+    sc = _run(_planform_box(3.0), tier=3)  # limit 1% x 245 mm = 2.45 mm
+    rows = _rows(sc, "T3.planform_matches_geometry")
+    assert [r.status for r in rows] == [FAIL]
+    assert "LE -3.0 mm, TE -3.0 mm" in rows[0].message
+
+
+def test_planform_matches_only_at_tips_when_geometry_is_notched_fails():
+    """Planform 245 mm chord, rectangular. The geometry is the same box with the trailing half removed for |y| < 225 mm
+    (a notch at 50% of the semi-span): the tips match, the stations inside the notch do not."""
+    data = _planform_box(0.0)
+    comp = data["components"][0]
+    comp["geometry"] = {"box": {"size": [245, 900, 10]}}
+    comp["cavities"] = [{"geometry": {"box": {"size": [140, 450, 20]}}, "position": [70, 0, 0]}]
+    sc = _run(data, tier=3)
+    rows = _rows(sc, "T3.planform_matches_geometry")
+    assert [r.status for r in rows] == [FAIL], [r.message for r in rows]
+    assert "0% span" in rows[0].message and "stations" in rows[0].message

@@ -29,6 +29,14 @@ geometry:
     value: 15.0
     rule: Each articulated joint is also checked at every step of this size across its range (others held at 0 deg), so clipping between named poses is caught.
     source: internal convention
+  distributed_mass_max_fraction_each:
+    value: 0.03
+    rule: "One distributed (lumped) point mass may carry at most this fraction of the aircraft's mass."
+    source: internal convention
+  distributed_mass_max_fraction_total:
+    value: 0.05
+    rule: "All distributed point masses together at most this fraction."
+    source: internal convention
 
 structure:
   landing_load_factor:
@@ -66,8 +74,8 @@ aero:
     rule: Hover moment at or above this fraction of thrust x reference lever is a FAIL; between pass and fail ratios is a WARN.
     source: internal convention
   planform_match_tolerance_fraction:
-    value: 0.02
-    rule: "A declared planform must match its component's real geometry: LE, TE and span within this fraction of chord/span."
+    value: 0.01
+    rule: "A declared planform must match its component's real geometry: at each spanwise station (0-95% of the span from the root, both sides if mirrored) the leading and trailing edges must agree within this fraction of root chord."
     source: internal convention
   aft_surface_efficiency:
     value: 0.9
