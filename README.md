@@ -51,7 +51,7 @@ See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exa
 
 The validator checks that a design is self-consistent and buildable. It can't tell real geometry or mass from plausible-looking fake entries, so a human reviewer still confirms the model matches the aircraft. Accepted residual holes (found in review rounds 5–7, `reviews/2026-11-11-bootstrap.md`):
 - Distributed point masses (type `other`, with a reason) may sit anywhere inside the aircraft's envelope; the risk is bounded by the 3 % each / 5 % total mass caps.
-- Mesh-wing chord: a thin rod across a strip centre bridges it; a fake hinged piece within 15 % of a real control surface's chord is counted; span is the geometry's extent; small leading-edge slivers are ignored as detached.
+- Mesh-wing chord: a thin rod across a strip centre bridges it; any part attached to a wing by a hinged (articulated) joint is counted as control surface, bridged across gaps up to 15 % of local chord, so a fake hinged piece can pad the chord; span is the geometry's extent; small leading-edge slivers are ignored as detached.
 
 - Aero is first-order: neutral point ignores the fuselage; no VLM yet (AeroSandbox is the planned upgrade).
 - Lifting surfaces are tapered slabs, not real airfoils, for collision purposes.
