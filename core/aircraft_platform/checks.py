@@ -22,7 +22,7 @@ from jsonschema import Draft202012Validator
 from .design import (Design, CheckResult, TierReport, Scorecard, SCHEMA_PATH, REPO_ROOT,
                      PASS, FAIL, WARN, SKIP, load_standards)
 from .geometry import (component_parts, lifting_surface_properties, articulated_attachments, att_label,
-                       downstream_ids, posed_component_parts, pose_transforms, pose_angles)
+                       downstream_ids, posed_component_parts, pose_transforms, pose_angles, is_point_mass)
 from .mass import mass_properties
 
 G = 9.80665
@@ -46,9 +46,14 @@ def tier0_schema(design: Design) -> TierReport:
                                "articulation / flight.hover_pose / flight.cruise_pose need schema_version \"0.2\"",
                                "schema/plane.schema.json"))
     uses_v03 = any(c.get("cavities") for c in design.data.get("components", []))
-    if uses_v03 and design.data.get("schema_version") != "0.3":
+    if uses_v03 and design.data.get("schema_version") not in ("0.3", "0.4"):
         res.append(CheckResult("T0.version", FAIL,
-                               "cavities need schema_version \"0.3\"",
+                               "cavities need schema_version \"0.3\" or later",
+                               "schema/plane.schema.json"))
+    uses_v04 = any("point_mass" in c.get("geometry", {}) for c in design.data.get("components", []))
+    if uses_v04 and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "point_mass geometry needs schema_version \"0.4\"",
                                "schema/plane.schema.json"))
     ids = [c["id"] for c in design.components]
     dupes = {i for i in ids if ids.count(i) > 1}
@@ -105,6 +110,59 @@ def _point_distance(parts: list[trimesh.Trimesh], p) -> float:
         sd = float(trimesh.proximity.signed_distance(m, np.array([p]))[0])  # >0 inside
         best = min(best, 0.0 if sd >= 0 else -sd)
     return best
+
+
+class _PairCache:
+    """Overlap volume and gap for component pairs. A pair that does not move relative to itself between two
+    articulated configurations (both parts carry the same transform, e.g. both static) has exactly the result it
+    had in the first configuration, so only pairs with relative motion are recomputed in a pose."""
+
+    def __init__(self):
+        self.ov: dict[tuple[str, str], float] = {}
+        self.dist: dict[tuple[str, str], float] = {}
+        self.loc: dict[str, CheckResult] = {}
+
+    @staticmethod
+    def _key(a: str, b: str) -> tuple[str, str]:
+        return (a, b) if a <= b else (b, a)
+
+    def overlap(self, meshes, tf, a: str, b: str) -> float:
+        static = bool(np.allclose(tf[a], tf[b]))
+        key = self._key(a, b)
+        if static and key in self.ov:
+            return self.ov[key]
+        v = _overlap_volume(meshes[a], meshes[b])
+        if static:
+            self.ov[key] = v
+        return v
+
+    def gap(self, meshes, tf, a: str, b: str) -> float:
+        static = bool(np.allclose(tf[a], tf[b]))
+        key = self._key(a, b)
+        if static and key in self.dist:
+            return self.dist[key]
+        v = _min_distance(meshes[a], meshes[b])
+        if static:
+            self.dist[key] = v
+        return v
+
+
+def _broad_phase(meshes: dict[str, list[trimesh.Trimesh]]) -> list[tuple[str, str]]:
+    """Pairs of components whose axis-aligned boxes overlap (sort and sweep along x). Only these can clip: the exact
+    boolean intersection runs on them and on nothing else (104 parts = 5356 pairs, a few hundred candidates)."""
+    ids = [i for i in meshes if meshes[i]]
+    lo = {i: np.min([p.bounds[0] for p in meshes[i]], axis=0) for i in ids}
+    hi = {i: np.max([p.bounds[1] for p in meshes[i]], axis=0) for i in ids}
+    order = sorted(ids, key=lambda i: lo[i][0])
+    active: list[str] = []
+    pairs = []
+    for b in order:
+        active = [a for a in active if hi[a][0] > lo[b][0]]
+        for a in active:
+            if np.all(lo[a] < hi[b]) and np.all(lo[b] < hi[a]):
+                pairs.append((a, b))
+        active.append(b)
+    return pairs
 
 
 def _fmt_deg(x: float) -> str:
@@ -203,8 +261,13 @@ def _articulation_checks(design: Design, std: dict, meshes: dict) -> list[CheckR
     return res
 
 
-def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict, atts: list[dict]) -> list[CheckResult]:
-    """Attachment contact / overlap / containment, motor-prop pairing and interference for ONE configuration."""
+def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict, atts: list[dict],
+                              cache: _PairCache | None = None) -> list[CheckResult]:
+    """Attachment contact / overlap / containment, motor-prop pairing and interference for ONE configuration.
+    `meshes` holds solid components only (point masses, schema 0.4, are absent); `cache` shares results between
+    configurations (see _PairCache)."""
+    cache = cache or _PairCache()
+    tf = {**{cid: np.eye(4) for cid in meshes}, **tf}
     g = std["geometry"]
     tol = g["attach_tolerance_mm"]["value"]
     max_int = g["interference_max_mm3"]["value"]
@@ -224,14 +287,19 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
         label = a.get("id") or f"{p}->{c}"
         ptype, ctype = design.component(p)["type"], design.component(c)["type"]
         embed = a.get("embed_ok", False)
+        if p not in meshes or c not in meshes:  # an end is a point mass: no extent to touch or overlap
+            res.append(CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint to a point mass "
+                                   f"({p if p not in meshes else c}): no contact or location check",
+                                   STD + "attach_tolerance_mm"))
+            continue
         if embed and "propeller" in (ptype, ctype):
             res.append(CheckResult("T1.attachment_overlap", FAIL,
                                    f"{label}: a propeller can never be an embed_ok joint (its swept disc must not pass into a part)",
                                    STD + "embed_max_fraction_of_child"))
             continue
-        ov = _overlap_volume(meshes[p], meshes[c])
+        ov = cache.overlap(meshes, tf, p, c)
         if ov <= 0:
-            d = _min_distance(meshes[p], meshes[c])
+            d = cache.gap(meshes, tf, p, c)
             if d > tol:
                 res.append(CheckResult("T1.attachment_contact", FAIL,
                                        f"{label}: parts are {d:.1f} mm apart (tolerance {tol} mm)",
@@ -261,18 +329,26 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
             res.append(CheckResult("T1.attachment_location", FAIL, f"{label}: no joint location given",
                                    "schema/plane.schema.json"))
             continue
+        # a non-articulated joint whose two ends carry the same transform has the static result: reuse it
+        same_motion = (not a.get("articulation")) and bool(np.allclose(tf[p], tf[c]))
+        if same_motion and label in cache.loc:
+            res.append(cache.loc[label])
+            continue
         if a.get("articulation"):
             loc = a["articulation"]["pivot"]  # the pivot is the one point that does not move with the joint
         elif not np.allclose(tf[c], np.eye(4)):
             loc = (tf[c] @ np.append(np.array(loc, dtype=float), 1.0))[:3]
         dp, dc = _point_distance(meshes[p], loc), _point_distance(meshes[c], loc)
         if max(dp, dc) > tol:
-            res.append(CheckResult("T1.attachment_location", FAIL,
-                                   f"{label}: joint point is {dp:.1f} mm from {p} and {dc:.1f} mm from {c}",
-                                   STD + "attach_tolerance_mm"))
+            r = CheckResult("T1.attachment_location", FAIL,
+                            f"{label}: joint point is {dp:.1f} mm from {p} and {dc:.1f} mm from {c}",
+                            STD + "attach_tolerance_mm")
         else:
-            res.append(CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint OK",
-                                   STD + "attach_tolerance_mm"))
+            r = CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint OK",
+                            STD + "attach_tolerance_mm")
+        if same_motion:
+            cache.loc[label] = r
+        res.append(r)
 
     # every motor must drive an attached propeller (so a mislabelled prop leaves its motor prop-less)
     for comp in design.components:
@@ -285,16 +361,15 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
                                else f"{comp['id']}: has a propulsion block but no attached component of type propeller",
                                STD + "embed_max_fraction_of_child"))
 
-    # interference between non-attached parts
-    ids = list(meshes)
+    # interference between non-attached parts (broad phase first: only boxes that overlap get the exact boolean)
     clashes = []
-    for i in range(len(ids)):
-        for j in range(i + 1, len(ids)):
-            if frozenset((ids[i], ids[j])) in attached_pairs:
-                continue
-            v = _overlap_volume(meshes[ids[i]], meshes[ids[j]])
-            if v > max_int:
-                clashes.append((ids[i], ids[j], v))
+    for a_, b_ in _broad_phase(meshes):
+        if frozenset((a_, b_)) in attached_pairs:
+            continue
+        v = cache.overlap(meshes, tf, a_, b_)
+        if v > max_int:
+            clashes.append((a_, b_, v))
+    clashes.sort()
     for a_, b_, v in clashes:
         kind = "prop strike" if "propeller" in (design.component(a_)["type"], design.component(b_)["type"]) else "clipping"
         res.append(CheckResult("T1.interference", FAIL, f"{kind}: {a_} and {b_} overlap {v:.0f} mm^3",
@@ -306,7 +381,9 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
 
 
 def tier1_geometry(design: Design, std: dict) -> TierReport:
-    meshes = {cid: component_parts(design.component(cid), design.base_dir) for cid in (c["id"] for c in design.components)}
+    all_ids = [c["id"] for c in design.components]
+    # point masses (schema 0.4) have no mesh: they count for connectivity and mass, not for any geometry check
+    meshes = {c["id"]: component_parts(c, design.base_dir) for c in design.components if not is_point_mass(c)}
     atts = design.data.get("attachments", [])
     res: list[CheckResult] = []
 
@@ -326,23 +403,26 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
         for n in adj[q.popleft()]:
             if n not in seen:
                 seen.add(n); q.append(n)
-    loose = sorted(set(meshes) - seen)
+    loose = sorted(set(all_ids) - seen)
     res.append(CheckResult("T1.connectivity", FAIL if loose else PASS,
                            f"not attached to '{root}' (would fall off): {loose}" if loose
-                           else f"all {len(meshes)} components connect to '{root}'",
+                           else f"all {len(all_ids)} components connect to '{root}'",
                            STD + "attach_tolerance_mm"))
 
-    identity = {cid: np.eye(4) for cid in meshes}
-    res += _contact_and_clash_checks(design, std, meshes, identity, atts)
+    identity = {cid: np.eye(4) for cid in all_ids}
+    cache = _PairCache()
+    res += _contact_and_clash_checks(design, std, meshes, identity, atts, cache)
 
     # articulated joints: the same contact / overlap / interference checks in every configuration
     if articulated_attachments(design):
         res += _articulation_checks(design, std, meshes)
         for name, ang in _configurations(design, std["geometry"]["articulation_sweep_step_deg"]["value"]):
-            pm = posed_component_parts(design, ang)
+            pm = {cid: ps for cid, ps in posed_component_parts(design, ang).items() if cid in meshes}
             tf = pose_transforms(design, ang)
-            sub = _contact_and_clash_checks(design, std, pm, tf, atts)
-            fails = [r for r in sub if r.status == FAIL]
+            sub = _contact_and_clash_checks(design, std, pm, tf, atts, cache)
+            static_fails = {(r.check_id, r.message) for r in res if r.status == FAIL}
+            # a failure that is already in the static results is not pose-specific: report it once
+            fails = [r for r in sub if r.status == FAIL and (r.check_id, r.message) not in static_fails]
             for r in fails:
                 r.message = f"{name}: {r.message}"
                 r.data = {**r.data, "configuration": name}
@@ -588,6 +668,10 @@ def tier4_manufacturing(design: Design) -> TierReport:
         if not bed:
             res.append(CheckResult("T4.fits_machine", SKIP,
                                    f"{c['id']}: fit not verified — add build_volume_mm to manufacturing.yaml ({mid})",
+                                   f"{MFG}#{mid}"))
+            continue
+        if is_point_mass(c):  # schema 0.4: no extent, so nothing to fit on a bed
+            res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method} on {mid}, point mass (no extent to fit)",
                                    f"{MFG}#{mid}"))
             continue
         sheet = method in SHEET_METHODS

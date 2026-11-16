@@ -1,0 +1,1942 @@
+{
+ "attachments": 121,
+ "bridging_edges_not_emitted": [
+  "E-WNG-6R",
+  "E-WNG-6L",
+  "E-MEC-04",
+  "E-MEC-PIN-R3",
+  "E-MEC-09",
+  "E-MEC-PIN-L3"
+ ],
+ "commit": "171ec426c800c5cf9265615f22ef4792e981be4a",
+ "embed_ok": [],
+ "fallback": [],
+ "parts": {
+  "AVN-001": {
+   "bodies": 1,
+   "cuts": 12,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 872,
+   "volume_mm3": 18978.5
+  },
+  "AVN-002": {
+   "bodies": 38,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 1548,
+   "volume_mm3": 3011.5
+  },
+  "AVN-003": {
+   "bodies": 12,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 416,
+   "volume_mm3": 671.6
+  },
+  "AVN-004": {
+   "bodies": 9,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 92,
+   "volume_mm3": 3070.4
+  },
+  "AVN-005": {
+   "bodies": 9,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 330,
+   "volume_mm3": 700.9
+  },
+  "AVN-006": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 192,
+   "volume_mm3": 679.4
+  },
+  "AVN-007": {
+   "bodies": 4,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 256,
+   "volume_mm3": 388.4
+  },
+  "AVN-008": {
+   "bodies": 3,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 196,
+   "volume_mm3": 7393.7
+  },
+  "CGE-001": {
+   "bodies": 18,
+   "cuts": 20,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 6548,
+   "volume_mm3": 13225.4
+  },
+  "CGE-002-LL": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 8442.4
+  },
+  "CGE-002-LR": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 8442.4
+  },
+  "CGE-002-UL": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 8442.4
+  },
+  "CGE-002-UR": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 8442.4
+  },
+  "CGE-003-LL": {
+   "bodies": 4,
+   "cuts": 18,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 3542,
+   "volume_mm3": 9436.1
+  },
+  "CGE-003-LR": {
+   "bodies": 4,
+   "cuts": 18,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 3508,
+   "volume_mm3": 9436.2
+  },
+  "CGE-003-UL": {
+   "bodies": 4,
+   "cuts": 18,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 3508,
+   "volume_mm3": 9436.2
+  },
+  "CGE-003-UR": {
+   "bodies": 4,
+   "cuts": 18,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 3542,
+   "volume_mm3": 9436.1
+  },
+  "CGE-004": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 5306.7
+  },
+  "CGE-005-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 192,
+   "volume_mm3": 3500.2
+  },
+  "CGE-005-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 192,
+   "volume_mm3": 3500.2
+  },
+  "CGE-006": {
+   "bodies": 2,
+   "cuts": 3,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 572,
+   "volume_mm3": 8196.1
+  },
+  "CGE-007-L": {
+   "bodies": 2,
+   "cuts": 3,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 400,
+   "volume_mm3": 7211.7
+  },
+  "CGE-007-R": {
+   "bodies": 2,
+   "cuts": 3,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 394,
+   "volume_mm3": 7211.7
+  },
+  "CGE-008": {
+   "bodies": 5,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 84,
+   "volume_mm3": 23152.1
+  },
+  "FIN-001-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 16916.2
+  },
+  "FIN-001-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 16916.2
+  },
+  "FIN-002-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 8776.0
+  },
+  "FIN-002-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 8776.0
+  },
+  "FIN-003-L": {
+   "bodies": 2,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 652,
+   "volume_mm3": 18508.1
+  },
+  "FIN-003-R": {
+   "bodies": 2,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 652,
+   "volume_mm3": 18508.1
+  },
+  "FIN-004-L": {
+   "bodies": 1,
+   "cuts": 10,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 288,
+   "volume_mm3": 103714.3
+  },
+  "FIN-004-R": {
+   "bodies": 1,
+   "cuts": 10,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 288,
+   "volume_mm3": 103714.3
+  },
+  "FIN-005-L": {
+   "bodies": 2,
+   "cuts": 3,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 538,
+   "volume_mm3": 14445.6
+  },
+  "FIN-005-R": {
+   "bodies": 2,
+   "cuts": 3,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 542,
+   "volume_mm3": 14445.6
+  },
+  "FIN-006-L": {
+   "bodies": 1,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 196,
+   "volume_mm3": 1518.0
+  },
+  "FIN-006-R": {
+   "bodies": 1,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 196,
+   "volume_mm3": 1518.0
+  },
+  "GER-001-LL": {
+   "bodies": 3,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 462,
+   "volume_mm3": 4161.4
+  },
+  "GER-001-LR": {
+   "bodies": 3,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 464,
+   "volume_mm3": 4161.4
+  },
+  "GER-001-UL": {
+   "bodies": 3,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 502,
+   "volume_mm3": 4161.4
+  },
+  "GER-001-UR": {
+   "bodies": 3,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 502,
+   "volume_mm3": 4161.4
+  },
+  "GER-002-LL": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 12,
+   "volume_mm3": 5400.0
+  },
+  "GER-002-LR": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 12,
+   "volume_mm3": 5400.0
+  },
+  "GER-002-UL": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 12,
+   "volume_mm3": 5400.0
+  },
+  "GER-002-UR": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 12,
+   "volume_mm3": 5400.0
+  },
+  "HRN-002": {
+   "bodies": 3,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 50,
+   "volume_mm3": 1490.3
+  },
+  "HRN-003-L": {
+   "bodies": 2,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 96,
+   "volume_mm3": 1424.2
+  },
+  "HRN-003-R": {
+   "bodies": 2,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 96,
+   "volume_mm3": 1424.2
+  },
+  "HRN-004-LL": {
+   "bodies": 5,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 186,
+   "volume_mm3": 526.7
+  },
+  "HRN-004-LR": {
+   "bodies": 5,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 174,
+   "volume_mm3": 526.7
+  },
+  "HRN-004-UL": {
+   "bodies": 5,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 192,
+   "volume_mm3": 515.6
+  },
+  "HRN-004-UR": {
+   "bodies": 5,
+   "cuts": 2,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 176,
+   "volume_mm3": 515.6
+  },
+  "HWC-001": {
+   "bodies": 8,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 1344,
+   "volume_mm3": 370.6
+  },
+  "HWC-002-L": {
+   "bodies": 2,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 336,
+   "volume_mm3": 33.6
+  },
+  "HWC-002-R": {
+   "bodies": 2,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 336,
+   "volume_mm3": 33.6
+  },
+  "HWC-003": {
+   "bodies": 4,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 288,
+   "volume_mm3": 52.1
+  },
+  "MEC-001-L": {
+   "bodies": 5,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 278,
+   "volume_mm3": 9890.1
+  },
+  "MEC-001-R": {
+   "bodies": 5,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 278,
+   "volume_mm3": 9890.1
+  },
+  "MEC-002-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 172,
+   "volume_mm3": 194.6
+  },
+  "MEC-002-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 172,
+   "volume_mm3": 194.6
+  },
+  "MEC-003-L": {
+   "bodies": 5,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 598,
+   "volume_mm3": 85.1
+  },
+  "MEC-003-R": {
+   "bodies": 5,
+   "cuts": 1,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 598,
+   "volume_mm3": 85.1
+  },
+  "MEC-004-L": {
+   "bodies": 2,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 128,
+   "volume_mm3": 457.9
+  },
+  "MEC-004-R": {
+   "bodies": 2,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 128,
+   "volume_mm3": 457.9
+  },
+  "MEC-005-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 96,
+   "volume_mm3": 3.4
+  },
+  "MEC-005-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9886,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 96,
+   "volume_mm3": 3.4
+  },
+  "PRP-001-LL": {
+   "bodies": 15,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2456,
+   "volume_mm3": 15942.1
+  },
+  "PRP-001-LR": {
+   "bodies": 15,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2454,
+   "volume_mm3": 15942.1
+  },
+  "PRP-001-UL": {
+   "bodies": 15,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2454,
+   "volume_mm3": 15942.1
+  },
+  "PRP-001-UR": {
+   "bodies": 15,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2456,
+   "volume_mm3": 15942.1
+  },
+  "PRP-002-LL": {
+   "bodies": 4,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0106,
+   "mesh_to_source_volume_min": 0.987,
+   "triangles": 2436,
+   "volume_mm3": 6543.6
+  },
+  "PRP-002-LR": {
+   "bodies": 4,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0106,
+   "mesh_to_source_volume_min": 0.987,
+   "triangles": 2436,
+   "volume_mm3": 6543.6
+  },
+  "PRP-002-UL": {
+   "bodies": 4,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0106,
+   "mesh_to_source_volume_min": 0.987,
+   "triangles": 2436,
+   "volume_mm3": 6543.6
+  },
+  "PRP-002-UR": {
+   "bodies": 4,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0106,
+   "mesh_to_source_volume_min": 0.987,
+   "triangles": 2436,
+   "volume_mm3": 6543.6
+  },
+  "PRP-003": {
+   "bodies": 28,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2290,
+   "volume_mm3": 5630.5
+  },
+  "PRP-004-LL": {
+   "bodies": 5,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2160,
+   "volume_mm3": 1459.8
+  },
+  "PRP-004-LR": {
+   "bodies": 5,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2056,
+   "volume_mm3": 1459.8
+  },
+  "PRP-004-UL": {
+   "bodies": 5,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2056,
+   "volume_mm3": 1459.8
+  },
+  "PRP-004-UR": {
+   "bodies": 5,
+   "cuts": 4,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9886,
+   "triangles": 2160,
+   "volume_mm3": 1459.8
+  },
+  "PRP-005-LL": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 1056,
+   "volume_mm3": 1068.3
+  },
+  "PRP-005-LR": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 1056,
+   "volume_mm3": 1068.3
+  },
+  "PRP-005-UL": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 1056,
+   "volume_mm3": 1068.3
+  },
+  "PRP-005-UR": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 1056,
+   "volume_mm3": 1068.3
+  },
+  "PWR-001": {
+   "bodies": 9,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 210,
+   "volume_mm3": 107858.1
+  },
+  "PWR-002": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 80,
+   "volume_mm3": 9968.0
+  },
+  "PWR-003": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 12,
+   "volume_mm3": 3000.0
+  },
+  "WNG-001": {
+   "bodies": 1,
+   "cuts": 83,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 3418,
+   "volume_mm3": 2600446.9
+  },
+  "WNG-002": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 31013.0
+  },
+  "WNG-003-C": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 1253.7
+  },
+  "WNG-004-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 1253.7
+  },
+  "WNG-004-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 1253.7
+  },
+  "WNG-005-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 1253.7
+  },
+  "WNG-005-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 384,
+   "volume_mm3": 1253.7
+  },
+  "WNG-006-L": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0087,
+   "mesh_to_source_volume_min": 1.0087,
+   "triangles": 204,
+   "volume_mm3": 77012.8
+  },
+  "WNG-006-R": {
+   "bodies": 1,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0087,
+   "mesh_to_source_volume_min": 1.0087,
+   "triangles": 204,
+   "volume_mm3": 77012.8
+  },
+  "WNG-007-L": {
+   "bodies": 3,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 44,
+   "volume_mm3": 1588.2
+  },
+  "WNG-007-R": {
+   "bodies": 3,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 44,
+   "volume_mm3": 1588.2
+  },
+  "WNG-008-LL": {
+   "bodies": 8,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 864,
+   "volume_mm3": 2980.7
+  },
+  "WNG-008-LU": {
+   "bodies": 8,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0047,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 914,
+   "volume_mm3": 3022.4
+  },
+  "WNG-008-RL": {
+   "bodies": 8,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 864,
+   "volume_mm3": 2980.7
+  },
+  "WNG-008-RU": {
+   "bodies": 8,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 1.0047,
+   "mesh_to_source_volume_min": 1.0,
+   "triangles": 914,
+   "volume_mm3": 3022.4
+  },
+  "WNG-009-L": {
+   "bodies": 3,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 876,
+   "volume_mm3": 1117.2
+  },
+  "WNG-009-R": {
+   "bodies": 3,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 810,
+   "volume_mm3": 1117.2
+  },
+  "WNG-010-L": {
+   "bodies": 2,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 576,
+   "volume_mm3": 364.5
+  },
+  "WNG-010-R": {
+   "bodies": 2,
+   "cuts": 0,
+   "how": "rebuilt",
+   "mesh_to_source_volume_max": 0.9971,
+   "mesh_to_source_volume_min": 0.9971,
+   "triangles": 576,
+   "volume_mm3": 364.5
+  }
+ },
+ "proxies": [
+  "HRD-001",
+  "HRN-001"
+ ],
+ "ratings": {
+  "E-ASM-01": {
+   "child": "HRD-001",
+   "edge": "E-ASM-01",
+   "kind": "placeholder",
+   "parent": "WNG-001",
+   "rated_load_n": 1.2,
+   "source": "placeholder - not from source: CT-TIE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.15 N, rounded up)"
+  },
+  "E-AVN-01": {
+   "child": "AVN-001",
+   "edge": "E-AVN-01",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 629.0,
+   "source": "contact area 7314 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-AVN-02": {
+   "child": "AVN-007",
+   "edge": "E-AVN-02",
+   "kind": "placeholder",
+   "parent": "AVN-001",
+   "rated_load_n": 0.1,
+   "source": "placeholder - not from source: CT-GEL-PAD has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.04 N, rounded up)"
+  },
+  "E-AVN-03": {
+   "child": "AVN-002",
+   "edge": "E-AVN-03",
+   "kind": "placeholder",
+   "parent": "AVN-007",
+   "rated_load_n": 0.8,
+   "source": "placeholder - not from source: CT-GEL-PAD has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.75 N, rounded up)"
+  },
+  "E-AVN-04": {
+   "child": "AVN-003",
+   "edge": "E-AVN-04",
+   "kind": "placeholder",
+   "parent": "AVN-001",
+   "rated_load_n": 0.3,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.20 N, rounded up)"
+  },
+  "E-AVN-05": {
+   "child": "AVN-004",
+   "edge": "E-AVN-05",
+   "kind": "placeholder",
+   "parent": "AVN-001",
+   "rated_load_n": 0.6,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.60 N, rounded up)"
+  },
+  "E-AVN-06": {
+   "child": "AVN-005",
+   "edge": "E-AVN-06",
+   "kind": "placeholder",
+   "parent": "AVN-001",
+   "rated_load_n": 0.2,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.13 N, rounded up)"
+  },
+  "E-AVN-07": {
+   "child": "AVN-006",
+   "edge": "E-AVN-07",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 33.6,
+   "source": "contact area 391 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-AVN-08": {
+   "child": "AVN-008",
+   "edge": "E-AVN-08",
+   "kind": "placeholder",
+   "parent": "AVN-001",
+   "rated_load_n": 0.5,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.42 N, rounded up)"
+  },
+  "E-AVN-09": {
+   "child": "AVN-002",
+   "edge": "E-AVN-09",
+   "kind": "derived",
+   "parent": "HWC-001",
+   "rated_load_n": 3726.0,
+   "source": "4 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-AVN-10": {
+   "child": "HWC-001",
+   "edge": "E-AVN-10",
+   "kind": "derived",
+   "parent": "HWC-003",
+   "rated_load_n": 3726.0,
+   "source": "4 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-AVN-11": {
+   "child": "HWC-003",
+   "edge": "E-AVN-11",
+   "kind": "derived",
+   "parent": "AVN-001",
+   "rated_load_n": 3726.0,
+   "source": "4 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-CGE-01": {
+   "child": "CGE-002-UR",
+   "edge": "E-CGE-01",
+   "kind": "doc",
+   "parent": "CGE-001",
+   "rated_load_n": 944.6,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Arm 12x10 in socket, 25 mm, strike couple', 296 N, MS +0.48; rated = 296 N x K 2.1562 x (1 + MS 0.48)"
+  },
+  "E-CGE-02": {
+   "child": "CGE-003-UR",
+   "edge": "E-CGE-02",
+   "kind": "derived",
+   "parent": "CGE-002-UR",
+   "rated_load_n": 1931.3,
+   "source": "contact area 966 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-03": {
+   "child": "CGE-002-UL",
+   "edge": "E-CGE-03",
+   "kind": "doc",
+   "parent": "CGE-001",
+   "rated_load_n": 944.6,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Arm 12x10 in socket, 25 mm, strike couple', 296 N, MS +0.48; rated = 296 N x K 2.1562 x (1 + MS 0.48)"
+  },
+  "E-CGE-04": {
+   "child": "CGE-003-UL",
+   "edge": "E-CGE-04",
+   "kind": "derived",
+   "parent": "CGE-002-UL",
+   "rated_load_n": 1937.9,
+   "source": "contact area 969 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-05": {
+   "child": "CGE-002-LR",
+   "edge": "E-CGE-05",
+   "kind": "doc",
+   "parent": "CGE-001",
+   "rated_load_n": 944.6,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Arm 12x10 in socket, 25 mm, strike couple', 296 N, MS +0.48; rated = 296 N x K 2.1562 x (1 + MS 0.48)"
+  },
+  "E-CGE-06": {
+   "child": "CGE-003-LR",
+   "edge": "E-CGE-06",
+   "kind": "derived",
+   "parent": "CGE-002-LR",
+   "rated_load_n": 1922.2,
+   "source": "contact area 961 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-07": {
+   "child": "CGE-002-LL",
+   "edge": "E-CGE-07",
+   "kind": "doc",
+   "parent": "CGE-001",
+   "rated_load_n": 944.6,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Arm 12x10 in socket, 25 mm, strike couple', 296 N, MS +0.48; rated = 296 N x K 2.1562 x (1 + MS 0.48)"
+  },
+  "E-CGE-08": {
+   "child": "CGE-003-LL",
+   "edge": "E-CGE-08",
+   "kind": "derived",
+   "parent": "CGE-002-LL",
+   "rated_load_n": 1930.7,
+   "source": "contact area 965 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-09": {
+   "child": "CGE-001",
+   "edge": "E-CGE-09",
+   "kind": "doc",
+   "parent": "CGE-004",
+   "rated_load_n": 940.5,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Bridge 12x10 in hub, strike couple', 188 N, MS +1.32; rated = 188 N x K 2.1562 x (1 + MS 1.32)"
+  },
+  "E-CGE-10": {
+   "child": "CGE-004",
+   "edge": "E-CGE-10",
+   "kind": "derived",
+   "parent": "CGE-006",
+   "rated_load_n": 1891.3,
+   "source": "contact area 946 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-11": {
+   "child": "CGE-006",
+   "edge": "E-CGE-11",
+   "kind": "derived",
+   "parent": "WNG-002",
+   "rated_load_n": 1176.5,
+   "source": "contact area 588 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-12": {
+   "child": "CGE-001",
+   "edge": "E-CGE-12",
+   "kind": "derived",
+   "parent": "CGE-005-R",
+   "rated_load_n": 1294.1,
+   "source": "contact area 647 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-13": {
+   "child": "CGE-005-R",
+   "edge": "E-CGE-13",
+   "kind": "doc",
+   "parent": "CGE-007-R",
+   "rated_load_n": 376.9,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'V strut saddles (6x4.5, 20 mm)', 19 N, MS +8.20; rated = 19 N x K 2.1562 x (1 + MS 8.2)"
+  },
+  "E-CGE-14": {
+   "child": "CGE-007-R",
+   "edge": "E-CGE-14",
+   "kind": "doc",
+   "parent": "WNG-002",
+   "rated_load_n": 376.9,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'V strut saddles (6x4.5, 20 mm)', 19 N, MS +8.20; rated = 19 N x K 2.1562 x (1 + MS 8.2)"
+  },
+  "E-CGE-15": {
+   "child": "CGE-001",
+   "edge": "E-CGE-15",
+   "kind": "derived",
+   "parent": "CGE-005-L",
+   "rated_load_n": 1265.8,
+   "source": "contact area 633 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-CGE-16": {
+   "child": "CGE-005-L",
+   "edge": "E-CGE-16",
+   "kind": "doc",
+   "parent": "CGE-007-L",
+   "rated_load_n": 376.9,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'V strut saddles (6x4.5, 20 mm)', 19 N, MS +8.20; rated = 19 N x K 2.1562 x (1 + MS 8.2)"
+  },
+  "E-CGE-17": {
+   "child": "CGE-007-L",
+   "edge": "E-CGE-17",
+   "kind": "doc",
+   "parent": "WNG-002",
+   "rated_load_n": 376.9,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'V strut saddles (6x4.5, 20 mm)', 19 N, MS +8.20; rated = 19 N x K 2.1562 x (1 + MS 8.2)"
+  },
+  "E-CGE-18": {
+   "child": "CGE-001",
+   "edge": "E-CGE-18",
+   "kind": "doc",
+   "parent": "CGE-008",
+   "rated_load_n": 1200.0,
+   "source": "redesign/qp/A/structures/structures_run.md L225 'Pack tray to hub (PETG, 600 mm2 bond)': BOND_TAU 2.0 MPa x 600 mm2"
+  },
+  "E-FIN-01": {
+   "child": "FIN-001-R",
+   "edge": "E-FIN-01",
+   "kind": "doc",
+   "parent": "FIN-003-R",
+   "rated_load_n": 2009.8,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Fin root block on fin tube (40 mm long, 16 mm OD)', 130 N, MS +6.17; rated = 130 N x K 2.1562 x (1 + MS 6.17)"
+  },
+  "E-FIN-02": {
+   "child": "FIN-003-R",
+   "edge": "E-FIN-02",
+   "kind": "doc",
+   "parent": "FIN-002-R",
+   "rated_load_n": 5278.0,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Rib tube 14x12 in fin root block, 60 mm embed', 84 N, MS +28.14; rated = 84 N x K 2.1562 x (1 + MS 28.14)"
+  },
+  "E-FIN-03": {
+   "child": "FIN-005-R",
+   "edge": "E-FIN-03",
+   "kind": "doc",
+   "parent": "FIN-002-R",
+   "rated_load_n": 2262.4,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Rib saddle on 12 mm spar, wrap 60 mm wide', 783 N, MS +0.34 (same saddle wrap used for the saddle-on-rib joint); rated = 783 N x K 2.1562 x (1 + MS 0.34)"
+  },
+  "E-FIN-04": {
+   "child": "FIN-005-R",
+   "edge": "E-FIN-04",
+   "kind": "doc",
+   "parent": "WNG-002",
+   "rated_load_n": 2262.4,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Rib saddle on 12 mm spar, wrap 60 mm wide', 783 N, MS +0.34 (same saddle wrap used for the saddle-on-rib joint); rated = 783 N x K 2.1562 x (1 + MS 0.34)"
+  },
+  "E-FIN-05": {
+   "child": "FIN-001-R",
+   "edge": "E-FIN-05",
+   "kind": "derived",
+   "parent": "FIN-004-R",
+   "rated_load_n": 77.0,
+   "source": "contact area 896 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-FIN-06": {
+   "child": "FIN-004-R",
+   "edge": "E-FIN-06",
+   "kind": "derived",
+   "parent": "FIN-002-R",
+   "rated_load_n": 42.0,
+   "source": "contact area 489 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-FIN-07": {
+   "child": "FIN-002-R",
+   "edge": "E-FIN-07",
+   "kind": "derived",
+   "parent": "FIN-006-R",
+   "rated_load_n": 55.7,
+   "source": "contact area 647 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-FIN-08": {
+   "child": "FIN-006-R",
+   "edge": "E-FIN-08",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 26.7,
+   "source": "contact area 311 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-FIN-09": {
+   "child": "FIN-001-L",
+   "edge": "E-FIN-09",
+   "kind": "doc",
+   "parent": "FIN-003-L",
+   "rated_load_n": 2009.8,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Fin root block on fin tube (40 mm long, 16 mm OD)', 130 N, MS +6.17; rated = 130 N x K 2.1562 x (1 + MS 6.17)"
+  },
+  "E-FIN-10": {
+   "child": "FIN-003-L",
+   "edge": "E-FIN-10",
+   "kind": "doc",
+   "parent": "FIN-002-L",
+   "rated_load_n": 5278.0,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Rib tube 14x12 in fin root block, 60 mm embed', 84 N, MS +28.14; rated = 84 N x K 2.1562 x (1 + MS 28.14)"
+  },
+  "E-FIN-11": {
+   "child": "FIN-005-L",
+   "edge": "E-FIN-11",
+   "kind": "doc",
+   "parent": "FIN-002-L",
+   "rated_load_n": 2262.4,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Rib saddle on 12 mm spar, wrap 60 mm wide', 783 N, MS +0.34 (same saddle wrap used for the saddle-on-rib joint); rated = 783 N x K 2.1562 x (1 + MS 0.34)"
+  },
+  "E-FIN-12": {
+   "child": "FIN-005-L",
+   "edge": "E-FIN-12",
+   "kind": "doc",
+   "parent": "WNG-002",
+   "rated_load_n": 2262.4,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Rib saddle on 12 mm spar, wrap 60 mm wide', 783 N, MS +0.34 (same saddle wrap used for the saddle-on-rib joint); rated = 783 N x K 2.1562 x (1 + MS 0.34)"
+  },
+  "E-FIN-13": {
+   "child": "FIN-001-L",
+   "edge": "E-FIN-13",
+   "kind": "derived",
+   "parent": "FIN-004-L",
+   "rated_load_n": 77.0,
+   "source": "contact area 896 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-FIN-14": {
+   "child": "FIN-004-L",
+   "edge": "E-FIN-14",
+   "kind": "derived",
+   "parent": "FIN-002-L",
+   "rated_load_n": 42.0,
+   "source": "contact area 489 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-FIN-15": {
+   "child": "FIN-002-L",
+   "edge": "E-FIN-15",
+   "kind": "derived",
+   "parent": "FIN-006-L",
+   "rated_load_n": 55.7,
+   "source": "contact area 647 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-FIN-16": {
+   "child": "FIN-006-L",
+   "edge": "E-FIN-16",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 27.0,
+   "source": "contact area 313 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-GER-01": {
+   "child": "GER-001-UR",
+   "edge": "E-GER-01",
+   "kind": "doc",
+   "parent": "FIN-001-R",
+   "rated_load_n": 2512.7,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)"
+  },
+  "E-GER-02": {
+   "child": "GER-002-UR",
+   "edge": "E-GER-02",
+   "kind": "placeholder",
+   "parent": "GER-001-UR",
+   "rated_load_n": 0.1,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+  },
+  "E-GER-03": {
+   "child": "GER-001-UL",
+   "edge": "E-GER-03",
+   "kind": "doc",
+   "parent": "FIN-001-L",
+   "rated_load_n": 2512.7,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)"
+  },
+  "E-GER-04": {
+   "child": "GER-002-UL",
+   "edge": "E-GER-04",
+   "kind": "placeholder",
+   "parent": "GER-001-UL",
+   "rated_load_n": 0.1,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+  },
+  "E-GER-05": {
+   "child": "GER-001-LR",
+   "edge": "E-GER-05",
+   "kind": "doc",
+   "parent": "FIN-001-R",
+   "rated_load_n": 2512.7,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)"
+  },
+  "E-GER-06": {
+   "child": "GER-002-LR",
+   "edge": "E-GER-06",
+   "kind": "placeholder",
+   "parent": "GER-001-LR",
+   "rated_load_n": 0.1,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+  },
+  "E-GER-07": {
+   "child": "GER-001-LL",
+   "edge": "E-GER-07",
+   "kind": "doc",
+   "parent": "FIN-001-L",
+   "rated_load_n": 2512.7,
+   "source": "redesign/qp/A/structures/iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41; rated = 52 N x K 2.1562 x (1 + MS 21.41)"
+  },
+  "E-GER-08": {
+   "child": "GER-002-LL",
+   "edge": "E-GER-08",
+   "kind": "placeholder",
+   "parent": "GER-001-LL",
+   "rated_load_n": 0.1,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.03 N, rounded up)"
+  },
+  "E-HRN-20": {
+   "child": "HRN-001",
+   "edge": "E-HRN-20",
+   "kind": "placeholder",
+   "parent": "WNG-001",
+   "rated_load_n": 0.9,
+   "source": "placeholder - not from source: CT-TIE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.81 N, rounded up)"
+  },
+  "E-HRN-21": {
+   "child": "HRN-002",
+   "edge": "E-HRN-21",
+   "kind": "placeholder",
+   "parent": "WNG-001",
+   "rated_load_n": 0.4,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.35 N, rounded up)"
+  },
+  "E-HRN-30": {
+   "child": "CGE-008",
+   "edge": "E-HRN-30",
+   "kind": "derived",
+   "parent": "HRN-003-R",
+   "rated_load_n": 1290.6,
+   "source": "contact area 645 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-31": {
+   "child": "CGE-008",
+   "edge": "E-HRN-31",
+   "kind": "derived",
+   "parent": "HRN-003-L",
+   "rated_load_n": 1311.3,
+   "source": "contact area 656 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-32": {
+   "child": "HRN-003-R",
+   "edge": "E-HRN-32",
+   "kind": "placeholder",
+   "parent": "WNG-001",
+   "rated_load_n": 0.1,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)"
+  },
+  "E-HRN-33": {
+   "child": "HRN-003-L",
+   "edge": "E-HRN-33",
+   "kind": "placeholder",
+   "parent": "WNG-001",
+   "rated_load_n": 0.1,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.08 N, rounded up)"
+  },
+  "E-HRN-40": {
+   "child": "CGE-001",
+   "edge": "E-HRN-40",
+   "kind": "derived",
+   "parent": "HRN-004-UR",
+   "rated_load_n": 61.7,
+   "source": "contact area 31 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-41": {
+   "child": "CGE-001",
+   "edge": "E-HRN-41",
+   "kind": "derived",
+   "parent": "HRN-004-UL",
+   "rated_load_n": 61.7,
+   "source": "contact area 31 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-42": {
+   "child": "CGE-001",
+   "edge": "E-HRN-42",
+   "kind": "derived",
+   "parent": "HRN-004-LR",
+   "rated_load_n": 60.0,
+   "source": "contact area 30 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-43": {
+   "child": "CGE-001",
+   "edge": "E-HRN-43",
+   "kind": "derived",
+   "parent": "HRN-004-LL",
+   "rated_load_n": 59.8,
+   "source": "contact area 30 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-50": {
+   "child": "HRN-004-UR",
+   "edge": "E-HRN-50",
+   "kind": "derived",
+   "parent": "HRN-003-R",
+   "rated_load_n": 52.2,
+   "source": "contact area 26 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-51": {
+   "child": "HRN-004-UL",
+   "edge": "E-HRN-51",
+   "kind": "derived",
+   "parent": "HRN-003-L",
+   "rated_load_n": 53.1,
+   "source": "contact area 27 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-52": {
+   "child": "HRN-004-LR",
+   "edge": "E-HRN-52",
+   "kind": "derived",
+   "parent": "HRN-003-R",
+   "rated_load_n": 47.5,
+   "source": "contact area 24 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-HRN-53": {
+   "child": "HRN-004-LL",
+   "edge": "E-HRN-53",
+   "kind": "derived",
+   "parent": "HRN-003-L",
+   "rated_load_n": 47.5,
+   "source": "contact area 24 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-MEC-01": {
+   "child": "MEC-001-R",
+   "edge": "E-MEC-01",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 181.2,
+   "source": "contact area 2107 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-MEC-02": {
+   "child": "MEC-002-R",
+   "edge": "E-MEC-02",
+   "kind": "derived",
+   "parent": "MEC-001-R",
+   "rated_load_n": 931.5,
+   "source": "1 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-MEC-03": {
+   "child": "MEC-003-R",
+   "edge": "E-MEC-03",
+   "kind": "doc",
+   "parent": "MEC-002-R",
+   "rated_load_n": 73.0,
+   "source": "redesign/qp/A/structures/qp5_checks.md s1 pushrod buckling, Pcr 73 N at the CAD rod length 52.5 mm (D-194)"
+  },
+  "E-MEC-05": {
+   "child": "MEC-004-R",
+   "edge": "E-MEC-05",
+   "kind": "derived",
+   "parent": "WNG-006-R",
+   "rated_load_n": 0.7,
+   "source": "contact area 8 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-MEC-06": {
+   "child": "MEC-001-L",
+   "edge": "E-MEC-06",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 181.2,
+   "source": "contact area 2107 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-MEC-07": {
+   "child": "MEC-002-L",
+   "edge": "E-MEC-07",
+   "kind": "derived",
+   "parent": "MEC-001-L",
+   "rated_load_n": 931.5,
+   "source": "1 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-MEC-08": {
+   "child": "MEC-003-L",
+   "edge": "E-MEC-08",
+   "kind": "doc",
+   "parent": "MEC-002-L",
+   "rated_load_n": 73.0,
+   "source": "redesign/qp/A/structures/qp5_checks.md s1 pushrod buckling, Pcr 73 N at the CAD rod length 52.5 mm (D-194)"
+  },
+  "E-MEC-10": {
+   "child": "MEC-004-L",
+   "edge": "E-MEC-10",
+   "kind": "derived",
+   "parent": "WNG-006-L",
+   "rated_load_n": 0.7,
+   "source": "contact area 8 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-MEC-HW-L1": {
+   "child": "HWC-002-L",
+   "edge": "E-MEC-HW-L1",
+   "kind": "derived",
+   "parent": "MEC-001-L",
+   "rated_load_n": 931.5,
+   "source": "1 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-MEC-HW-L2": {
+   "child": "MEC-002-L",
+   "edge": "E-MEC-HW-L2",
+   "kind": "derived",
+   "parent": "HWC-002-L",
+   "rated_load_n": 931.5,
+   "source": "1 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-MEC-HW-R1": {
+   "child": "HWC-002-R",
+   "edge": "E-MEC-HW-R1",
+   "kind": "derived",
+   "parent": "MEC-001-R",
+   "rated_load_n": 931.5,
+   "source": "1 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-MEC-HW-R2": {
+   "child": "MEC-002-R",
+   "edge": "E-MEC-HW-R2",
+   "kind": "derived",
+   "parent": "HWC-002-R",
+   "rated_load_n": 931.5,
+   "source": "1 x M2 tension 2.07 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-MEC-PIN-L4": {
+   "child": "MEC-005-L",
+   "edge": "E-MEC-PIN-L4",
+   "kind": "derived",
+   "parent": "MEC-004-L",
+   "rated_load_n": 212.1,
+   "source": "1 x pin shear pi/4 x 1^2 mm2 x 270 MPa (arm_cup_checks.md steel shear allowable, EST)"
+  },
+  "E-MEC-PIN-R4": {
+   "child": "MEC-005-R",
+   "edge": "E-MEC-PIN-R4",
+   "kind": "derived",
+   "parent": "MEC-004-R",
+   "rated_load_n": 212.1,
+   "source": "1 x pin shear pi/4 x 1^2 mm2 x 270 MPa (arm_cup_checks.md steel shear allowable, EST)"
+  },
+  "E-PRP-01": {
+   "child": "PRP-001-UR",
+   "edge": "E-PRP-01",
+   "kind": "doc",
+   "parent": "CGE-003-UR",
+   "rated_load_n": 744.0,
+   "source": "redesign/qp/A/structures/arm_cup_checks.md 'Head pull-through': 4 screws x PETG bearing 20.0 MPa x annulus 9.3 mm2 (governs over screw tension and thread strip)"
+  },
+  "E-PRP-02": {
+   "child": "PRP-002-UR",
+   "edge": "E-PRP-02",
+   "kind": "derived",
+   "parent": "PRP-004-UR",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PRP-03": {
+   "child": "PRP-001-UL",
+   "edge": "E-PRP-03",
+   "kind": "doc",
+   "parent": "CGE-003-UL",
+   "rated_load_n": 744.0,
+   "source": "redesign/qp/A/structures/arm_cup_checks.md 'Head pull-through': 4 screws x PETG bearing 20.0 MPa x annulus 9.3 mm2 (governs over screw tension and thread strip)"
+  },
+  "E-PRP-04": {
+   "child": "PRP-002-UL",
+   "edge": "E-PRP-04",
+   "kind": "derived",
+   "parent": "PRP-004-UL",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PRP-05": {
+   "child": "PRP-001-LR",
+   "edge": "E-PRP-05",
+   "kind": "doc",
+   "parent": "CGE-003-LR",
+   "rated_load_n": 744.0,
+   "source": "redesign/qp/A/structures/arm_cup_checks.md 'Head pull-through': 4 screws x PETG bearing 20.0 MPa x annulus 9.3 mm2 (governs over screw tension and thread strip)"
+  },
+  "E-PRP-06": {
+   "child": "PRP-002-LR",
+   "edge": "E-PRP-06",
+   "kind": "derived",
+   "parent": "PRP-004-LR",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PRP-07": {
+   "child": "PRP-001-LL",
+   "edge": "E-PRP-07",
+   "kind": "doc",
+   "parent": "CGE-003-LL",
+   "rated_load_n": 744.0,
+   "source": "redesign/qp/A/structures/arm_cup_checks.md 'Head pull-through': 4 screws x PETG bearing 20.0 MPa x annulus 9.3 mm2 (governs over screw tension and thread strip)"
+  },
+  "E-PRP-08": {
+   "child": "PRP-002-LL",
+   "edge": "E-PRP-08",
+   "kind": "derived",
+   "parent": "PRP-004-LL",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PRP-09": {
+   "child": "PRP-003",
+   "edge": "E-PRP-09",
+   "kind": "placeholder",
+   "parent": "AVN-001",
+   "rated_load_n": 0.9,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.88 N, rounded up)"
+  },
+  "E-PRP-10": {
+   "child": "PRP-004-UR",
+   "edge": "E-PRP-10",
+   "kind": "derived",
+   "parent": "PRP-001-UR",
+   "rated_load_n": 4527.0,
+   "source": "2 x M3 tension 5.03 mm2 (structures_a.py L228) x 450 MPa (arm_cup_checks.md steel tension allowable, EST)"
+  },
+  "E-PRP-11": {
+   "child": "PRP-005-UR",
+   "edge": "E-PRP-11",
+   "kind": "derived",
+   "parent": "PRP-004-UR",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PRP-12": {
+   "child": "PRP-004-UL",
+   "edge": "E-PRP-12",
+   "kind": "derived",
+   "parent": "PRP-001-UL",
+   "rated_load_n": 4527.0,
+   "source": "2 x M3 tension 5.03 mm2 (structures_a.py L228) x 450 MPa (arm_cup_checks.md steel tension allowable, EST)"
+  },
+  "E-PRP-13": {
+   "child": "PRP-005-UL",
+   "edge": "E-PRP-13",
+   "kind": "derived",
+   "parent": "PRP-004-UL",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PRP-14": {
+   "child": "PRP-004-LR",
+   "edge": "E-PRP-14",
+   "kind": "derived",
+   "parent": "PRP-001-LR",
+   "rated_load_n": 4527.0,
+   "source": "2 x M3 tension 5.03 mm2 (structures_a.py L228) x 450 MPa (arm_cup_checks.md steel tension allowable, EST)"
+  },
+  "E-PRP-15": {
+   "child": "PRP-005-LR",
+   "edge": "E-PRP-15",
+   "kind": "derived",
+   "parent": "PRP-004-LR",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PRP-16": {
+   "child": "PRP-004-LL",
+   "edge": "E-PRP-16",
+   "kind": "derived",
+   "parent": "PRP-001-LL",
+   "rated_load_n": 4527.0,
+   "source": "2 x M3 tension 5.03 mm2 (structures_a.py L228) x 450 MPa (arm_cup_checks.md steel tension allowable, EST)"
+  },
+  "E-PRP-17": {
+   "child": "PRP-005-LL",
+   "edge": "E-PRP-17",
+   "kind": "derived",
+   "parent": "PRP-004-LL",
+   "rated_load_n": 6390.0,
+   "source": "1 x M5 tension 14.2 mm2 (placeholder: ISO 898-1 standard value, not opened) x 450 MPa (arm_cup_checks.md steel tension allowable, EST) (placeholder stress area)"
+  },
+  "E-PWR-01": {
+   "child": "PWR-002",
+   "edge": "E-PWR-01",
+   "kind": "placeholder",
+   "parent": "CGE-008",
+   "rated_load_n": 38.8,
+   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand; retention.load_n 38.8 N in EDGES (4.5 x g x subtree mass = 0.24 N, rounded up)"
+  },
+  "E-PWR-02": {
+   "child": "PWR-001",
+   "edge": "E-PWR-02",
+   "kind": "placeholder",
+   "parent": "CGE-008",
+   "rated_load_n": 12.0,
+   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up)"
+  },
+  "E-PWR-03": {
+   "child": "PWR-003",
+   "edge": "E-PWR-03",
+   "kind": "placeholder",
+   "parent": "CGE-008",
+   "rated_load_n": 0.2,
+   "source": "placeholder - not from source: CT-TAPE-FOAM has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 0.15 N, rounded up)"
+  },
+  "E-PWR-04": {
+   "child": "PWR-001",
+   "edge": "E-PWR-04",
+   "kind": "placeholder",
+   "parent": "PWR-002",
+   "rated_load_n": 12.0,
+   "source": "placeholder - not from source: CT-STRAP-VELCRO has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 11.92 N, rounded up)"
+  },
+  "E-WNG-01": {
+   "child": "WNG-002",
+   "edge": "E-WNG-01",
+   "kind": "doc",
+   "parent": "WNG-001",
+   "rated_load_n": 1296.8,
+   "source": "redesign/qp/A/structures/foam_103.md XPS shear 86 kPa x bore wrap pi x 12 mm x 0.40 m (bond rule |y| <= 0.20 m, E-WNG-01 notes, FIXES2)"
+  },
+  "E-WNG-02": {
+   "child": "WNG-003-C",
+   "edge": "E-WNG-02",
+   "kind": "derived",
+   "parent": "WNG-002",
+   "rated_load_n": 1247.8,
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-WNG-03": {
+   "child": "WNG-004-R",
+   "edge": "E-WNG-03",
+   "kind": "derived",
+   "parent": "WNG-002",
+   "rated_load_n": 1247.8,
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-WNG-04": {
+   "child": "WNG-004-L",
+   "edge": "E-WNG-04",
+   "kind": "derived",
+   "parent": "WNG-002",
+   "rated_load_n": 1247.8,
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-WNG-05": {
+   "child": "WNG-005-R",
+   "edge": "E-WNG-05",
+   "kind": "derived",
+   "parent": "WNG-002",
+   "rated_load_n": 1247.8,
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-WNG-06": {
+   "child": "WNG-005-L",
+   "edge": "E-WNG-06",
+   "kind": "derived",
+   "parent": "WNG-002",
+   "rated_load_n": 1247.8,
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+  },
+  "E-WNG-10": {
+   "child": "WNG-006-R",
+   "edge": "E-WNG-10",
+   "kind": "placeholder",
+   "parent": "WNG-001",
+   "rated_load_n": 1.1,
+   "source": "placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)"
+  },
+  "E-WNG-11": {
+   "child": "WNG-006-L",
+   "edge": "E-WNG-11",
+   "kind": "placeholder",
+   "parent": "WNG-001",
+   "rated_load_n": 1.1,
+   "source": "placeholder - not from source: CT-TAPE-HINGE has no published or tested capacity (structures_run.md L225 'strap ... not tested'); set to the platform's own demand (4.5 x g x subtree mass = 1.07 N, rounded up)"
+  },
+  "E-WNG-20": {
+   "child": "WNG-007-R",
+   "edge": "E-WNG-20",
+   "kind": "derived",
+   "parent": "WNG-006-R",
+   "rated_load_n": 1.4,
+   "source": "contact area 16 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-WNG-21": {
+   "child": "WNG-007-L",
+   "edge": "E-WNG-21",
+   "kind": "derived",
+   "parent": "WNG-006-L",
+   "rated_load_n": 1.4,
+   "source": "contact area 16 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-WNG-30L": {
+   "child": "WNG-008-LU",
+   "edge": "E-WNG-30L",
+   "kind": "doc",
+   "parent": "WNG-001",
+   "rated_load_n": 88.6,
+   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+  },
+  "E-WNG-30R": {
+   "child": "WNG-008-RU",
+   "edge": "E-WNG-30R",
+   "kind": "doc",
+   "parent": "WNG-001",
+   "rated_load_n": 88.6,
+   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+  },
+  "E-WNG-31L": {
+   "child": "WNG-008-LL",
+   "edge": "E-WNG-31L",
+   "kind": "doc",
+   "parent": "WNG-001",
+   "rated_load_n": 88.6,
+   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+  },
+  "E-WNG-31R": {
+   "child": "WNG-008-RL",
+   "edge": "E-WNG-31R",
+   "kind": "doc",
+   "parent": "WNG-001",
+   "rated_load_n": 88.6,
+   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+  },
+  "E-WNG-4L": {
+   "child": "WNG-009-L",
+   "edge": "E-WNG-4L",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 6.0,
+   "source": "contact area 70 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-WNG-4R": {
+   "child": "WNG-009-R",
+   "edge": "E-WNG-4R",
+   "kind": "derived",
+   "parent": "WNG-001",
+   "rated_load_n": 5.7,
+   "source": "contact area 67 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-WNG-5L": {
+   "child": "WNG-010-L",
+   "edge": "E-WNG-5L",
+   "kind": "derived",
+   "parent": "WNG-006-L",
+   "rated_load_n": 2.1,
+   "source": "contact area 24 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  },
+  "E-WNG-5R": {
+   "child": "WNG-010-R",
+   "edge": "E-WNG-5R",
+   "kind": "derived",
+   "parent": "WNG-006-R",
+   "rated_load_n": 2.2,
+   "source": "contact area 25 mm2 (measured on the meshes) x foam_103.md XPS shear 86 kPa (EST)"
+  }
+ },
+ "wire_edges_not_emitted": [
+  "E-HRN-01",
+  "E-HRN-02",
+  "E-HRN-03",
+  "E-HRN-04",
+  "E-HRN-05",
+  "E-HRN-06",
+  "E-HRN-07",
+  "E-HRN-08",
+  "E-HRN-09",
+  "E-HRN-10",
+  "E-HRN-11",
+  "E-HRN-12",
+  "E-HRN-13",
+  "E-HRN-14"
+ ]
+}

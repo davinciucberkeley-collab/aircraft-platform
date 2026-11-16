@@ -233,6 +233,22 @@ def schema_cmd():
     click.echo(str(SCHEMA_PATH))
 
 
+@cli.group("import")
+def import_group():
+    """Import a design from another project."""
+
+
+@import_group.command("dbf")
+@click.option("--dbf-root", required=True, type=click.Path(exists=True, file_okay=False), help="DBF-Combined checkout (read only).")
+@click.option("--concept", default="A", show_default=True)
+@click.option("--out", "out", type=click.Path(file_okay=False), default="designs/concept-a", show_default=True)
+def import_dbf_cmd(dbf_root, concept, out):
+    """Rebuild a DBF-Combined concept as a platform design (plane.yaml + meshes/)."""
+    from .importers.dbf import import_concept
+    p = import_concept(dbf_root, concept=concept, out_dir=out, log=lambda m: click.echo(m, err=True))
+    click.echo(str(p))
+
+
 def main():
     cli()
 

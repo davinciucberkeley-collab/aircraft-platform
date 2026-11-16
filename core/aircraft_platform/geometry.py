@@ -62,9 +62,16 @@ def _primitive(g: dict) -> trimesh.Trimesh:
     return m
 
 
+def is_point_mass(component: dict) -> bool:
+    """Schema 0.4: a mass at a point, with no extent. It has no mesh, so geometry-based checks skip it."""
+    return "point_mass" in component["geometry"]
+
+
 def _local_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
     """Untransformed parts of a component (wings split per half), local frame."""
     g = component["geometry"]
+    if "point_mass" in g:
+        return []
     if "lifting_surface" in g:
         return [trimesh.convex.convex_hull(v) for v in lifting_surface_halves(g["lifting_surface"])]
     if "mesh" in g:
@@ -95,7 +102,8 @@ def _apply_cavities(meshes: list[trimesh.Trimesh], component: dict) -> list[trim
 
 
 def component_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
-    """Watertight pieces (wings split per half) in the body frame, with cavities subtracted before the transform."""
+    """Watertight pieces (wings split per half) in the body frame, with cavities subtracted before the transform.
+    A point_mass component has no pieces (empty list)."""
     parts = _apply_cavities(_local_parts(component, base_dir), component)
     t = _transform(component)
     out = []
@@ -108,6 +116,8 @@ def component_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
 
 def component_mesh(component: dict, base_dir=None) -> trimesh.Trimesh:
     parts = component_parts(component, base_dir)
+    if not parts:
+        raise ValueError(f"{component['id']}: a point_mass has no mesh")
     return trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
 
 

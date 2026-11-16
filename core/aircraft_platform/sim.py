@@ -40,6 +40,8 @@ def _vec(v) -> str:
 
 def _component_inertia(mass_kg: float, parts, cg_mm: np.ndarray) -> np.ndarray:
     """Inertia (kg m^2) about the component CG, body-aligned axes, from the convex parts."""
+    if not parts:  # point_mass (schema 0.4): no extent, so a token inertia keeps the body well posed
+        return np.eye(3) * 1e-9
     vols = np.array([max(p.convex_hull.volume, 1e-9) for p in parts])
     inertia = np.zeros((3, 3))
     for p, v in zip(parts, vols):

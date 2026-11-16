@@ -9,7 +9,7 @@ import numpy as np
 import trimesh
 
 from .design import Design
-from .geometry import component_parts
+from .geometry import component_parts, is_point_mass
 
 TYPE_HUES = {"fuselage": 0.58, "wing": 0.55, "tail_surface": 0.5, "motor": 0.0, "propeller": 0.08,
              "battery": 0.15, "structure": 0.75, "flight_controller": 0.33}
@@ -20,6 +20,8 @@ def to_scene(design: Design) -> trimesh.Scene:
     scene = trimesh.Scene()
     flip = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1]], dtype=float)  # z-up -> y-up
     for c in design.components:
+        if is_point_mass(c):  # no extent: nothing to draw (its mass still counts in the mass properties)
+            continue
         mesh = trimesh.util.concatenate(component_parts(c, design.base_dir))
         mesh.apply_scale(0.001)
         mesh.apply_transform(flip)
@@ -45,6 +47,8 @@ def export_stl(design: Design, out_dir: str | Path) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for c in design.components:
+        if is_point_mass(c):
+            continue
         p = out_dir / f"{c['id']}.stl"
         trimesh.util.concatenate(component_parts(c, design.base_dir)).export(p)
         paths.append(p)

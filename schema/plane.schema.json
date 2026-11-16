@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/REPLACE_ME/aircraft-platform/schema/plane.schema.json",
-  "title": "Plane design v0.2",
+  "title": "Plane design v0.4",
   "description": "Canonical design file. Units are fixed: millimetres, grams, newtons, degrees, seconds. Body frame: origin at the nose datum, +x aft, +y starboard (right), +z up.",
   "type": "object",
   "required": [
@@ -20,9 +20,10 @@
       "enum": [
         "0.1",
         "0.2",
-        "0.3"
+        "0.3",
+        "0.4"
       ],
-      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.1 and 0.2 files validate unchanged."
+      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.4 adds the point_mass geometry (mass at a point, no extent); 0.1-0.3 files validate unchanged."
     },
     "id": {
       "$ref": "#/$defs/slug"
@@ -262,7 +263,7 @@
           "$ref": "#/$defs/geometry"
         },
         "position": {
-          "description": "Component origin in body frame (mm). For box/cylinder: centre. For lifting_surface: root leading edge.",
+          "description": "Component origin in body frame (mm). For box/cylinder: centre. For lifting_surface: root leading edge. For point_mass (v0.4): the point where the mass sits.",
           "$ref": "#/$defs/vec3"
         },
         "rotation_deg": {
@@ -585,6 +586,21 @@
                   "description": "STL/OBJ/GLB path relative to the design file, in mm."
                 }
               }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "point_mass"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "point_mass": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {},
+              "description": "v0.4. Mass with no extent (a lumped hardware or harness allowance). Counted in mass and CG at `position` (+ cg_offset); never in collision, contact, interference, drop-test collision or machine-fit checks."
             }
           }
         }
