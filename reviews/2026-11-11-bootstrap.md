@@ -275,3 +275,107 @@ None of these change a verdict on a design. Items 1-2 matter because "(b)" tells
 1. T2.hover_moment runs and PASSes "at pose <name>" even when the pose doesn't exist (r3). Skip it, or mark it blocked when T1 reports an unknown pose.
 2. The T3.hover_tw result at a pose outside `range_deg` is still computed and PASSes (r3b). Only T1 stops the design. Clamp it, or report "blocked".
 3. Make the classification corrections in section 4.
+
+## Round 5 — concept A import (9c31992)
+
+Reviewer: same Opus instance (R1). Scope: branch `concept-a-import`, commits 57eb666..9c31992; plan `plans/2026-11-16-concept-a-import.md`. Source: `dbf-combined` @ 171ec426, read only. `git status --short` there is empty before and after everything below, including a full re-import. Throwaway designs and outputs are in `/tmp/ap-review5/` (`mk5.py`, one folder per case with `plane.yaml` and `out.md`). Nothing under `designs/` was edited.
+
+### 6. Automated and determinism
+
+- `python3 -m pytest -q`: `77 passed, 39 warnings in 22.46s`.
+- `plane validate designs/example-tailsitter-wing`: exit 0, Accepted: yes.
+- `plane validate designs/concept-a --tier all`: exit 1, 24.6 s. T1 has 10 WARN (kinematic_link), T2 has 23 FAIL (22 sim_drop_loads, 1 sim_rest), T3 has 1 FAIL (static_margin). This matches the counts in `validator-comparison.md`.
+- Determinism: `plane import dbf --dbf-root … --out /tmp/ap-review5/reimport` ran in 5 min 4 s with rc 0. `diff -r` against `designs/concept-a` shows only the two hand-written files (README.md, validator-comparison.md). plane.yaml, all 104 meshes and import-report.json are byte-identical. **Deterministic.**
+
+### 1. Provenance (14 items; each source file opened, `prop_a.py` run from a scratch copy)
+
+| plane.yaml value | Cited source | Source | Result |
+|---|---|---|---|
+| `mtow_g` 1470 | params-A.json `req.mass_gate_kg` | 1.47 kg | match |
+| `cl_max` 0.75, rho 1.2 | params-A.json `mission.clmax`, `env.rho_kgm3` | 0.75 (EST, UNVERIFIED), 1.2 | match |
+| planform 900 x 245, rectangular | amodel/common.py "line 32 `C, B = 0.245, 0.90`" | L32 `C, B = 0.245, 0.90` | match |
+| `max_thrust_n` 8.81 | prop_a.py output "898 gf x0.93" | "fresh 16.8 V duty 0.90 … thrust 966 gf table / 898 gf x0.93"; 0.898 x 9.807 = 8.807 | match |
+| thrust cant 17 deg | common.py CANT | L45 `CANT = 17.0` | match |
+| avn-001 8 g, avn-002 17 g | PARTS | amodel/electrical.py L478-479 | match |
+| point masses hrd-001 26.08 g @ (100,0,0), hrn-001 18.4 g @ (30,0,20) | PARTS, `cg_declared` | electrical.py L507-512 cg [0.100,0,0], [0.030,0,0.020]; masses set at runtime; total 1261.24 g = sitl/cad_mass.json 1.26124 | match |
+| E-FIN-01 2009.8 N | iter2_margins.md 'Fin root block on fin tube' 130 N, MS +6.17; K 2.1562 | L25 130 N, +6.17; structures_a.py L11-12 1.5 x 1.15 x 1.25 = 2.15625; 130 x 2.15625 x 7.17 = 2009.8 | match |
+| E-CGE-01 944.6 N | iter2_margins.md 'Arm 12x10 in socket' 296 N, +0.48 | L17 296 N, +0.48; 944.6 | match |
+| E-WNG-01 1296.8 N | foam_103.md, 86 kPa x pi x 12 mm x 0.40 m | L4 "0.40 m of bond", L12 "shear 86 (EST)"; 1296.8 | match |
+| E-PRP-10 4527 N, E-PRP-03 744 N | M3 5.03 mm2 structures_a.py L228; 450 MPa and PETG bearing 20 MPa x 9.3 mm2 arm_cup_checks.md | L228 `A_s = 5.03e-6`; arm_cup_checks.md L15/L17; M2.5 3.39 at arm_cup_checks.py L82 | match |
+| strap note | structures_run.md L225 | L225 "strap: 2 x 20 mm Velcro, 32 N each side, `-` not tested" | match |
+| **E-WNG-30R/31R/30L/31L 88.6 N, `[doc]`** | foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 | L10: the numbers are right (30 x 2.15625 x 1.37 = 88.6), but the same row ends "**peel of the tape skin is not covered by a foam value: pull coupon required**" | **MISMATCH**: the source says this is not a valid capacity, yet it is labelled `[doc]`. It should be `[placeholder]`, or `[derived, source disclaims]`. |
+| **23 ratings "x structures_a.py L19 BOND_TAU 2.0 MPa"** | structures_a.py L19 | `BOND_TAU = 2.0e6` is on **L17**; L19 is `def rating(m)` | **MISMATCH** (citation; value right). The line is hard-coded in importers/dbf_ratings.py L25 and L120. |
+
+Other notes, not blocking: E-FIN-03 borrows the 'Rib saddle on 12 mm spar' row for a different joint (rib-in-saddle socket) and says so. The 17 ratings tagged `[derived] … (placeholder stress area)` (M2, M5 ISO values never opened) are counted under "66 derived" in the README; that count would be clearer as 49 + 17.
+
+### 2. Geometry fidelity (8 parts, every body kind; our STL vs the team's `redesign/site/assets/concept-a.glb`)
+
+The GLB is Y-up. The axis map ours = (x, -z_glb, y_glb) x 1000 makes the bounds of every tested part identical (max difference 0.000 mm).
+
+| Part | Body kinds (bodies / cuts) | Our volume mm3 | / GLB | Bounds diff |
+|---|---|---|---|---|
+| avn-001 plate | prism (1 / 12) | 18978.5 | 1.0000 | 0.000 |
+| cge-002-ur arm | revolve (1 / 0) | 8442.4 | 1.0000 | 0.000 |
+| wng-001 core | loft (1 / 83) | 2600446.9 | 1.0001 | 0.000 |
+| prp-002-ur prop | loft + revolve (4 / 0) | 6543.6 | 0.9980 | 0.000 |
+| fin-003-r root block | prism + revolve (2 / 2) | 18508.1 | 1.0007 | 0.000 |
+| cge-001 hub | loft + prism + revolve (18 / 20) | 13225.4 | 0.9963 | 0.000 |
+| wng-009-r horn | revolve (3 / 0) | 1117.2 | 1.0000 | 0.000 |
+| cge-003-ur cup | prism + revolve (4 / 18) | 9436.1 | 1.0000 | 0.000 |
+
+Over all 104 parts the largest volume deviation from the GLB is 0.37% (cge-001). **No part deviates more than 1% from the GLB.** Against the source's *analytic* body volumes (before cuts, from `volume_centroid()`), every revolved body is 1.14% low (0.9886 = 24-segment faceting, which the GLB shares) and the prop lofts are -1.3%/+1.06%. That is about 0.9% of radius (0.05 mm on a 12 mm tube): not a conversion error, but worth knowing for 1 mm3 interference calls. Not blocking.
+
+### 3. Independence
+
+| Quantity | Computed or echoed? |
+|---|---|
+| Mass 1261.24 g | Echo by design: sum of his part masses. |
+| CG (20.46, 2.38, 6.68) mm | **Computed** from our mesh centroids. No `cg_offset` anywhere in plane.yaml. It matches his cad_mass.json to 0.05 mm, a real cross-check. |
+| NP / static margin | **Computed** (MAC quarter chord of the `planform`); disagrees with his 40.7 mm. |
+| Interference | **Computed** (our own booleans, broad phase plus exact); agrees with his REPORT.md. |
+| Hover T/W | Our sum and directions; thrust per motor is his input (898 gf). |
+| **kinematic_link list** | **Echo**: `KINEMATIC_LINK_CHILDS` in importers/dbf.py L34 is hard-coded from REPORT.md. The dump already carries the source's own `poses[].linked` (same 4 parts), so read it from there and the import can't go stale. Copying his *blind spot* is acceptable as a declared modelling limit, because the four-bar is not in the schema. It is not acceptable that the result is a WARN, which still allows Accepted: yes (attack k1). |
+| **22 placeholder ratings** | **Self-echo**: each is set to *our own* tier-2 demand rounded up, so T2.joint_load shows **PASS by construction** on 22 rows. The README and YAML comments say so, but the scorecard doesn't. A check that cannot fail must not print PASS. |
+
+### 4. Attacks on the new rules (/tmp/ap-review5/)
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| p3 | Example + two 15 g "camera" **point masses floating 60 mm above the wing** at x = CG, plus two 2 g point masses **inside the prop discs** | **MISSED**: exit 0, Accepted: yes | Rows say "glued joint to a point mass: no contact or location check". As boxes (control p2b) the same parts FAIL "parts are 49.5 mm apart" and "prop strike … 16000 mm^3". |
+| p1 | 250 g battery as a point mass 170 mm below the fuselage | Caught by accident | Geometry is silent; only the CG shift trips T2.hover_moment and sim_rest. |
+| k1 | Round-3 hatch that clips an arm at the 45 deg sweep step; the ordinary glued `arm-post` joint marked `kinematic_link: true` | **MISSED**: exit 0, Accepted: yes | One WARN "sweep hatch-hinge 45°: 1 pair(s) not checked — linkage path not modelled: arm, hatch". Control k0 (no flag): T1.interference FAIL 1129 mm^3. The flag is visible but doesn't block, and any joint may carry it. |
+| ca-f3 | concept-a copy, `planform.origin` moved 5 mm forward of the mesh LE | **MISSED**: T3.static_margin FAIL 16.6% becomes **PASS 14.6%** | Nothing ties the planform to the mesh. |
+| f2 | Example + a 300 x 100 planform on the *battery* at x 500 (an invented tail) | **MISSED** (shifts NP +16 mm) | The planform is accepted on any component type and anywhere. Here it pushed SM to 21.6% (FAIL), but it can be moved either way. |
+| f1 | Wing planform duplicated on the fuselage box | Accepted, no numeric effect | T0 rejects planform + lifting_surface on *one* component only. A second copy elsewhere is accepted. Area and stall use the largest surface, so no double count here; an offset copy behaves like f2. |
+| ca-m1 | concept-a copy, motor→adapter E-PRP-10 changed to `glued` | CAUGHT | "prp-001-ur: … no propeller attached directly or through up to 2 bolted or press-fit other/structure parts" |
+| m2 | Example, prop press-fit to the motor *mount* (structure) instead of the motor | Rule MISSED, geometry caught | T1.motor_has_prop PASS "motor_l -> mount_l -> prop_l: drives its propeller through an adapter chain". Only the 29.5 mm contact gap fails. The chain may run *up* the mount toward the root. |
+
+### 5. Are the classifications in designs/concept-a/validator-comparison.md honest?
+
+| Row | Claimed | Verdict |
+|---|---|---|
+| T2.sim_rest tipped 79 deg: "(a) with (b) … tip-over margin about 29 deg, the same case the source treats as accepted damage" | (a)+(b) | **Misreads the source.** arm_cup_checks.md L37 "Tip-over damage case" is a *strength* case (arm bending if it tips), not acceptance that it tips. The source's landing sim (structures_run.md L186-199) says "**No tip-over in any case (end tilt <= 3 deg)**", with crushable feet and touchdown up to 1.2 m/s. Our 0.3 m rigid drop (about 2.4 m/s, no crush) tipping is **(b)**. There is a separate **real (a) finding** the doc doesn't state: on the current CAD (pads x 307.5-337.5, z +-183; our CG) the static narrow-axis tip angle is **29.1 deg**, below the source's own **30 deg limit** (structures_run.md L184 "33.2 deg (limit 30)", computed for the older geometry: feet x 0.300, CG 0.275 m above them, versus 0.317 m now). Send that to the team. |
+| T3.static_margin 16.6%: (b) | (b) | Class honest: our NP is the bare MAC quarter chord with no prop, fin or body terms. **But the text is wrong in direction**: "Dillon's NP 40.7 mm … is 20 mm aft of ours". With x aft, 40.7 is 20 mm **forward** of our 61 mm. That is why ours reads more stable. |
+| 20 placeholder drop-load FAILs: "(a) with (b) … a real documentation gap" | (a)+(b) | **Should be (c)**, the convention in all earlier comparisons. The FAIL compares the drop peak with a number *we* set. The missing capacity is a real gap, so note it, but the row is no evidence about the joint. Also E-ASM-01 (hardware lump) and E-HRN-20 (harness lump) are fictitious zip-tie joints created for point masses; they can never be a concept A issue. |
+| E-WNG-20/21: (c) risk | (c) | Honest. |
+| 10 kinematic_link WARN: (b) | (b) | Honest about the cause, but see blocker 3: today a WARN lets a design be accepted with unchecked pairs. |
+| T1.motor_has_prop resolved | n/a | Honest. The chain check works on concept A, with the hole shown in m2. |
+
+### Verdict
+
+**NOT ACCEPTED** (branch not ready to merge). The import itself is good: deterministic, the source is untouched, geometry is exact to the team's GLB, CG is independently reproduced, and 12 of 14 spot-checked numbers match. But the three new schema escape hatches each let a broken design get Accepted: yes (p3, k1, ca-f3), placeholder ratings print PASS, and the comparison doc misreads the source on tip-over.
+
+### Remaining blockers
+
+1. **Provenance**: (a) relabel E-WNG-30R/31R/30L/31L from `[doc]` to placeholder: foam_103.md L10 says the peel case has no valid allowable. (b) Fix `structures_a.py L19` to **L17** in importers/dbf_ratings.py (23 citations), and re-import.
+2. **point_mass has no placement check** (p3). Fix: T1 FAIL unless the point lies inside its attached parent's mesh (or within `attach_tolerance_mm` of it). Optionally require a `proxy_reason` and cap the mass fraction in design-standards.yaml. Concept A passes this: hrd-001 is inside wng-001, and hrn-001 is 0.9 mm from avn-008.
+3. **kinematic_link makes unchecked pairs a WARN, so the design is accepted** (k1). Fix: report the unchecked pairs as **SKIP** (not accepted, the same rule as "fit not verified"). Allow the flag only on hinge or linkage joints, with a required `reason`. Have the importer read `poses[].linked` from the dump instead of hard-coding it.
+4. **planform isn't tied to geometry** (ca-f3, f2, f1). Fix: allow `planform` only on wing/tail_surface components, at most one per lifting system. Check its LE, span and root location against the bounds of the component plus its articulated children (concept A: core x 0-183.8 plus elevons to 245) within `attach_tolerance_mm`. Add ca-f3 and f2 as tests.
+5. **Placeholder ratings print PASS** (22 rows). Fix: add `rated_load_basis: placeholder|derived|doc` to the attachment schema, and have T2.joint_load and sim_drop_loads emit **SKIP** for placeholders. A placeholder set from our own demand must never be a PASS.
+6. **validator-comparison.md corrections**: tip-over → (b), with the 29.1 deg vs 30 deg static finding added as (a). Fix the NP direction sentence. Placeholder FAILs → (c), noting that E-ASM-01/E-HRN-20 are lumps, not joints.
+
+### Non-blocking
+
+1. Motor→prop chain (m2): require each intermediate to be on the child side of the motor, away from the root, so a prop on the motor mount doesn't count.
+2. Revolved bodies are 24-segment facets (-1.14% volume against analytic). Consider 48 segments in `dbf_geometry` for tight-clearance pairs.
+3. README: split "66 derived" into 49 + 17 placeholder-stress-area.
