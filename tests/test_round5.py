@@ -286,22 +286,23 @@ def test_planform_area_mismatch_is_warn_not_fail():
     """Declared 245 x 900 planform on a 200 x 900 box: the planform row WARNs with both areas; the numbers still come from
     the box (no FAIL from the cross-check)."""
     data = _planform_box(0.0)
-    data["components"][0]["geometry"] = {"box": {"size": [200, 900, 10]}}
+    data["components"][0]["geometry"] = {"box": {"size": [220, 900, 10]}}  # -10.2% area: inside the 15% WARN band
     t3 = _t3(_run(data, tier=3))
     assert t3["T3.planform_matches_geometry"].status == WARN
-    assert "declared area 220500 mm^2 vs measured 180000 mm^2" in t3["T3.planform_matches_geometry"].message
+    assert "declared area 220500 mm^2 vs measured 198000 mm^2" in t3["T3.planform_matches_geometry"].message
     assert t3["T3.stall"].status in (PASS, FAIL)
     assert "(mesh wing: chord measured at 41 stations)" in t3["T3.static_margin"].message
 
 
-def test_planform_without_articulation_on_elevon_warns_and_changes_numbers():
+def test_planform_without_articulation_on_elevon_fails_and_changes_numbers():
     """Without the elevon's articulation block the elevon is not part of the wing: the measured chord is 183.8 mm,
     so the declared 245 mm planform WARNs and the measured MAC and x_ac differ from the articulated wing."""
     with_art = _t3(_run(_elevon_wing(articulated=True), tier=3))
     without = _t3(_run(_elevon_wing(articulated=False), tier=3))
     assert with_art["T3.planform_matches_geometry"].status == PASS
-    assert without["T3.planform_matches_geometry"].status == WARN
-    assert "the geometry of core" in without["T3.planform_matches_geometry"].message
+    assert without["T3.planform_matches_geometry"].status == FAIL  # -25% area: beyond the 15% band
+    assert "declared and measured lifting areas disagree" in without["T3.planform_matches_geometry"].message
+    assert without["T3.planform_matches_geometry"].message.startswith("core: declared and measured lifting areas")
     assert without["T3.static_margin"].data != with_art["T3.static_margin"].data
 
 
@@ -323,7 +324,7 @@ def test_notched_mesh_wing_strip_matches_analytic():
     assert abs(m["area_mm2"] / area - 1) <= 0.01
     assert abs(m["x_ac_mm"] - x_ac) <= 1.0
     t3 = _t3(_run(data, tier=3))
-    assert t3["T3.planform_matches_geometry"].status == WARN
+    assert t3["T3.planform_matches_geometry"].status == FAIL  # -25% area: beyond the 15% band
 
 
 def test_tapered_mesh_wing_strip_matches_analytic():
@@ -349,4 +350,41 @@ def test_rectangular_box_wing_is_exact():
     assert abs(m["mac_mm"] / 245 - 1) <= 0.005
     assert abs(m["x_ac_mm"] - (0 + 245 / 4)) <= 0.5
     assert abs(m["area_mm2"] / (245 * 900) - 1) <= 0.001
+
+
+def _planform_as(ctype: str, size=(245, 900, 10)) -> dict:
+    data = _planform_box(0.0)
+    data["components"][0]["type"] = ctype
+    data["components"][0]["geometry"] = {"box": {"size": list(size)}}
+    return data
+
+
+def test_planform_on_structure_fails_and_is_not_a_lifting_surface():
+    """The f1 case: a planform copied onto a fuselage-type box. Rejected by type, and not measured as a wing."""
+    sc = _run(_planform_as("structure"), tier=5)
+    rows = _rows(sc, "T3.planform_matches_geometry")
+    assert [r.status for r in rows] == [FAIL]
+    assert "planform declared on a structure; only wing or tail_surface parts are lifting surfaces" in rows[0].message
+    assert "T3.stall" not in {r.check_id for t in sc.tiers for r in t.results if "mesh wing" in r.message}
+    assert sc.accepted is False
+
+
+def test_planform_on_battery_fails():
+    """The f2 case: a planform on the battery. Rejected by type."""
+    sc = _run(_planform_as("battery"), tier=5)
+    rows = _rows(sc, "T3.planform_matches_geometry")
+    assert [r.status for r in rows] == [FAIL]
+    assert "planform declared on a battery" in rows[0].message
+    assert sc.accepted is False
+
+
+def test_planform_area_8_percent_smaller_is_warn_only():
+    sc = _run(_planform_as("wing", size=(245, 828, 10)), tier=3)  # -8% area and span
+    assert statuses(sc, "T3.planform_matches_geometry") == [WARN]
+
+
+def test_planform_area_20_percent_smaller_fails():
+    sc = _run(_planform_as("wing", size=(245, 720, 10)), tier=3)  # -20% area and span
+    assert statuses(sc, "T3.planform_matches_geometry") == [FAIL]
+    assert sc.tiers and any(r.status == FAIL for t in sc.tiers for r in t.results if r.check_id == "T3.planform_matches_geometry")
 
