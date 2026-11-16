@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/REPLACE_ME/aircraft-platform/schema/plane.schema.json",
-  "title": "Plane design v0.2",
+  "title": "Plane design v0.4",
   "description": "Canonical design file. Units are fixed: millimetres, grams, newtons, degrees, seconds. Body frame: origin at the nose datum, +x aft, +y starboard (right), +z up.",
   "type": "object",
   "required": [
@@ -20,9 +20,10 @@
       "enum": [
         "0.1",
         "0.2",
-        "0.3"
+        "0.3",
+        "0.4"
       ],
-      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.1 and 0.2 files validate unchanged."
+      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.4 adds the point_mass geometry (mass at a point, no extent), attachment.kinematic_link, attachment.rating_basis and component.planform; 0.1-0.3 files validate unchanged."
     },
     "id": {
       "$ref": "#/$defs/slug"
@@ -261,8 +262,35 @@
         "geometry": {
           "$ref": "#/$defs/geometry"
         },
+        "planform": {
+          "description": "v0.4. Aerodynamic planform of a component whose geometry is not a lifting_surface (e.g. a mesh wing). Used ONLY by tier-3 aero (lift slope, stall, static margin, neutral point). It creates no geometry for collision, mass or export. Not allowed on a component whose geometry is a lifting_surface.",
+          "type": "object",
+          "required": [
+            "lifting_surface",
+            "origin"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "lifting_surface": {
+              "$ref": "#/$defs/lifting_surface"
+            },
+            "origin": {
+              "description": "Body-frame position of the root leading edge (mm).",
+              "$ref": "#/$defs/vec3"
+            },
+            "rotation_deg": {
+              "description": "Intrinsic roll, pitch, yaw of the planform about x, y, z (deg). Default [0,0,0].",
+              "$ref": "#/$defs/vec3",
+              "default": [
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
         "position": {
-          "description": "Component origin in body frame (mm). For box/cylinder: centre. For lifting_surface: root leading edge.",
+          "description": "Component origin in body frame (mm). For box/cylinder: centre. For lifting_surface: root leading edge. For point_mass (v0.4): the point where the mass sits.",
           "$ref": "#/$defs/vec3"
         },
         "rotation_deg": {
@@ -514,55 +542,7 @@
           "additionalProperties": false,
           "properties": {
             "lifting_surface": {
-              "type": "object",
-              "required": [
-                "span",
-                "root_chord",
-                "tip_chord"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "span": {
-                  "description": "Full span tip to tip if mirrored, else root to tip (mm).",
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "root_chord": {
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "tip_chord": {
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "sweep_le_deg": {
-                  "type": "number",
-                  "default": 0
-                },
-                "dihedral_deg": {
-                  "type": "number",
-                  "default": 0
-                },
-                "thickness_ratio": {
-                  "type": "number",
-                  "exclusiveMinimum": 0,
-                  "maximum": 0.4,
-                  "default": 0.12
-                },
-                "airfoil": {
-                  "type": "string"
-                },
-                "mirrored": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "true: symmetric about the component's x-z plane. false: extends toward +y (use rotation for vertical fins)."
-                },
-                "lifting": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "false for vertical fins (excluded from lift/neutral-point estimate)."
-                }
-              }
+              "$ref": "#/$defs/lifting_surface"
             }
           }
         },
@@ -585,6 +565,47 @@
                   "description": "STL/OBJ/GLB path relative to the design file, in mm."
                 }
               }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "point_mass"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "point_mass": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "distributed": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "v0.4. Mass of items spread over the aircraft (harness, hardware) lumped at their combined CG, which may lie in open space. Its position must lie inside the aircraft's envelope (convex hull of all non-propeller geometry), not within attach_tolerance_mm of a host. Only for component type other, and limited by standards geometry.distributed_mass_max_fraction_each / _total."
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "v0.4. Why this mass is distributed rather than modelled. Required when distributed is true."
+                }
+              },
+              "if": {
+                "properties": {
+                  "distributed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "distributed"
+                ]
+              },
+              "then": {
+                "required": [
+                  "reason"
+                ]
+              },
+              "description": "v0.4. Mass with no extent (a lumped hardware or harness allowance). Counted in mass and CG at `position` (+ cg_offset); never in collision, contact, interference, drop-test collision or machine-fit checks."
             }
           }
         }
@@ -633,9 +654,22 @@
           "default": false,
           "description": "true if the child is meant to pass into the parent (spar into slot, motor into pod)."
         },
+        "kinematic_link": {
+          "type": "boolean",
+          "default": false,
+          "description": "v0.4. true if the child is moved by a linkage the schema does not model (e.g. a servo pushrod driven by an elevon horn). Tier-1 pose and sweep interference skips pairs of this child with a part moved by that pose and reports them as one WARN per pose (T1.kinematic_link). Static (0 deg) checks are unchanged."
+        },
         "rated_load_n": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "rating_basis": {
+          "description": "v0.4. Where rated_load_n comes from. sourced: a published or tested capacity. derived: an allowable times measured geometry. placeholder: no capacity in the source; the value is not a capacity, and tier-2 load checks skip this joint (never PASS or FAIL it).",
+          "enum": [
+            "sourced",
+            "derived",
+            "placeholder"
+          ]
         },
         "articulation": {
           "description": "v0.2. The joint moves. Rotation applies to the CHILD side: the child and everything attached downstream of it (reached from the child without crossing back through this joint). 0 deg = the geometry as written.",
@@ -676,6 +710,57 @@
               }
             }
           }
+        }
+      }
+    },
+    "lifting_surface": {
+      "type": "object",
+      "required": [
+        "span",
+        "root_chord",
+        "tip_chord"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "span": {
+          "description": "Full span tip to tip if mirrored, else root to tip (mm).",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "root_chord": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "tip_chord": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sweep_le_deg": {
+          "type": "number",
+          "default": 0
+        },
+        "dihedral_deg": {
+          "type": "number",
+          "default": 0
+        },
+        "thickness_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 0.4,
+          "default": 0.12
+        },
+        "airfoil": {
+          "type": "string"
+        },
+        "mirrored": {
+          "type": "boolean",
+          "default": true,
+          "description": "true: symmetric about the component's x-z plane. false: extends toward +y (use rotation for vertical fins)."
+        },
+        "lifting": {
+          "type": "boolean",
+          "default": true,
+          "description": "false for vertical fins (excluded from lift/neutral-point estimate)."
         }
       }
     }

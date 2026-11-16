@@ -62,9 +62,16 @@ def _primitive(g: dict) -> trimesh.Trimesh:
     return m
 
 
+def is_point_mass(component: dict) -> bool:
+    """Schema 0.4: a mass at a point, with no extent. It has no mesh, so geometry-based checks skip it."""
+    return "point_mass" in component["geometry"]
+
+
 def _local_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
     """Untransformed parts of a component (wings split per half), local frame."""
     g = component["geometry"]
+    if "point_mass" in g:
+        return []
     if "lifting_surface" in g:
         return [trimesh.convex.convex_hull(v) for v in lifting_surface_halves(g["lifting_surface"])]
     if "mesh" in g:
@@ -95,7 +102,8 @@ def _apply_cavities(meshes: list[trimesh.Trimesh], component: dict) -> list[trim
 
 
 def component_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
-    """Watertight pieces (wings split per half) in the body frame, with cavities subtracted before the transform."""
+    """Watertight pieces (wings split per half) in the body frame, with cavities subtracted before the transform.
+    A point_mass component has no pieces (empty list)."""
     parts = _apply_cavities(_local_parts(component, base_dir), component)
     t = _transform(component)
     out = []
@@ -108,6 +116,8 @@ def component_parts(component: dict, base_dir=None) -> list[trimesh.Trimesh]:
 
 def component_mesh(component: dict, base_dir=None) -> trimesh.Trimesh:
     parts = component_parts(component, base_dir)
+    if not parts:
+        raise ValueError(f"{component['id']}: a point_mass has no mesh")
     return trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
 
 
@@ -227,3 +237,79 @@ def lifting_surface_properties(component: dict, pose: np.ndarray | None = None) 
         ac_body = pose[:3, :3] @ ac_body + pose[:3, 3]
     return {"area_mm2": area, "aspect_ratio": ar, "mac_mm": mac, "x_ac_mm": float(ac_body[0]),
             "lifting": ls.get("lifting", True)}
+
+
+def strip_planform(owners: dict[str, list[trimesh.Trimesh]], root: str, n: int = 41, gap_tol: float = 3.0,
+                   control_frac: float = 0.15) -> dict:
+    """Aero numbers of a mesh wing measured from its geometry only (the declared planform is never used here).
+    `owners` maps each component id of the wing (the root and its articulated children, control surfaces) to its
+    body-frame meshes; `root` is the planform component. Chord runs along body x (freestream). The span axis is body y
+    or body z, whichever the geometry's extent is larger along. The span extent is split into n equal strips of width
+    dy, each sliced at its centre by a plane normal to the span axis. Per strip every owner's section is projected onto
+    x as intervals (one per closed loop, tagged with its owner). Intervals are merged in x order when the gap is at most:
+      - control_frac x the strip's material envelope (min x to max x of all owners), between root material and a control
+        surface's material (hinge gaps, balance pockets);
+      - gap_tol otherwise.
+    The chord is the LONGEST merged group, LE its min x; other groups are detached material, ignored and listed. A strip
+    with no section counts as c = 0 and is listed.
+    Midpoint rule: S = sum c_i dy, MAC = sum c_i^2 dy / S, x_ac = sum (LE_i + c_i/4) c_i dy / S, AR = b^2 / S, b = span extent.
+    Returns the lifting_surface_properties keys plus span_mm, span_axis, missing_stations, ignored_strips
+    ([strip, detached length mm] pairs), control_gap_strips ([strip, bridged gap mm] pairs above gap_tol) and source."""
+    allv = np.vstack([m.vertices for meshes in owners.values() for m in meshes])
+    ext = allv.max(axis=0) - allv.min(axis=0)
+    axis = 1 if ext[1] >= ext[2] else 2
+    e = np.zeros(3)
+    e[axis] = 1.0
+    lo_s, hi_s = float(allv[:, axis].min()), float(allv[:, axis].max())
+    b = hi_s - lo_s
+    dy = b / n
+    centres = lo_s + (np.arange(n) + 0.5) * dy
+    chord = np.zeros(n)
+    le = np.zeros(n)
+    missing: list[int] = []
+    ignored: list[list[float]] = []
+    control_gaps: list[list[float]] = []
+    for i, c_pos in enumerate(centres):
+        origin = np.zeros(3)
+        origin[axis] = c_pos
+        ivs: list[tuple[float, float, str]] = []
+        for owner, meshes in owners.items():
+            for m in meshes:
+                sec = m.section(plane_origin=origin, plane_normal=e)
+                if sec is None:
+                    continue
+                for ent in sec.entities:
+                    xs = sec.vertices[ent.points][:, 0]
+                    ivs.append((float(xs.min()), float(xs.max()), owner))
+        if not ivs:
+            missing.append(i)
+            continue
+        envelope = max(h for _, h, _ in ivs) - min(l for l, _, _ in ivs)
+        ivs.sort(key=lambda t: t[0])
+        merged: list[list] = []  # [lo, hi, owners]
+        for lo, hi, ow in ivs:
+            if merged:
+                grp = merged[-1]
+                gap = lo - grp[1]
+                cross = (ow != root and root in grp[2]) or (ow == root and any(o != root for o in grp[2]))
+                limit = max(gap_tol, control_frac * envelope) if cross else gap_tol
+                if gap <= limit:
+                    if cross and gap > gap_tol:
+                        control_gaps.append([i, round(gap, 2)])
+                    grp[1] = max(grp[1], hi)
+                    grp[2].add(ow)
+                    continue
+            merged.append([lo, hi, {ow}])
+        main = max(merged, key=lambda gr: gr[1] - gr[0])
+        le[i] = main[0]
+        chord[i] = main[1] - main[0]
+        rest = [gr[1] - gr[0] for gr in merged if gr is not main]
+        if rest:
+            ignored.append([i, round(max(rest), 2)])
+    area = float(np.sum(chord) * dy)
+    mac = float(np.sum(chord ** 2) * dy / area)
+    x_ac = float(np.sum((le + 0.25 * chord) * chord) * dy / area)
+    return {"area_mm2": area, "aspect_ratio": b ** 2 / area, "mac_mm": mac, "x_ac_mm": x_ac,
+            "lifting": True, "span_mm": b, "span_axis": "yz"[axis - 1], "missing_stations": missing,
+            "ignored_strips": ignored, "control_gap_strips": control_gaps,
+            "source": f"geometry strips ({n} stations)"}

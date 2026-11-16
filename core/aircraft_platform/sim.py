@@ -40,6 +40,8 @@ def _vec(v) -> str:
 
 def _component_inertia(mass_kg: float, parts, cg_mm: np.ndarray) -> np.ndarray:
     """Inertia (kg m^2) about the component CG, body-aligned axes, from the convex parts."""
+    if not parts:  # point_mass (schema 0.4): no extent, so a token inertia keeps the body well posed
+        return np.eye(3) * 1e-9
     vols = np.array([max(p.convex_hull.volume, 1e-9) for p in parts])
     inertia = np.zeros((3, 3))
     for p, v in zip(parts, vols):
@@ -192,6 +194,10 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
         peak = float(peaks[k])
         rated = a.get("rated_load_n")
         d = {"peak_n": round(peak, 2)}
+        if a.get("rating_basis") == "placeholder":
+            res.append(CheckResult("T2.sim_drop_loads", SKIP, f"{label}: carries {peak:.1f} N; rating is a placeholder, not checked",
+                                   STD + "landing_load_factor", d))
+            continue
         if rated is None:
             res.append(CheckResult("T2.sim_drop_loads", FAIL, f"{label}: peak {peak:.1f} N in drop test, no rated_load_n given",
                                    STD + "landing_load_factor", d))

@@ -47,9 +47,14 @@ Thresholds live only in `standards/design-standards.yaml`, each with a source (o
 
 See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exact instructions, builders and scouts (Haiku) execute, one reviewer (Opus) scores against named criteria. The clearer the goal, the cheaper the model.
 
-## Known limits (v0.3)
+## Known limits (v0.4)
+
+The validator checks that a design is self-consistent and buildable. It can't tell real geometry or mass from plausible-looking fake entries, so a human reviewer still confirms the model matches the aircraft. Accepted residual holes (found in review rounds 5–7, `reviews/2026-11-11-bootstrap.md`):
+- Distributed point masses (type `other`, with a reason) may sit anywhere inside the aircraft's envelope; the risk is bounded by the 3 % each / 5 % total mass caps.
+- Mesh-wing chord: a thin rod across a strip centre bridges it; any part attached to a wing by a hinged (articulated) joint is counted as control surface, bridged across gaps up to 15 % of local chord, so a fake hinged piece can pad the chord; span is the geometry's extent; small leading-edge slivers are ignored as detached.
 
 - Aero is first-order: neutral point ignores the fuselage; no VLM yet (AeroSandbox is the planned upgrade).
 - Lifting surfaces are tapered slabs, not real airfoils, for collision purposes.
 - Several thresholds are `source: pending` — see `knowledge/sources/std-SUMMARY.md`.
+- Mesh wings: planform is measured from the modelled geometry in 41 equal spanwise midpoint strips (body-x chord, span from the geometry extent), bridging gaps up to 15% of local chord (control-surface hinges and balance pockets) and other gaps up to 3 mm, ignoring and reporting detached material; the declared planform is only cross-checked, so fake parts placed to fill a gap would still count and a reviewer must confirm control surfaces are real.
 - Articulation is revolute only, and mass properties, the drop test and tiers 2–3 use the 0° configuration unless `flight.hover_pose` / `flight.cruise_pose` name a pose.

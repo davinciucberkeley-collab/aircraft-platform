@@ -8,7 +8,16 @@ from .design import Design
 from .geometry import posed_component_parts, pose_transforms
 
 
-def component_cg(component: dict, parts: list[trimesh.Trimesh], rot: np.ndarray | None = None) -> np.ndarray:
+def component_cg(component: dict, parts: list[trimesh.Trimesh], rot: np.ndarray | None = None,
+                 pose: np.ndarray | None = None) -> np.ndarray:
+    """CG of one component. A point_mass (no parts) sits at `position`; `pose` is the 4x4 articulated-joint
+    transform of its subtree (the point moves with it; meshes are already posed)."""
+    if not parts:
+        pt = np.array(component["position"], dtype=float)
+        if pose is not None:
+            pt = pose[:3, :3] @ pt + pose[:3, 3]
+        off = np.array(component.get("cg_offset", [0, 0, 0]), dtype=float)
+        return pt + (rot @ off if rot is not None else off)
     vols = np.array([max(p.volume, 1e-9) for p in parts])
     cents = np.array([p.center_mass for p in parts])
     centroid = (cents * vols[:, None]).sum(0) / vols.sum()
@@ -28,7 +37,7 @@ def mass_properties(design: Design, angles: dict[str, float] | None = None) -> d
     for c in design.components:
         parts = posed[c["id"]]
         m = float(c["mass_g"])
-        cg = component_cg(c, parts, tf[c["id"]][:3, :3])
+        cg = component_cg(c, parts, tf[c["id"]][:3, :3], tf[c["id"]])
         entries.append((c, parts, m, cg))
         total += m
         moment += m * cg
@@ -40,7 +49,7 @@ def mass_properties(design: Design, angles: dict[str, float] | None = None) -> d
     for c, parts, m, ccg in entries:
         vol = sum(max(p.volume, 1e-9) for p in parts)
         i_local = np.zeros((3, 3))
-        for p in parts:
+        for p in parts:  # a point_mass has no parts: no inertia about its own CG
             pm = m * max(p.volume, 1e-9) / vol
             q = p.copy()
             q.density = pm / max(q.volume, 1e-9)

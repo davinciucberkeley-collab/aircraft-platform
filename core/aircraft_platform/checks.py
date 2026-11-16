@@ -22,7 +22,8 @@ from jsonschema import Draft202012Validator
 from .design import (Design, CheckResult, TierReport, Scorecard, SCHEMA_PATH, REPO_ROOT,
                      PASS, FAIL, WARN, SKIP, load_standards)
 from .geometry import (component_parts, lifting_surface_properties, articulated_attachments, att_label,
-                       downstream_ids, posed_component_parts, pose_transforms, pose_angles)
+                       downstream_ids, posed_component_parts, pose_transforms, pose_angles, is_point_mass,
+                       lifting_surface_halves, rotation_matrix, strip_planform)
 from .mass import mass_properties
 
 G = 9.80665
@@ -46,10 +47,34 @@ def tier0_schema(design: Design) -> TierReport:
                                "articulation / flight.hover_pose / flight.cruise_pose need schema_version \"0.2\"",
                                "schema/plane.schema.json"))
     uses_v03 = any(c.get("cavities") for c in design.data.get("components", []))
-    if uses_v03 and design.data.get("schema_version") != "0.3":
+    if uses_v03 and design.data.get("schema_version") not in ("0.3", "0.4"):
         res.append(CheckResult("T0.version", FAIL,
-                               "cavities need schema_version \"0.3\"",
+                               "cavities need schema_version \"0.3\" or later",
                                "schema/plane.schema.json"))
+    uses_v04 = any("point_mass" in c.get("geometry", {}) for c in design.data.get("components", []))
+    if uses_v04 and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "point_mass geometry needs schema_version \"0.4\"",
+                               "schema/plane.schema.json"))
+    if any(a.get("kinematic_link") for a in design.data.get("attachments", [])) and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "attachment kinematic_link needs schema_version \"0.4\"",
+                               "schema/plane.schema.json"))
+    uses_planform = [c["id"] for c in design.data.get("components", []) if "planform" in c]
+    if uses_planform and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "component planform needs schema_version \"0.4\"",
+                               "schema/plane.schema.json"))
+    if any("rating_basis" in a for a in design.data.get("attachments", [])) and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "attachment rating_basis needs schema_version \"0.4\"",
+                               "schema/plane.schema.json"))
+    both = [c["id"] for c in design.data.get("components", [])
+            if "planform" in c and "lifting_surface" in c.get("geometry", {})]
+    if both:
+        res.append(CheckResult("T0.version", FAIL,
+                               "planform is for components whose geometry is not a lifting_surface (would count the wing twice): "
+                               + ", ".join(both), "schema/plane.schema.json"))
     ids = [c["id"] for c in design.components]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:
@@ -105,6 +130,59 @@ def _point_distance(parts: list[trimesh.Trimesh], p) -> float:
         sd = float(trimesh.proximity.signed_distance(m, np.array([p]))[0])  # >0 inside
         best = min(best, 0.0 if sd >= 0 else -sd)
     return best
+
+
+class _PairCache:
+    """Overlap volume and gap for component pairs. A pair that does not move relative to itself between two
+    articulated configurations (both parts carry the same transform, e.g. both static) has exactly the result it
+    had in the first configuration, so only pairs with relative motion are recomputed in a pose."""
+
+    def __init__(self):
+        self.ov: dict[tuple[str, str], float] = {}
+        self.dist: dict[tuple[str, str], float] = {}
+        self.loc: dict[str, CheckResult] = {}
+
+    @staticmethod
+    def _key(a: str, b: str) -> tuple[str, str]:
+        return (a, b) if a <= b else (b, a)
+
+    def overlap(self, meshes, tf, a: str, b: str) -> float:
+        static = bool(np.allclose(tf[a], tf[b]))
+        key = self._key(a, b)
+        if static and key in self.ov:
+            return self.ov[key]
+        v = _overlap_volume(meshes[a], meshes[b])
+        if static:
+            self.ov[key] = v
+        return v
+
+    def gap(self, meshes, tf, a: str, b: str) -> float:
+        static = bool(np.allclose(tf[a], tf[b]))
+        key = self._key(a, b)
+        if static and key in self.dist:
+            return self.dist[key]
+        v = _min_distance(meshes[a], meshes[b])
+        if static:
+            self.dist[key] = v
+        return v
+
+
+def _broad_phase(meshes: dict[str, list[trimesh.Trimesh]]) -> list[tuple[str, str]]:
+    """Pairs of components whose axis-aligned boxes overlap (sort and sweep along x). Only these can clip: the exact
+    boolean intersection runs on them and on nothing else (104 parts = 5356 pairs, a few hundred candidates)."""
+    ids = [i for i in meshes if meshes[i]]
+    lo = {i: np.min([p.bounds[0] for p in meshes[i]], axis=0) for i in ids}
+    hi = {i: np.max([p.bounds[1] for p in meshes[i]], axis=0) for i in ids}
+    order = sorted(ids, key=lambda i: lo[i][0])
+    active: list[str] = []
+    pairs = []
+    for b in order:
+        active = [a for a in active if hi[a][0] > lo[b][0]]
+        for a in active:
+            if np.all(lo[a] < hi[b]) and np.all(lo[b] < hi[a]):
+                pairs.append((a, b))
+        active.append(b)
+    return pairs
 
 
 def _fmt_deg(x: float) -> str:
@@ -203,8 +281,43 @@ def _articulation_checks(design: Design, std: dict, meshes: dict) -> list[CheckR
     return res
 
 
-def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict, atts: list[dict]) -> list[CheckResult]:
-    """Attachment contact / overlap / containment, motor-prop pairing and interference for ONE configuration."""
+PROP_CHAIN_METHODS = ("bolted", "press-fit")   # joints an adapter may use between motor and propeller
+PROP_CHAIN_TYPES = ("other", "structure")      # component types an adapter may be
+PROP_CHAIN_MAX_INTERMEDIATE = 2
+
+
+def _motor_prop_path(design: Design, motor: str, atts: list[dict]) -> list[str] | None:
+    """Component ids from `motor` to a propeller: a direct attachment (any method), or a chain through at most
+    PROP_CHAIN_MAX_INTERMEDIATE parts of type other/structure where every joint is bolted or press-fit.
+    None if there is no such path. Breadth-first, so the shortest chain is reported."""
+    nbrs = defaultdict(list)
+    for a in atts:
+        nbrs[a["parent"]].append((a["child"], a["method"]))
+        nbrs[a["child"]].append((a["parent"], a["method"]))
+    queue = deque([([motor], [])])
+    while queue:
+        path, methods = queue.popleft()
+        for nxt, method in nbrs[path[-1]]:
+            if nxt in path:
+                continue
+            new_path, new_methods = path + [nxt], methods + [method]
+            if design.component(nxt)["type"] == "propeller":
+                if len(new_path) == 2 or all(m in PROP_CHAIN_METHODS for m in new_methods):
+                    return new_path
+                continue
+            if (design.component(nxt)["type"] in PROP_CHAIN_TYPES and method in PROP_CHAIN_METHODS
+                    and len(new_path) - 1 <= PROP_CHAIN_MAX_INTERMEDIATE):
+                queue.append((new_path, new_methods))
+    return None
+
+
+def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict, atts: list[dict],
+                              cache: _PairCache | None = None) -> list[CheckResult]:
+    """Attachment contact / overlap / containment, motor-prop pairing and interference for ONE configuration.
+    `meshes` holds solid components only (point masses, schema 0.4, are absent); `cache` shares results between
+    configurations (see _PairCache)."""
+    cache = cache or _PairCache()
+    tf = {**{cid: np.eye(4) for cid in meshes}, **tf}
     g = std["geometry"]
     tol = g["attach_tolerance_mm"]["value"]
     max_int = g["interference_max_mm3"]["value"]
@@ -224,14 +337,19 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
         label = a.get("id") or f"{p}->{c}"
         ptype, ctype = design.component(p)["type"], design.component(c)["type"]
         embed = a.get("embed_ok", False)
+        if p not in meshes or c not in meshes:  # an end is a point mass: no extent to touch or overlap
+            res.append(CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint to a point mass "
+                                   f"({p if p not in meshes else c}): no contact or location check",
+                                   STD + "attach_tolerance_mm"))
+            continue
         if embed and "propeller" in (ptype, ctype):
             res.append(CheckResult("T1.attachment_overlap", FAIL,
                                    f"{label}: a propeller can never be an embed_ok joint (its swept disc must not pass into a part)",
                                    STD + "embed_max_fraction_of_child"))
             continue
-        ov = _overlap_volume(meshes[p], meshes[c])
+        ov = cache.overlap(meshes, tf, p, c)
         if ov <= 0:
-            d = _min_distance(meshes[p], meshes[c])
+            d = cache.gap(meshes, tf, p, c)
             if d > tol:
                 res.append(CheckResult("T1.attachment_contact", FAIL,
                                        f"{label}: parts are {d:.1f} mm apart (tolerance {tol} mm)",
@@ -261,40 +379,62 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
             res.append(CheckResult("T1.attachment_location", FAIL, f"{label}: no joint location given",
                                    "schema/plane.schema.json"))
             continue
+        # a non-articulated joint whose two ends carry the same transform has the static result: reuse it
+        same_motion = (not a.get("articulation")) and bool(np.allclose(tf[p], tf[c]))
+        if same_motion and label in cache.loc:
+            res.append(cache.loc[label])
+            continue
         if a.get("articulation"):
             loc = a["articulation"]["pivot"]  # the pivot is the one point that does not move with the joint
         elif not np.allclose(tf[c], np.eye(4)):
             loc = (tf[c] @ np.append(np.array(loc, dtype=float), 1.0))[:3]
         dp, dc = _point_distance(meshes[p], loc), _point_distance(meshes[c], loc)
         if max(dp, dc) > tol:
-            res.append(CheckResult("T1.attachment_location", FAIL,
-                                   f"{label}: joint point is {dp:.1f} mm from {p} and {dc:.1f} mm from {c}",
-                                   STD + "attach_tolerance_mm"))
+            r = CheckResult("T1.attachment_location", FAIL,
+                            f"{label}: joint point is {dp:.1f} mm from {p} and {dc:.1f} mm from {c}",
+                            STD + "attach_tolerance_mm")
         else:
-            res.append(CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint OK",
-                                   STD + "attach_tolerance_mm"))
+            r = CheckResult("T1.attachment", PASS, f"{label}: {a['method']} joint OK",
+                            STD + "attach_tolerance_mm")
+        if same_motion:
+            cache.loc[label] = r
+        res.append(r)
 
     # every motor must drive an attached propeller (so a mislabelled prop leaves its motor prop-less)
     for comp in design.components:
         if "propulsion" not in comp:
             continue
-        nbrs = adj[comp["id"]]
-        has = any(design.component(n)["type"] == "propeller" for n in nbrs)
-        res.append(CheckResult("T1.motor_has_prop", PASS if has else FAIL,
-                               f"{comp['id']}: drives an attached propeller" if has
-                               else f"{comp['id']}: has a propulsion block but no attached component of type propeller",
-                               STD + "embed_max_fraction_of_child"))
+        path = _motor_prop_path(design, comp["id"], atts)
+        if path is None:
+            res.append(CheckResult("T1.motor_has_prop", FAIL,
+                                   f"{comp['id']}: has a propulsion block but no propeller attached directly or through "
+                                   f"up to {PROP_CHAIN_MAX_INTERMEDIATE} bolted or press-fit other/structure parts",
+                                   STD + "embed_max_fraction_of_child"))
+        elif len(path) == 2:
+            res.append(CheckResult("T1.motor_has_prop", PASS, f"{comp['id']}: drives an attached propeller",
+                                   STD + "embed_max_fraction_of_child"))
+        else:
+            res.append(CheckResult("T1.motor_has_prop", PASS,
+                                   f"{' -> '.join(path)}: drives its propeller through an adapter chain",
+                                   STD + "embed_max_fraction_of_child", {"path": path}))
 
-    # interference between non-attached parts
-    ids = list(meshes)
+    # interference between non-attached parts (broad phase first: only boxes that overlap get the exact boolean)
+    # kinematic_link children are moved by a linkage the schema does not model: a pair of one such child and a
+    # part moved by this configuration is not checked here, and is reported once as a WARN (never silently dropped)
+    linked = {a["child"] for a in atts if a.get("kinematic_link")}
+    moved = {cid for cid in meshes if not np.allclose(tf[cid], np.eye(4))}
+    unchecked = []
     clashes = []
-    for i in range(len(ids)):
-        for j in range(i + 1, len(ids)):
-            if frozenset((ids[i], ids[j])) in attached_pairs:
-                continue
-            v = _overlap_volume(meshes[ids[i]], meshes[ids[j]])
-            if v > max_int:
-                clashes.append((ids[i], ids[j], v))
+    for a_, b_ in _broad_phase(meshes):
+        if frozenset((a_, b_)) in attached_pairs:
+            continue
+        if (a_ in linked and b_ in moved) or (b_ in linked and a_ in moved):
+            unchecked.append((a_, b_))
+            continue
+        v = cache.overlap(meshes, tf, a_, b_)
+        if v > max_int:
+            clashes.append((a_, b_, v))
+    clashes.sort()
     for a_, b_, v in clashes:
         kind = "prop strike" if "propeller" in (design.component(a_)["type"], design.component(b_)["type"]) else "clipping"
         res.append(CheckResult("T1.interference", FAIL, f"{kind}: {a_} and {b_} overlap {v:.0f} mm^3",
@@ -302,11 +442,100 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
     if not clashes:
         res.append(CheckResult("T1.interference", PASS, "no clipping between unattached parts",
                                STD + "interference_max_mm3"))
+    if unchecked:
+        ids = sorted({i for pair in unchecked for i in pair})
+        shown = ", ".join(ids[:6]) + (", \u2026" if len(ids) > 6 else "")
+        res.append(CheckResult("T1.kinematic_link", SKIP,
+                               f"{len(unchecked)} pair(s) not checked \u2014 linkage path not modelled: {shown}",
+                               "schema/plane.schema.json", {"pairs": [list(p) for p in unchecked]}))
+    return res
+
+
+def _inside(parts: list[trimesh.Trimesh], p) -> bool:
+    """True if p lies strictly inside one of the parts (a point on the surface does not count)."""
+    return any(float(trimesh.proximity.signed_distance(m, np.array([p]))[0]) > 1e-6 for m in parts)
+
+
+def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]) -> list[CheckResult]:
+    """Schema 0.4 point_mass placement.
+    Strict (default): (i) at its position (+cg_offset) it lies inside, or within attach_tolerance_mm of, a part it is
+    attached to that has geometry.
+    Distributed (distributed: true, type other only, with a reason): (i) it lies inside the envelope (convex hull of all
+    non-propeller geometry), within attach_tolerance_mm, and its mass is capped per item and in total.
+    Both: (ii) it is not inside any propeller's geometry (the prop disc).
+    Static configuration only: a point mass on an articulated part is not posed."""
+    tol = std["geometry"]["attach_tolerance_mm"]["value"]
+    lim_each = std["geometry"]["distributed_mass_max_fraction_each"]["value"]
+    lim_total = std["geometry"]["distributed_mass_max_fraction_total"]["value"]
+    total_g = sum(c["mass_g"] for c in design.components)
+    props = [c["id"] for c in design.components if c["type"] == "propeller" and c["id"] in meshes]
+    res: list[CheckResult] = []
+    envelope = None  # convex hull of all non-propeller geometry, built once if a distributed mass needs it
+    dist_g = 0.0
+    for pm in design.components:
+        if not is_point_mass(pm):
+            continue
+        cid = pm["id"]
+        p = np.array(pm["position"], dtype=float) + np.array(pm.get("cg_offset", [0, 0, 0]), dtype=float)
+        at = f"({p[0]:.1f}, {p[1]:.1f}, {p[2]:.1f}) mm"
+        distributed = bool(pm["geometry"]["point_mass"].get("distributed", False))
+        problems: list[str] = []
+        extra: list[CheckResult] = []
+        hosts = sorted({a["child"] if a["parent"] == cid else a["parent"] for a in atts if cid in (a["parent"], a["child"])}
+                       & set(meshes))
+        if distributed:
+            dist_g += pm["mass_g"]
+            if pm["type"] != "other":
+                extra.append(CheckResult("T1.point_mass_location", FAIL,
+                                         f"{cid}: distributed point masses are only for type other (lumped hardware, harness); "
+                                         f"{pm['type']} parts must be modelled with geometry",
+                                         STD + "distributed_mass_max_fraction_each"))
+            share = pm["mass_g"] / total_g
+            if share > lim_each:
+                extra.append(CheckResult("T1.point_mass_location", FAIL,
+                                         f"{cid}: {pm['mass_g']:.1f} g is {share:.1%} of the {total_g:.0f} g aircraft; "
+                                         f"a distributed point mass may carry at most {lim_each:.0%}",
+                                         STD + "distributed_mass_max_fraction_each"))
+            if envelope is None:
+                pts = np.vstack([m.vertices for k in meshes if k not in props for m in meshes[k]])
+                envelope = [trimesh.convex.convex_hull(pts)]
+            d = _point_distance(envelope, p)
+            if d > tol:
+                problems.append(f"{cid} at {at} lies outside the aircraft's envelope by {d:.1f} mm "
+                                f"(distributed mass must lie inside the convex hull of the geometry; tolerance {tol} mm)")
+        elif not hosts:
+            problems.append(f"{cid} at {at} has no attached part with geometry to sit on")
+        else:
+            d = min(_point_distance(meshes[h], p) for h in hosts)
+            if d > tol:
+                problems.append(f"{cid} at {at} is {d:.1f} mm from every part it is attached to "
+                                f"({', '.join(hosts)}; tolerance {tol} mm)")
+        for pid in props:
+            if _inside(meshes[pid], p):
+                problems.append(f"{cid} at {at} lies inside the prop disc of {pid}")
+        if problems:
+            res += [CheckResult("T1.point_mass_location", FAIL, m, STD + "attach_tolerance_mm") for m in problems]
+        elif distributed:
+            res.append(CheckResult("T1.point_mass_location", PASS,
+                                   f"{cid} at {at}: distributed mass inside the aircraft's envelope, outside every prop disc",
+                                   STD + "attach_tolerance_mm"))
+        else:
+            res.append(CheckResult("T1.point_mass_location", PASS,
+                                   f"{cid} at {at}: on or within {tol} mm of an attached part, outside every prop disc",
+                                   STD + "attach_tolerance_mm"))
+        res += extra
+    if dist_g / total_g > lim_total:
+        res.append(CheckResult("T1.point_mass_location", FAIL,
+                               f"distributed point masses together carry {dist_g:.1f} g ({dist_g / total_g:.1%} of the "
+                               f"{total_g:.0f} g aircraft); the limit is {lim_total:.0%}",
+                               STD + "distributed_mass_max_fraction_total"))
     return res
 
 
 def tier1_geometry(design: Design, std: dict) -> TierReport:
-    meshes = {cid: component_parts(design.component(cid), design.base_dir) for cid in (c["id"] for c in design.components)}
+    all_ids = [c["id"] for c in design.components]
+    # point masses (schema 0.4) have no mesh: they count for connectivity and mass, not for any geometry check
+    meshes = {c["id"]: component_parts(c, design.base_dir) for c in design.components if not is_point_mass(c)}
     atts = design.data.get("attachments", [])
     res: list[CheckResult] = []
 
@@ -326,28 +555,37 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
         for n in adj[q.popleft()]:
             if n not in seen:
                 seen.add(n); q.append(n)
-    loose = sorted(set(meshes) - seen)
+    loose = sorted(set(all_ids) - seen)
     res.append(CheckResult("T1.connectivity", FAIL if loose else PASS,
                            f"not attached to '{root}' (would fall off): {loose}" if loose
-                           else f"all {len(meshes)} components connect to '{root}'",
+                           else f"all {len(all_ids)} components connect to '{root}'",
                            STD + "attach_tolerance_mm"))
 
-    identity = {cid: np.eye(4) for cid in meshes}
-    res += _contact_and_clash_checks(design, std, meshes, identity, atts)
+    identity = {cid: np.eye(4) for cid in all_ids}
+    cache = _PairCache()
+    res += _contact_and_clash_checks(design, std, meshes, identity, atts, cache)
+    res += _point_mass_checks(design, std, meshes, atts)
 
     # articulated joints: the same contact / overlap / interference checks in every configuration
     if articulated_attachments(design):
         res += _articulation_checks(design, std, meshes)
         for name, ang in _configurations(design, std["geometry"]["articulation_sweep_step_deg"]["value"]):
-            pm = posed_component_parts(design, ang)
+            pm = {cid: ps for cid, ps in posed_component_parts(design, ang).items() if cid in meshes}
             tf = pose_transforms(design, ang)
-            sub = _contact_and_clash_checks(design, std, pm, tf, atts)
-            fails = [r for r in sub if r.status == FAIL]
+            sub = _contact_and_clash_checks(design, std, pm, tf, atts, cache)
+            static_fails = {(r.check_id, r.message) for r in res if r.status == FAIL}
+            # a failure that is already in the static results is not pose-specific: report it once
+            fails = [r for r in sub if r.status == FAIL and (r.check_id, r.message) not in static_fails]
             for r in fails:
                 r.message = f"{name}: {r.message}"
                 r.data = {**r.data, "configuration": name}
             res += fails
-            if not fails:
+            for r in sub:
+                if r.status in (WARN, SKIP):
+                    r.message = f"{name}: {r.message}"
+                    r.data = {**r.data, "configuration": name}
+                    res.append(r)
+            if not fails and not any(r.status == SKIP for r in sub):
                 res.append(CheckResult("T1.pose", PASS,
                                        f"{name}: attachments, overlap and interference all OK",
                                        STD + "interference_max_mm3", {"configuration": name}))
@@ -402,6 +640,11 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
         label = a.get("id") or f"{a['parent']}->{a['child']}"
         load = _subtree_mass(design, a["parent"], a["child"]) / 1000 * G * n
         rated = a.get("rated_load_n")
+        if a.get("rating_basis") == "placeholder":
+            res.append(CheckResult("T2.joint_load", SKIP,
+                                   f"{label}: carries {load:.1f} N; rating is a placeholder, not checked",
+                                   STD + "landing_load_factor", {"load_n": round(load, 2)}))
+            continue
         if rated is None:
             res.append(CheckResult("T2.joint_load", FAIL, f"{label}: carries {load:.1f} N at {n}g, no rated_load_n given",
                                    STD + "landing_load_factor", {"load_n": round(load, 2)}))
@@ -451,9 +694,112 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
 
 
 # ---------------------------------------------------------------- tier 3
+def _articulated_subtree(design: Design, cid: str) -> list[str]:
+    """cid plus every component reached from it through attachments that carry articulation (control surfaces),
+    recursively, at 0 deg. Plain (non-articulated) children are not included."""
+    out, stack = [cid], [cid]
+    while stack:
+        n = stack.pop()
+        for a in design.data.get("attachments", []):
+            if a["parent"] == n and a.get("articulation") and a["child"] not in out:
+                out.append(a["child"])
+                stack.append(a["child"])
+    return out
+
+
+PLANFORM_TYPES = ("wing", "tail_surface")  # the only component types that may declare a planform
+
+
+def _planform_parts(design: Design, c: dict) -> tuple[list[str], dict[str, list[trimesh.Trimesh]]]:
+    """(geometry ids, {id: body-frame meshes}) of a planform component: the component plus its articulated children at 0 deg."""
+    geo_ids = _articulated_subtree(design, c["id"])
+    return geo_ids, {k: component_parts(design.component(k), design.base_dir) for k in geo_ids}
+
+
+SEVERITY = {PASS: 0, WARN: 1, FAIL: 2}
+
+
+def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
+    """Cross-check of the DECLARED planform against the measured geometry. The aero numbers never come from the
+    declaration (tier 3 uses the measured strips). One T3.planform_matches_geometry row per planform component, worst status
+    of: span direction (FAIL beyond planform_axis_tolerance_deg); declared vs measured area and span (PASS within
+    planform_match_tolerance_fraction, WARN up to planform_area_mismatch_fail_fraction, FAIL beyond); detached material
+    ignored in a strip (WARN). A planform on a non-lifting type is a FAIL and is not measured."""
+    tol = std["aero"]["planform_match_tolerance_fraction"]["value"]
+    fail_frac = std["aero"]["planform_area_mismatch_fail_fraction"]["value"]
+    axis_tol = std["aero"]["planform_axis_tolerance_deg"]["value"]
+    n = std["aero"]["planform_strip_count"]["value"]
+    gap = std["geometry"]["strip_gap_tolerance_mm"]["value"]
+    ctrl = std["aero"]["control_surface_gap_max_fraction"]["value"]
+    crit = STD + "planform_match_tolerance_fraction"
+    res: list[CheckResult] = []
+    for c in design.components:
+        if "planform" not in c:
+            continue
+        if c["type"] not in PLANFORM_TYPES:
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
+                                   f"{c['id']}: planform declared on a {c['type']}; only wing or tail_surface parts are lifting surfaces",
+                                   crit))
+            continue
+        if is_point_mass(c):
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
+                                   f"{c['id']}: a planform needs geometry to match, and a point mass has none", crit))
+            continue
+        pf = c["planform"]
+        ls = pf["lifting_surface"]
+        geo_ids, parts = _planform_parts(design, c)
+        scope = f"the geometry of {', '.join(geo_ids)}"
+        if not any(parts.values()):
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL, f"{c['id']}: no geometry for {scope}", crit))
+            continue
+        m = strip_planform(parts, c["id"], n=n, gap_tol=gap, control_frac=ctrl)
+        found: list[tuple[str, str]] = []  # (status, text)
+        # span direction: the declared span (planform local y through its rotation) against the measured span axis
+        d = rotation_matrix(pf.get("rotation_deg")) @ np.array([0.0, 1.0, 0.0])
+        e = np.array([0.0, 1.0, 0.0]) if m["span_axis"] == "y" else np.array([0.0, 0.0, 1.0])
+        ang = math.degrees(math.acos(min(1.0, abs(float(np.dot(d, e))))))
+        if ang > axis_tol:
+            found.append((FAIL, f"declared span runs {ang:.1f} deg from the measured span (along body {m['span_axis']}); "
+                                f"limit {axis_tol:g} deg"))
+        mirrored = ls.get("mirrored", True)
+        semi = ls["span"] / 2 if mirrored else ls["span"]
+        decl_area = semi * (ls["root_chord"] + ls["tip_chord"]) / 2 * (2 if mirrored else 1)
+        decl_span = ls["span"]
+        da = (m["area_mm2"] - decl_area) / decl_area
+        ds = (m["span_mm"] - decl_span) / decl_span
+        vals = (f"declared area {decl_area:.0f} mm^2 vs measured {m['area_mm2']:.0f} mm^2 ({da:+.1%}); "
+                f"declared span {decl_span:.0f} mm vs measured {m['span_mm']:.0f} mm ({ds:+.1%}); limit {tol:.0%}")
+        if m["missing_stations"]:
+            vals += f"; {len(m['missing_stations'])} of {n} strips have no geometry"
+
+        def band(x: float) -> str:
+            return PASS if abs(x) <= tol else WARN if abs(x) <= fail_frac else FAIL
+        if band(da) == FAIL or band(ds) == FAIL:
+            what = "lifting areas" if band(da) == FAIL else "spans"
+            x = da if band(da) == FAIL else ds
+            found.append((FAIL, f"declared and measured {what} disagree by {abs(x):.1%}; check the declared planform and "
+                                f"the geometry ({vals}); the aero numbers use the measured geometry"))
+        elif band(da) == WARN or band(ds) == WARN:
+            found.append((WARN, f"declared planform does not match {scope} ({vals}); the aero numbers use the measured geometry"))
+        if m["ignored_strips"]:
+            biggest = max(length for _, length in m["ignored_strips"])
+            found.append((WARN, f"detached material ignored at {len(m['ignored_strips'])} strips (largest {biggest:g} mm long)"))
+        data = {"area_diff": round(da, 4), "span_diff": round(ds, 4), "measured_area_mm2": round(m["area_mm2"], 1),
+                "span_axis": m["span_axis"], "ignored_strips": m["ignored_strips"]}
+        if not found:
+            res.append(CheckResult("T3.planform_matches_geometry", PASS,
+                                   f"{c['id']}: declared planform agrees with {scope} ({vals})", crit, data))
+        else:
+            worst = max((st for st, _ in found), key=lambda st: SEVERITY[st])
+            res.append(CheckResult("T3.planform_matches_geometry", worst,
+                                   f"{c['id']}: " + "; ".join(t for _, t in found), crit, data))
+    return res
+
+
 def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
     a = std["aero"]
     res: list[CheckResult] = []
+    res += _planform_checks(design, std)  # reported even if a later aero check fails
     req = design.data.get("requirements", {})
     flight = design.data.get("flight", {})
     mass = mp["mass_g"]
@@ -467,11 +813,29 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
     c_tf = pose_transforms(design, c_ang)
     if cruise_pose:  # static margin and aft-surface geometry at the cruise configuration
         mp = mass_properties(design, c_ang)
-    surfaces = [(c, lifting_surface_properties(c, c_tf[c["id"]] if cruise_pose else None)) for c in design.components
-                if "lifting_surface" in c["geometry"]]
-    lifting = [(c, p) for c, p in surfaces if p["lifting"]]
+    # (component, lifting-surface component, properties). A planform (schema 0.4) is wrapped in a pseudo-component
+    # so that it goes through the same lifting_surface_properties; it is not a geometry component.
+    n_strip = a["planform_strip_count"]["value"]
+    surfaces = []
+    for c in design.components:
+        if "lifting_surface" in c["geometry"]:
+            ls_c = c
+            p = lifting_surface_properties(c, c_tf[c["id"]] if cruise_pose else None)
+            p["span_mm"] = c["geometry"]["lifting_surface"]["span"]
+        elif "planform" in c and c["type"] in PLANFORM_TYPES:
+            # a mesh wing: every aero number is measured from the modelled geometry (0 deg), not the declared outline
+            pf = c["planform"]
+            ls_c = c
+            p = strip_planform(_planform_parts(design, c)[1], c["id"], n=n_strip,
+                               gap_tol=std["geometry"]["strip_gap_tolerance_mm"]["value"],
+                               control_frac=std["aero"]["control_surface_gap_max_fraction"]["value"])
+        else:
+            continue
+        surfaces.append((c, ls_c, p))
+    lifting = [(c, ls_c, p) for c, ls_c, p in surfaces if p["lifting"]]
     if lifting and design.data["morphology"]["lift"] != "multirotor":
-        main_c, main = max(lifting, key=lambda cp: cp[1]["area_mm2"])
+        main_c, main_ls, main = max(lifting, key=lambda cp: cp[2]["area_mm2"])
+        main_from_planform = "planform" in main_c and "lifting_surface" not in main_c["geometry"]
         s_m2 = main["area_mm2"] / 1e6
         rho = flight.get("air_density_kgm3", RHO_DEFAULT)
         clmax = flight.get("cl_max", a["cl_max_default"]["value"])
@@ -490,7 +854,7 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         a_w = slope(main["aspect_ratio"])
         deps = 2 * a_w / (math.pi * main["aspect_ratio"])
         num = den = 0.0
-        for c, p in lifting:
+        for c, _ls, p in lifting:
             k = slope(p["aspect_ratio"]) * p["area_mm2"]
             if c is not main_c:
                 k *= a["aft_surface_efficiency"]["value"] * ((1 - deps) if p["x_ac_mm"] > main["x_ac_mm"] else 1.0)
@@ -501,9 +865,10 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         st = PASS if lo <= sm <= hi else FAIL
         res.append(CheckResult("T3.static_margin", st,
                                f"{sm:.1%} MAC (NP x={x_np:.0f} mm, CG x={mp['cg_mm'][0]:.0f} mm; target {lo:.0%}-{hi:.0%}; "
-                               "fuselage effect not modelled)",
+                               "fuselage effect not modelled)"
+                               + (f" (mesh wing: chord measured at {n_strip} stations)" if main_from_planform else ""),
                                STD + "static_margin", {"static_margin": round(sm, 4), "x_np_mm": round(x_np, 1)}))
-        lat = abs(mp["cg_mm"][1]) / main_c["geometry"]["lifting_surface"]["span"]
+        lat = abs(mp["cg_mm"][1]) / main["span_mm"]
         lim = a["lateral_cg_max_fraction_span"]["value"]
         res.append(CheckResult("T3.lateral_cg", PASS if lat <= lim else FAIL,
                                f"CG y offset {lat:.1%} of span (limit {lim:.0%})", STD + "lateral_cg_max_fraction_span"))
@@ -588,6 +953,10 @@ def tier4_manufacturing(design: Design) -> TierReport:
         if not bed:
             res.append(CheckResult("T4.fits_machine", SKIP,
                                    f"{c['id']}: fit not verified — add build_volume_mm to manufacturing.yaml ({mid})",
+                                   f"{MFG}#{mid}"))
+            continue
+        if is_point_mass(c):  # schema 0.4: no extent, so nothing to fit on a bed
+            res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method} on {mid}, point mass (no extent to fit)",
                                    f"{MFG}#{mid}"))
             continue
         sheet = method in SHEET_METHODS
