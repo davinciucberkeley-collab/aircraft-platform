@@ -435,3 +435,56 @@ All 66 non-PASS rows are covered: 10 + 52 + 2 + 1 + 1 = 66, matching my run row 
 1. Make `rating_basis` required in schema 0.4 attachments, so a hand-written rating can't skip the label.
 2. Motor→prop chain via the mount (m2) still passes T1.motor_has_prop; restrict intermediates to the child side of the motor.
 3. E-WNG-20/21: see section 3.
+
+## Round 7 (ca08b1e)
+
+Reviewer: same Opus instance (R1). Commits reviewed: a8ff638, a3b2ca0, e81d45a, 19ce430, ca08b1e on `concept-a-import`. New attack copies are in `/tmp/ap-review7/` (`mk7.py`; each folder has `plane.yaml` and `out.md`). Round-6 d1/d2 were re-run in `/tmp/ap-review6/` (`out-r7.md`, plus `out-r7b.md` with a `reason` added). Nothing under `designs/` was edited.
+
+### Automated, determinism, CI
+
+- `python3 -m pytest -q`: `107 passed, 42 warnings in 25.19s`. The tests do not need the dbf-combined checkout: no path to it in tests/.
+- `plane validate designs/example-tailsitter-wing`: exit 0.
+- `plane validate designs/concept-a --tier all`: exit 1, 67 non-PASS rows. These are the 66 from round 6 plus the new T3.planform_matches_geometry WARN. T3 now reads SM 16.4% (NP 58 mm), stall 11.7 m/s, lateral CG 0.3%.
+- Determinism: a re-import to `/tmp/ap-review7/reimport` took 4 min 58 s with rc 0. `diff -r -x '*.md'` against `designs/concept-a` is empty. dbf-combined `git status --short` is empty.
+- `git diff main --stat`: 132 files, +6336/-102. That is core (checks, geometry, mass, sim, cli, export), the new `importers/` package, schema, standards (+4 keys), 3 new test files, `designs/concept-a/` (104 STL, about 4.5 MB), the plan and briefs, and this review. No other design on main is touched: c0-*, tiltwing-cakir and example-tailsitter-wing have no diff. Sane.
+- CI: `.github/workflows/validate.yml` and `pages.yml` are unchanged from main. `plane build-index --out /tmp/ap-review7/viewer-data` (the Pages step) runs in 38 s and writes concept-a.glb, mass and scorecard. **Pre-existing, not a regression:** validate.yml's "Score every design" step exits 1 whenever any design is not accepted. On main, c0-a1/a2/a3, c0-lift-cruise and tiltwing-cakir already exit 1, so that job is already red; concept-a adds a sixth. Suggestion: gate only on `status: built|flown` designs, or make the step report-only.
+
+### 1. Round-6 blockers
+
+| # | Round-6 blocker | Status | Evidence |
+|---|---|---|---|
+| 1 | `distributed: true` unlimited | **FIXED** | Schema requires `reason`: d5 (no reason) T0 FAIL. Type: d1 (battery) and d2 (payload cameras) with a reason added both FAIL "distributed point masses are only for type other". Caps: d1 also FAILs "250.0 g is 32.9% … at most 3%" and the 5% total; d6 (four 16 g `other` lumps, 7.8%) FAILs the total. Residual, within the conductor's decision: d4 (two 16 g `other` lumps, 1.9% each, floating 48 mm above the wing) is accepted, as the 3%/5% bound allows. Concept A: HRD-001 2.07%, HRN-001 1.46%, PASS. |
+| 2 | planform bounds-only and loose | **Redesign accepted; two new holes** | All tier-3 numbers now come from measured strips; the declared outline is a cross-check only (concept A: -8.4% area, WARN). Re-run: round-6 c1 (4.5 mm origin shift) and c2 (100 mm LE strip) no longer move anything that matters; the origin cancels out of x_ac. But the declared *rotation* still sets the slicing axes (s1), and a gap between pieces counts as chord (s4). |
+
+### 2. Attacks on the measured-strip method (concept-a copies)
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| s1 | Geometry untouched; only the declared `planform.rotation_deg` set to [0, 0, 15] | **MISSED**: T3.static_margin **FAIL 16.4% becomes PASS 13.0%** (NP 58 → 51 mm), measured span 900 → 917 mm; planform check only WARNs | `strip_planform` slices in the *declared* planform frame, so a yawed declaration cuts oblique sections. This contradicts "a declared planform can't move any number". |
+| s2 | 1 x 1 x 200 mm articulated "spike" ahead of the LE at y = 300 | No effect (CAUGHT in effect) | It lies between station centres, so no slice sees it: area and NP are unchanged. A narrow feature is sampled arbitrarily, but its effect is bounded by one strip (22 mm). |
+| s3 | Disjoint pieces: a 50 x 600 mm plate 95 mm behind the elevon TE, joined by a 1 x 1 mm rod | CAUGHT (planform FAIL +32.4% area, plus a joint location FAIL) | The gap between the pieces is counted as chord (measured area 291952 mm^2), but the declared/measured cross-check FAILs above 15%. |
+| s4 | Disjoint pieces kept under the 15% band: a 10 x 200 x 1 mm strip **60 mm ahead of the LE** (y 100-300), joined by a 1 x 1 mm rod, range [0, 0] | **MISSED**: planform WARN (-2.0%), **SM 16.4% FAIL becomes 9.0% PASS** (NP 58 → 43 mm); area 202009 → 216002 mm^2; every T1 check passes | Per station, chord = max x - min x across all pieces, so the 60 mm of air counts as wing. 2000 mm^2 of real strip becomes 14000 mm^2 of area and moves NP 15 mm. This is not the documented "padding counts" limit: real disjoint geometry (a slotted flap, a hinged canard-like part) would be mis-measured the same way. |
+
+### 3. The strip numbers on concept A, by hand
+
+From `amodel/common.py`: C 0.245, B 0.90, ELEV_FRAC 0.25, so XH (hinge) 183.75 mm; elevons at |y| 40-350 mm. The wing is then a 183.75 mm core over 900 mm plus 61.25 mm elevons over 2 x 310 mm. Analytic: S = 183.75 x 280 + 245 x 620 = **203350 mm^2**, MAC = (183.75^2 x 280 + 245^2 x 620) / S = **229.5 mm**, x_ac = MAC/4 = **57.4 mm** (LE at x = 0), SM at the 20.46 mm CG **16.1%**. The validator's 41 strips give S 202009 (-0.66%), MAC 228.36 (-0.5%), x_ac 57.87 mm (+0.5 mm), and SM 16.4%. With 401 strips: 202308, 228.58, 57.65. The 41-strip result is converged to 0.15%. The small differences are the hub cut-out at the centre (LE 22.5 mm aft, chord 161 mm, per the comparison doc) and the elevon ends. **Plausible and correct.** The declared rectangle (220500 mm^2) overstates the modelled wing by 8.4%, because the CAD has no trailing 25% outside the elevons. The WARN is right, and Dillon's sizing S 0.22 m^2 uses the full rectangle.
+
+### 4. validator-comparison.md is now stale
+
+It still says "66 not PASS" (now 67), still lists T3.static_margin as "16.6% … NP (61 mm)" (now 16.4%, 58 mm), and the SM row still says "With the planform matching the mesh (T3.planform_matches_geometry PASS)" (now WARN, -8.4%). The key-rows table *does* describe the new planform WARN (line 23), but the classified table and coverage line don't include it. One row, (b)/(c) cross-check only, plus updated numbers will fix it.
+
+### Verdict
+
+**NOT MERGE-READY.** Distributed masses are closed. Determinism, tests, the example, the diff and CI behaviour are all fine. The measured-strip redesign is sound and its numbers check out by hand. Two holes remain in it, each flipping concept A's static margin from FAIL to PASS without changing any real geometry (s1) or with a 1 g part (s4). The comparison doc also lags the code.
+
+### Remaining blockers
+
+1. **Declared rotation sets the slicing axes** (s1). In `strip_planform`, slice in the component's own frame: body y, or the component's `rotation_deg` for a rotated mesh. Ignore `planform.rotation_deg`, or require it to equal the component's rotation (T0 FAIL otherwise). Add s1 as a test.
+2. **Gaps count as chord** (s4). Per station, take chord as the total length of the *union of x-intervals* of the section polygons, not max - min. Compute x_ac from the forward-most interval's LE (or per interval). Alternatively, FAIL or SKIP a station whose pieces are separated by more than a small gap (e.g. `attach_tolerance_mm` plus the hinge gap). Concept A's elevon hinge gap (core TE 183.75 to elevon LE 183.49, an overlap) is unaffected. Add s3 and s4 as tests.
+3. **Update `designs/concept-a/validator-comparison.md`** to the current run: 67 rows, SM 16.4% / NP 58 mm, and the planform WARN classified.
+
+### Non-blocking
+
+1. validate.yml "Score every design" is red on main already (pre-existing); see CI above.
+2. d4: two 1.9% `other` lumps floating in the hull are accepted by design. Consider requiring distributed masses to lie inside a solid part or within `attach_tolerance_mm` of one, which concept A's two lumps satisfy (round 5).
+3. Earlier suggestions still open: `rating_basis` optional; motor→prop chain via the mount (m2).
