@@ -22,7 +22,8 @@ FS_ULT, FS_FIT, FS_PRINT = 1.5, 1.15, 1.25       # structures_a.py L10
 KF = FS_ULT * FS_FIT                              # 1.725   (structures_a.py L12)
 KP = FS_ULT * FS_FIT * FS_PRINT                   # 2.15625 (structures_a.py L12)
 
-BOND_TAU_MPA = 2.0        # structures_a.py L19: "neat epoxy on CF/PETG, C6 `E-FIN-13` allowable" (EST there, coupons not run)
+BOND_TAU_MPA = 2.0        # structures_a.py L17: "neat epoxy on CF/PETG, C6 `E-FIN-13` allowable" (EST there, coupons not run)
+BOND_TAU_SRC = "structures_a.py L17 BOND_TAU 2.0 MPa (EST)"  # the one place this citation is written
 XPS_SHEAR_KPA = 86.0      # foam_103.md last line: "shear 86 (EST, 100 x 103/120)" (EST there)
 STEEL_TENSION_MPA = 450.0  # arm_cup_checks.md: M2.5 screw tension allowable 450.0 MPa (steel allowable EST)
 STEEL_SHEAR_MPA = 270.0    # arm_cup_checks.md: "M2.5 screw shear (shank) ... 270.0 MPa" (EST)
@@ -43,8 +44,8 @@ def _doc_k(ids, limit, ms, k, text):
         DOC[i] = ("k", limit, ms, k, text)
 
 
-_doc_k(("E-WNG-30R", "E-WNG-31R", "E-WNG-30L", "E-WNG-31L"), 30.0, 0.37, KP,
-       "foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis")
+# The lens-cap peel rows (foam_103.md L10, 'Stop reaction at stall (30 N) peeling the lens cap off the skin') are NOT
+# here: the same row says "peel of the tape skin is not covered by a foam value: pull coupon required". See PEEL_NOT_SOURCED.
 _doc_k(("E-FIN-01", "E-FIN-09"), 130.0, 6.17, KP,
        "iter2_margins.md 'Fin root block on fin tube (40 mm long, 16 mm OD)', 130 N, MS +6.17")
 _doc_k(("E-FIN-02", "E-FIN-10"), 84.0, 28.14, KP,
@@ -81,6 +82,14 @@ def rating_basis(kind: str) -> str:
 
 PLACEHOLDER_VIA = {"CT-TAPE-FOAM", "CT-GEL-PAD", "CT-STRAP-VELCRO", "CT-TIE", "CT-TAPE-HINGE"}
 
+# Lens-cap flanges bonded (CT-EPOXY) on the tape skin. The 30 N stop reaction is a PEEL load, and foam_103.md L10 says
+# the peel is not covered by any value (pull coupon required). The only adhesive allowable in the source is the epoxy
+# SHEAR value BOND_TAU, which does not apply to peel, so no derived rating is used: placeholder, set to our own demand.
+PEEL_NOT_SOURCED = ("E-WNG-30R", "E-WNG-31R", "E-WNG-30L", "E-WNG-31L")
+PEEL_NOT_SOURCED_TEXT = ("foam_103.md L10 'Stop reaction at stall (30 N) peeling the lens cap off the skin' states 'peel of "
+                         "the tape skin is not covered by a foam value: pull coupon required'; the only adhesive allowable is "
+                         f"epoxy shear ({BOND_TAU_SRC}), which does not apply to peel")
+
 
 def _fastener_d(text: str) -> float | None:
     m = re.search(r"\bM(\d(?:\.\d)?)", text or "")
@@ -90,6 +99,8 @@ def _fastener_d(text: str) -> float | None:
 def rating(edge: dict, parent: dict, child: dict, area_mm2: float | None) -> tuple[float | None, str, str]:
     """(value_N or None for a placeholder, kind, source text). `parent`/`child` are PARTS entries."""
     eid, via = edge["id"], edge["via"]
+    if eid in PEEL_NOT_SOURCED:
+        return None, "placeholder", f"placeholder - not from source: {PEEL_NOT_SOURCED_TEXT}; set to the platform's own demand"
     if eid in DOC:
         d = DOC[eid]
         if d[0] == "k":
@@ -123,7 +134,7 @@ def rating(edge: dict, parent: dict, child: dict, area_mm2: float | None) -> tup
         if foam:
             tau, src = XPS_SHEAR_KPA * 1e-3, "foam_103.md XPS shear 86 kPa (EST)"
         else:
-            tau, src = BOND_TAU_MPA, "structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+            tau, src = BOND_TAU_MPA, BOND_TAU_SRC
         ca = " (CA assumed as strong as epoxy: no CA allowable in the source)" if via == "CT-CA" and not foam else ""
         return round(tau * area_mm2, 1), "derived", f"contact area {area_mm2:.0f} mm2 (measured on the meshes) x {src}{ca}"
     return None, "placeholder", f"placeholder - not from source: no rule for {via}; set to the platform's own demand"
