@@ -168,3 +168,87 @@ def test_rating_kinds_from_the_real_rating_function_map_to_basis():
     assert ph_kind == "placeholder" and rating_basis(ph_kind) == "placeholder"
     _, d_kind, _ = rating({"id": "X-BOND", "via": "CT-EPOXY"}, {"material": "PETG"}, {"material": "PETG"}, 100.0)
     assert d_kind == "derived" and rating_basis(d_kind) == "derived"
+
+
+# ---------------------------------------------------------------- A (cont.). distributed point masses
+
+def _distributed_design(pos, distributed: bool, prop: bool = False) -> dict:
+    """Body cube (z -50..50) plus a top box (z 50..90, x/y +-20) so the envelope reaches z 90. The point mass is tied to the
+    body at `pos`, as a distributed mass (envelope test) or a normal point mass (host test)."""
+    geom = {"point_mass": {"distributed": True}} if distributed else {"point_mass": {}}
+    comps = [
+        {"id": "body", "type": "structure", "geometry": {"box": {"size": [100, 100, 100]}}, "position": [0, 0, 0],
+         "mass_g": 100, "manufacturing": dict(MFG)},
+        {"id": "top", "type": "structure", "geometry": {"box": {"size": [40, 40, 40]}}, "position": [0, 0, 70],
+         "mass_g": 10, "manufacturing": dict(MFG)},
+        {"id": "lump", "type": "payload", "geometry": geom, "position": list(pos), "mass_g": 50,
+         "manufacturing": {"method": "purchased"}},
+    ]
+    if prop:
+        comps.append(_prop_at_origin())
+    return {"schema_version": "0.4", "id": "dist", "name": "distributed", "status": "concept",
+            "morphology": {"lift": "other", "vtol_method": "none"}, "root": "body", "components": comps,
+            "attachments": [{"id": "lump-tie", "parent": "body", "child": "lump", "method": "tape",
+                             "location": list(pos), "rated_load_n": 50},
+                            {"id": "top-tie", "parent": "body", "child": "top", "method": "glued",
+                             "location": [0, 0, 50], "rated_load_n": 20}]}
+
+
+def test_distributed_point_inside_envelope_but_off_host_passes():
+    # (0, 0, 60): 10 mm above the body top (z 50), inside the hull of body + top box
+    sc = _run(_distributed_design((0, 0, 60), distributed=True), tier=1)
+    assert statuses(sc, "T1.point_mass_location") == [PASS]
+    # the same point as a normal point mass fails the host test (10 mm off the body)
+    sc_strict = _run(_distributed_design((0, 0, 60), distributed=False), tier=1)
+    assert statuses(sc_strict, "T1.point_mass_location") == [FAIL]
+
+
+def test_distributed_point_outside_envelope_fails():
+    sc = _run(_distributed_design((0, 0, 200), distributed=True), tier=1)  # envelope top is z 90
+    rows = _rows(sc, "T1.point_mass_location")
+    assert [r.status for r in rows] == [FAIL]
+    assert "lies outside the aircraft's envelope by 110.0 mm" in rows[0].message
+
+
+def test_distributed_point_inside_prop_disc_fails():
+    sc = _run(_distributed_design((0, 0, 0), distributed=True, prop=True), tier=1)
+    rows = _rows(sc, "T1.point_mass_location")
+    assert [r.status for r in rows] == [FAIL]
+    assert "lies inside the prop disc of prop" in rows[0].message
+
+
+# ---------------------------------------------------------------- C (cont.). planform scope includes articulated children
+
+def _elevon_wing(articulated: bool) -> dict:
+    """Core box x 0..183.8 (the planform's own part) and a 61.2 mm elevon box x 183.8..245, outboard of it. The planform is
+    245 mm chord. The elevon is a child of the core through a joint that carries articulation only when `articulated`."""
+    ls = {"span": 900, "root_chord": 245, "tip_chord": 245, "mirrored": True}
+    joint = {"id": "elevon-hinge", "parent": "core", "child": "elevon", "method": "hinge", "location": [183.8, 0, 0],
+             "rated_load_n": 10}
+    if articulated:
+        joint["articulation"] = {"type": "revolute", "pivot": [183.8, 0, 0], "axis": [0, 1, 0],
+                                 "range_deg": [-21, 21], "poses": {"neutral": 0}}
+    return {"schema_version": "0.4", "id": "elevon", "name": "elevon", "status": "concept",
+            "morphology": {"lift": "flying-wing", "vtol_method": "none"}, "root": "core",
+            "components": [
+                {"id": "core", "type": "wing", "geometry": {"box": {"size": [183.8, 900, 10]}}, "position": [91.9, 0, 0],
+                 "mass_g": 500, "manufacturing": dict(MFG),
+                 "planform": {"lifting_surface": ls, "origin": [0, 0, 0]}},
+                {"id": "elevon", "type": "wing", "geometry": {"box": {"size": [61.2, 900, 10]}}, "position": [214.3, 0, 0],
+                 "mass_g": 50, "manufacturing": dict(MFG)},
+            ],
+            "attachments": [joint]}
+
+
+def test_planform_with_articulated_elevon_matches_union_of_geometry():
+    sc = _run(_elevon_wing(articulated=True), tier=3)
+    rows = _rows(sc, "T3.planform_matches_geometry")
+    assert [r.status for r in rows] == [PASS]
+    assert "core, elevon" in rows[0].message
+
+
+def test_planform_without_articulation_on_elevon_fails():
+    sc = _run(_elevon_wing(articulated=False), tier=3)
+    rows = _rows(sc, "T3.planform_matches_geometry")
+    assert [r.status for r in rows] == [FAIL]
+    assert "the geometry of core:" in rows[0].message and "TE off by -61.2 mm" in rows[0].message

@@ -455,9 +455,12 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
                 "STL in meshes/; manufacturing: " + mf_why)
         add(f"  - id: {slug}")
         add(f"    type: {t}")
-        add(f"    description: {_s(part['name'])}")
+        distributed = proxy and pid in ("HRD-001", "HRN-001")
+        desc = part["name"] + ("; distributed mass proxy (skipped as 'mass proxy' by redesign/collision collide.py)"
+                               if distributed else "")
+        add(f"    description: {_s(desc)}")
         if proxy:
-            add("    geometry: {point_mass: {}}")
+            add("    geometry: {point_mass: {distributed: true}}" if distributed else "    geometry: {point_mass: {}}")
             add(f"    position: {_vec([x * 1000 for x in proxies[pid]['cg_declared']], 3)}")
         else:
             add(f"    geometry: {{mesh: {{file: meshes/{slug}.stl}}}}")

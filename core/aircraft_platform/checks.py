@@ -463,16 +463,26 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
     tol = std["geometry"]["attach_tolerance_mm"]["value"]
     props = [c["id"] for c in design.components if c["type"] == "propeller" and c["id"] in meshes]
     res: list[CheckResult] = []
+    envelope = None  # convex hull of all non-propeller geometry, built once if a distributed mass needs it
     for pm in design.components:
         if not is_point_mass(pm):
             continue
         cid = pm["id"]
         p = np.array(pm["position"], dtype=float) + np.array(pm.get("cg_offset", [0, 0, 0]), dtype=float)
         at = f"({p[0]:.1f}, {p[1]:.1f}, {p[2]:.1f}) mm"
+        distributed = bool(pm["geometry"]["point_mass"].get("distributed", False))
         hosts = sorted({a["child"] if a["parent"] == cid else a["parent"] for a in atts if cid in (a["parent"], a["child"])}
                        & set(meshes))
         problems = []
-        if not hosts:
+        if distributed:
+            if envelope is None:
+                pts = np.vstack([m.vertices for k in meshes if k not in props for m in meshes[k]])
+                envelope = [trimesh.convex.convex_hull(pts)]
+            d = _point_distance(envelope, p)
+            if d > tol:
+                problems.append(f"{cid} at {at} lies outside the aircraft's envelope by {d:.1f} mm "
+                                f"(distributed mass must lie inside the convex hull of the geometry; tolerance {tol} mm)")
+        elif not hosts:
             problems.append(f"{cid} at {at} has no attached part with geometry to sit on")
         else:
             d = min(_point_distance(meshes[h], p) for h in hosts)
@@ -482,6 +492,11 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
         for pid in props:
             if _inside(meshes[pid], p):
                 problems.append(f"{cid} at {at} lies inside the prop disc of {pid}")
+        if not problems and distributed:
+            res.append(CheckResult("T1.point_mass_location", PASS,
+                                   f"{cid} at {at}: distributed mass inside the aircraft's envelope, outside every prop disc",
+                                   STD + "attach_tolerance_mm"))
+            continue
         if problems:
             res += [CheckResult("T1.point_mass_location", FAIL, m, STD + "attach_tolerance_mm") for m in problems]
         else:
@@ -653,6 +668,19 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
 
 
 # ---------------------------------------------------------------- tier 3
+def _articulated_subtree(design: Design, cid: str) -> list[str]:
+    """cid plus every component reached from it through attachments that carry articulation (control surfaces),
+    recursively, at 0 deg. Plain (non-articulated) children are not included."""
+    out, stack = [cid], [cid]
+    while stack:
+        n = stack.pop()
+        for a in design.data.get("attachments", []):
+            if a["parent"] == n and a.get("articulation") and a["child"] not in out:
+                out.append(a["child"])
+                stack.append(a["child"])
+    return out
+
+
 def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
     """Schema 0.4 planform: its leading edge, trailing edge and span must match the component's real geometry.
     Both are compared in the planform's own axes (x chordwise from the root LE, y spanwise), so rotation_deg is allowed.
@@ -672,8 +700,10 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
         origin = np.array(pf["origin"], dtype=float)
         rot = rotation_matrix(pf.get("rotation_deg"))
         outline = np.vstack(lifting_surface_halves(ls))
-        real_body = np.vstack([m.vertices for m in component_parts(c, design.base_dir)])
+        geo_ids = _articulated_subtree(design, c["id"])
+        real_body = np.vstack([m.vertices for k in geo_ids for m in component_parts(design.component(k), design.base_dir)])
         real = (rot.T @ (real_body - origin).T).T
+        scope = f"the geometry of {', '.join(geo_ids)}"
         diffs = {"LE": float(real[:, 0].min() - outline[:, 0].min()),
                  "TE": float(real[:, 0].max() - outline[:, 0].max()),
                  "span": float(np.ptp(real[:, 1]) - np.ptp(outline[:, 1]))}
@@ -682,12 +712,12 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
         data = {k: round(v, 2) for k, v in diffs.items()}
         if bad:
             res.append(CheckResult("T3.planform_matches_geometry", FAIL,
-                                   f"{c['id']}: planform does not match its geometry: " + "; ".join(bad),
+                                   f"{c['id']}: planform does not match {scope}: " + "; ".join(bad),
                                    STD + "planform_match_tolerance_fraction", data))
         else:
             res.append(CheckResult("T3.planform_matches_geometry", PASS,
                                    f"{c['id']}: planform LE/TE within {limits['LE']:.1f} mm, span within {limits['span']:.1f} mm "
-                                   "of the real geometry", STD + "planform_match_tolerance_fraction", data))
+                                   f"of {scope}", STD + "planform_match_tolerance_fraction", data))
     return res
 
 
