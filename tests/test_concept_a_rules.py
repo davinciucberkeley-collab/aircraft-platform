@@ -2,6 +2,8 @@
 (T1.kinematic_link: linked child not checked against parts moved by a pose, reported as WARN)."""
 from __future__ import annotations
 
+import pytest
+
 from aircraft_platform.checks import validate
 from aircraft_platform.design import FAIL, PASS, WARN, Design
 
@@ -132,4 +134,40 @@ def test_same_clip_without_kinematic_link_fails():
 
 def test_kinematic_link_needs_schema_040():
     sc = run(linked_design(kinematic=True, version="0.3"))
+    assert any(r.check_id == "T0.version" and r.status == FAIL for r in sc.tiers[0].results)
+
+
+def _wing(planform: bool, version: str = "0.4") -> dict:
+    """One flying-wing component, 900 x 245 mm rectangular. As a lifting_surface, or as a box with a schema 0.4 planform
+    (tier 3 only; the box gives the geometry)."""
+    ls = {"span": 900, "root_chord": 245, "tip_chord": 245, "mirrored": True}
+    if planform:
+        wing = {"id": "wng", "type": "wing", "geometry": {"box": {"size": [245, 900, 10]}}, "position": [0, 0, 0],
+                "mass_g": 1000, "manufacturing": _mfg(),
+                "planform": {"lifting_surface": dict(ls), "origin": [0, 0, 0]}}
+    else:
+        wing = {"id": "wng", "type": "wing", "geometry": {"lifting_surface": dict(ls)}, "position": [0, 0, 0],
+                "mass_g": 1000, "manufacturing": _mfg()}
+    return {"schema_version": version, "id": "wing-test", "name": "wing test", "status": "concept",
+            "morphology": {"lift": "flying-wing", "vtol_method": "none"}, "root": "wng",
+            "components": [wing], "attachments": []}
+
+
+def _tier3(data: dict) -> dict:
+    sc = validate(Design(data=data, path=None), max_tier=3)
+    return {r.check_id: r for t in sc.tiers for r in t.results}
+
+
+def test_planform_wing_gets_stall_and_matches_lifting_surface():
+    with_planform = _tier3(_wing(planform=True))
+    as_surface = _tier3(_wing(planform=False))
+    assert "no lifting surface" not in with_planform["T3.stall"].message
+    assert with_planform["T3.stall"].status == as_surface["T3.stall"].status
+    assert with_planform["T3.stall"].data["stall_mps"] == pytest.approx(as_surface["T3.stall"].data["stall_mps"])
+    assert with_planform["T3.static_margin"].message.endswith("(planform declared; mesh wing)")
+    assert not as_surface["T3.static_margin"].message.endswith("(planform declared; mesh wing)")
+
+
+def test_planform_needs_schema_040():
+    sc = run(_wing(planform=True, version="0.3"))
     assert any(r.check_id == "T0.version" and r.status == FAIL for r in sc.tiers[0].results)

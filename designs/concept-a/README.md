@@ -50,7 +50,7 @@ The bonded area is measured on our meshes at the source's modelled glue-line cle
 
 - Pushrods (MEC-003) and balance-horn linkage follow the elevon in reality (four-bar path); the source also holds them out of its pose sweep.
   Here they stay at the neutral pose, which clips at +21 deg (see the comparison).
-- A mesh wing has no `lifting_surface`, so tier 3 stall, SM and NP cannot run on `plane.yaml`. The comparison uses a scratch planform variant
-  (not committed) for those numbers.
+- The wing core (`wng-001`) is a mesh, so it has no `lifting_surface`. It carries a schema 0.4 `planform` (rectangular 900 x 245 mm, from
+  `amodel/common.py`) that tier 3 uses for stall, SM and NP. The planform is not geometry: collision, mass and export still use the mesh.
 - Motor to propeller goes through an adapter (PRP-004); the platform wants a propeller attached directly to the motor.
 - Nothing here is built, weighed or flown: every Dillon number is a CAD or EST value.

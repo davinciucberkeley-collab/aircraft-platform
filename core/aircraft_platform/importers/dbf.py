@@ -468,6 +468,11 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
         add(f"    mass_g: {_n(part['mass_g'], 3)}")
         if part.get("material"):
             add(f"    material: {_s(part['material'])}")
+        if pid == "WNG-001":  # mesh wing: its aero planform for tier 3 (schema 0.4 component.planform)
+            add("    # planform: amodel/common.py line 32 `C, B = 0.245, 0.90` (chord, span, DOC STRUCTURES s1); origin = frame origin at the "
+                "wing LE (common.py line 12); rectangular, no sweep/dihedral constants in common.py")
+            add("    planform: {lifting_surface: {span: 900, root_chord: 245, tip_chord: 245, sweep_le_deg: 0, dihedral_deg: 0, "
+                "mirrored: true, airfoil: S5010}, origin: [0, 0, 0]}")
         mfs = "{" + ", ".join(f"{k}: {_s(v) if k != 'method' else v}" for k, v in mf.items()) + "}"
         add(f"    manufacturing: {mfs}")
         if t == "motor":

@@ -1014,6 +1014,8 @@ components:
     position: [0, 0, 0]
     mass_g: 100.1
     material: "XPS foam 25 kg/m3 + packing tape"
+    # planform: amodel/common.py line 32 `C, B = 0.245, 0.90` (chord, span, DOC STRUCTURES s1); origin = frame origin at the wing LE (common.py line 12); rectangular, no sweep/dihedral constants in common.py
+    planform: {lifting_surface: {span: 900, root_chord: 245, tip_chord: 245, sweep_le_deg: 0, dihedral_deg: 0, mirrored: true, airfoil: S5010}, origin: [0, 0, 0]}
     manufacturing: {method: hotwire-foam}
 
   # WNG-002 wing: Spar, CF tube 12x10 x 0.90 m

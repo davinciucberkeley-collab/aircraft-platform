@@ -59,6 +59,17 @@ def tier0_schema(design: Design) -> TierReport:
         res.append(CheckResult("T0.version", FAIL,
                                "attachment kinematic_link needs schema_version \"0.4\"",
                                "schema/plane.schema.json"))
+    uses_planform = [c["id"] for c in design.data.get("components", []) if "planform" in c]
+    if uses_planform and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "component planform needs schema_version \"0.4\"",
+                               "schema/plane.schema.json"))
+    both = [c["id"] for c in design.data.get("components", [])
+            if "planform" in c and "lifting_surface" in c.get("geometry", {})]
+    if both:
+        res.append(CheckResult("T0.version", FAIL,
+                               "planform is for components whose geometry is not a lifting_surface (would count the wing twice): "
+                               + ", ".join(both), "schema/plane.schema.json"))
     ids = [c["id"] for c in design.components]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:
@@ -607,11 +618,23 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
     c_tf = pose_transforms(design, c_ang)
     if cruise_pose:  # static margin and aft-surface geometry at the cruise configuration
         mp = mass_properties(design, c_ang)
-    surfaces = [(c, lifting_surface_properties(c, c_tf[c["id"]] if cruise_pose else None)) for c in design.components
-                if "lifting_surface" in c["geometry"]]
-    lifting = [(c, p) for c, p in surfaces if p["lifting"]]
+    # (component, lifting-surface component, properties). A planform (schema 0.4) is wrapped in a pseudo-component
+    # so that it goes through the same lifting_surface_properties; it is not a geometry component.
+    surfaces = []
+    for c in design.components:
+        if "lifting_surface" in c["geometry"]:
+            ls_c = c
+        elif "planform" in c:
+            pf = c["planform"]
+            ls_c = {"geometry": {"lifting_surface": pf["lifting_surface"]}, "position": pf["origin"],
+                    "rotation_deg": pf.get("rotation_deg", [0, 0, 0])}
+        else:
+            continue
+        surfaces.append((c, ls_c, lifting_surface_properties(ls_c, c_tf[c["id"]] if cruise_pose else None)))
+    lifting = [(c, ls_c, p) for c, ls_c, p in surfaces if p["lifting"]]
     if lifting and design.data["morphology"]["lift"] != "multirotor":
-        main_c, main = max(lifting, key=lambda cp: cp[1]["area_mm2"])
+        main_c, main_ls, main = max(lifting, key=lambda cp: cp[2]["area_mm2"])
+        main_from_planform = "planform" in main_c and "lifting_surface" not in main_c["geometry"]
         s_m2 = main["area_mm2"] / 1e6
         rho = flight.get("air_density_kgm3", RHO_DEFAULT)
         clmax = flight.get("cl_max", a["cl_max_default"]["value"])
@@ -630,7 +653,7 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         a_w = slope(main["aspect_ratio"])
         deps = 2 * a_w / (math.pi * main["aspect_ratio"])
         num = den = 0.0
-        for c, p in lifting:
+        for c, _ls, p in lifting:
             k = slope(p["aspect_ratio"]) * p["area_mm2"]
             if c is not main_c:
                 k *= a["aft_surface_efficiency"]["value"] * ((1 - deps) if p["x_ac_mm"] > main["x_ac_mm"] else 1.0)
@@ -641,9 +664,10 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         st = PASS if lo <= sm <= hi else FAIL
         res.append(CheckResult("T3.static_margin", st,
                                f"{sm:.1%} MAC (NP x={x_np:.0f} mm, CG x={mp['cg_mm'][0]:.0f} mm; target {lo:.0%}-{hi:.0%}; "
-                               "fuselage effect not modelled)",
+                               "fuselage effect not modelled)"
+                               + (" (planform declared; mesh wing)" if main_from_planform else ""),
                                STD + "static_margin", {"static_margin": round(sm, 4), "x_np_mm": round(x_np, 1)}))
-        lat = abs(mp["cg_mm"][1]) / main_c["geometry"]["lifting_surface"]["span"]
+        lat = abs(mp["cg_mm"][1]) / main_ls["geometry"]["lifting_surface"]["span"]
         lim = a["lateral_cg_max_fraction_span"]["value"]
         res.append(CheckResult("T3.lateral_cg", PASS if lat <= lim else FAIL,
                                f"CG y offset {lat:.1%} of span (limit {lim:.0%})", STD + "lateral_cg_max_fraction_span"))
