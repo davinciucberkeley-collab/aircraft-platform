@@ -25,7 +25,7 @@ the centre, not a nose datum. A tailsitter hovers nose-up, so hover "up" is -x; 
 - 104 solids, **all 104 rebuilt exactly** from the source's prism / revolve / loft bodies and cuts (`dbf_geometry.py`), written as one STL
   per part (`meshes/`, 4.5 MB). **0 GLB fallbacks.** Rebuilt volumes match the analytic body volumes within 0.987 to 1.011 (`import-report.json`),
   and the part bounds match the GLB to 0.003 mm. The fallback path exists (`_glb_fallback`) and was not exercised.
-- 2 mass proxies (`hrd-001` 26.08 g hardware, `hrn-001` 18.4 g harness) as schema v0.4 `point_mass`, at the source's declared CG.
+- 2 mass proxies (`hrd-001` 26.08 g hardware, `hrn-001` 18.4 g harness) as schema v0.4 `point_mass` with `distributed: true`, at the source's declared CG. The mass is spread over the aircraft, so it is lumped at that CG in open space and its position must lie inside the envelope (T1.point_mass_location PASS).
 - 121 attachments from the source's 141 edges. Not emitted: 14 wire edges (centre lines, no solid; their mass sits in `hrn-001`) and 6 edges
   that bridge the elevon subtree (E-WNG-6R/6L, E-MEC-04, E-MEC-09, E-MEC-PIN-R3/L3: closing a loop around the hinge makes the articulated
   child side ambiguous). The downstream set of each elevon joint is asserted equal to the source's moving group (WNG-006, WNG-007, WNG-010,
@@ -40,10 +40,10 @@ the centre, not a nose datum. A tailsitter hovers nose-up, so hover "up" is -x; 
 ## Joint ratings (read this before trusting tier 2)
 
 Convention: `rated_load_n` is an **ultimate** capacity (standards: joint ratings are ultimate), K factors 1.725 (CF/metal) and 2.15625
-(printed/bonded) from `structures_a.py`. Counts: 33 from rows of the team's structures docs, 66 derived (allowable x measured contact patch
-or fastener count x stress area; the source's own EST allowables, no tests exist), **22 placeholders** (foam tape, gel pad, velcro strap, tie,
-tape hinge: the source publishes no capacity). A placeholder is set to the platform's own tier-2 demand rounded up, so its static check is
-vacuous and the YAML says so. M2 and M5 stress areas are ISO values the importer did not open: marked placeholder in `dbf_ratings.py`.
+(printed/bonded) from `structures_a.py`. Counts: 29 from rows of the team's structures docs, 66 derived (allowable x measured contact patch
+or fastener count x stress area; the source's own EST allowables, no tests exist), **26 placeholders** (foam tape, gel pad, velcro strap, tie,
+tape hinge, and the four lens-cap peel joints: the source publishes no capacity). Each attachment carries `rating_basis: sourced | derived |
+placeholder`. A placeholder is set to the platform's own tier-2 demand rounded up; its T2 checks are SKIP (not PASS), and the YAML says so. M2 and M5 stress areas are ISO values the importer did not open: marked placeholder in `dbf_ratings.py`.
 The bonded area is measured on our meshes at the source's modelled glue-line clearance (0.02 to 0.5 mm), a conversion estimate.
 
 ## Known gaps

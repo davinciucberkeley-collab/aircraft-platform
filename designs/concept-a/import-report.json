@@ -1064,7 +1064,7 @@
    "kind": "derived",
    "parent": "CGE-002-UR",
    "rated_load_n": 1931.3,
-   "source": "contact area 966 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 966 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-03": {
    "child": "CGE-002-UL",
@@ -1080,7 +1080,7 @@
    "kind": "derived",
    "parent": "CGE-002-UL",
    "rated_load_n": 1937.9,
-   "source": "contact area 969 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 969 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-05": {
    "child": "CGE-002-LR",
@@ -1096,7 +1096,7 @@
    "kind": "derived",
    "parent": "CGE-002-LR",
    "rated_load_n": 1922.2,
-   "source": "contact area 961 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 961 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-07": {
    "child": "CGE-002-LL",
@@ -1112,7 +1112,7 @@
    "kind": "derived",
    "parent": "CGE-002-LL",
    "rated_load_n": 1930.7,
-   "source": "contact area 965 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 965 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-09": {
    "child": "CGE-001",
@@ -1128,7 +1128,7 @@
    "kind": "derived",
    "parent": "CGE-006",
    "rated_load_n": 1891.3,
-   "source": "contact area 946 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 946 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-11": {
    "child": "CGE-006",
@@ -1136,7 +1136,7 @@
    "kind": "derived",
    "parent": "WNG-002",
    "rated_load_n": 1176.5,
-   "source": "contact area 588 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 588 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-12": {
    "child": "CGE-001",
@@ -1144,7 +1144,7 @@
    "kind": "derived",
    "parent": "CGE-005-R",
    "rated_load_n": 1294.1,
-   "source": "contact area 647 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 647 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-13": {
    "child": "CGE-005-R",
@@ -1168,7 +1168,7 @@
    "kind": "derived",
    "parent": "CGE-005-L",
    "rated_load_n": 1265.8,
-   "source": "contact area 633 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 633 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-CGE-16": {
    "child": "CGE-005-L",
@@ -1408,7 +1408,7 @@
    "kind": "derived",
    "parent": "HRN-003-R",
    "rated_load_n": 1290.6,
-   "source": "contact area 645 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 645 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-31": {
    "child": "CGE-008",
@@ -1416,7 +1416,7 @@
    "kind": "derived",
    "parent": "HRN-003-L",
    "rated_load_n": 1311.3,
-   "source": "contact area 656 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 656 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-32": {
    "child": "HRN-003-R",
@@ -1440,7 +1440,7 @@
    "kind": "derived",
    "parent": "HRN-004-UR",
    "rated_load_n": 61.7,
-   "source": "contact area 31 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 31 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-41": {
    "child": "CGE-001",
@@ -1448,7 +1448,7 @@
    "kind": "derived",
    "parent": "HRN-004-UL",
    "rated_load_n": 61.7,
-   "source": "contact area 31 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 31 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-42": {
    "child": "CGE-001",
@@ -1456,7 +1456,7 @@
    "kind": "derived",
    "parent": "HRN-004-LR",
    "rated_load_n": 60.0,
-   "source": "contact area 30 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 30 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-43": {
    "child": "CGE-001",
@@ -1464,7 +1464,7 @@
    "kind": "derived",
    "parent": "HRN-004-LL",
    "rated_load_n": 59.8,
-   "source": "contact area 30 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 30 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-50": {
    "child": "HRN-004-UR",
@@ -1472,7 +1472,7 @@
    "kind": "derived",
    "parent": "HRN-003-R",
    "rated_load_n": 52.2,
-   "source": "contact area 26 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 26 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-51": {
    "child": "HRN-004-UL",
@@ -1480,7 +1480,7 @@
    "kind": "derived",
    "parent": "HRN-003-L",
    "rated_load_n": 53.1,
-   "source": "contact area 27 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 27 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-52": {
    "child": "HRN-004-LR",
@@ -1488,7 +1488,7 @@
    "kind": "derived",
    "parent": "HRN-003-R",
    "rated_load_n": 47.5,
-   "source": "contact area 24 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 24 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-HRN-53": {
    "child": "HRN-004-LL",
@@ -1496,7 +1496,7 @@
    "kind": "derived",
    "parent": "HRN-003-L",
    "rated_load_n": 47.5,
-   "source": "contact area 24 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 24 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-MEC-01": {
    "child": "MEC-001-R",
@@ -1792,7 +1792,7 @@
    "kind": "derived",
    "parent": "WNG-002",
    "rated_load_n": 1247.8,
-   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-WNG-03": {
    "child": "WNG-004-R",
@@ -1800,7 +1800,7 @@
    "kind": "derived",
    "parent": "WNG-002",
    "rated_load_n": 1247.8,
-   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-WNG-04": {
    "child": "WNG-004-L",
@@ -1808,7 +1808,7 @@
    "kind": "derived",
    "parent": "WNG-002",
    "rated_load_n": 1247.8,
-   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-WNG-05": {
    "child": "WNG-005-R",
@@ -1816,7 +1816,7 @@
    "kind": "derived",
    "parent": "WNG-002",
    "rated_load_n": 1247.8,
-   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-WNG-06": {
    "child": "WNG-005-L",
@@ -1824,7 +1824,7 @@
    "kind": "derived",
    "parent": "WNG-002",
    "rated_load_n": 1247.8,
-   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L19 BOND_TAU 2.0 MPa (EST)"
+   "source": "contact area 624 mm2 (measured on the meshes) x structures_a.py L17 BOND_TAU 2.0 MPa (EST)"
   },
   "E-WNG-10": {
    "child": "WNG-006-R",
@@ -1861,34 +1861,34 @@
   "E-WNG-30L": {
    "child": "WNG-008-LU",
    "edge": "E-WNG-30L",
-   "kind": "doc",
+   "kind": "placeholder",
    "parent": "WNG-001",
-   "rated_load_n": 88.6,
-   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+   "rated_load_n": 0.2,
+   "source": "placeholder - not from source: foam_103.md L10 'Stop reaction at stall (30 N) peeling the lens cap off the skin' states 'peel of the tape skin is not covered by a foam value: pull coupon required'; the only adhesive allowable is epoxy shear (structures_a.py L17 BOND_TAU 2.0 MPa (EST)), which does not apply to peel; set to the platform's own demand (4.5 x g x subtree mass = 0.17 N, rounded up)"
   },
   "E-WNG-30R": {
    "child": "WNG-008-RU",
    "edge": "E-WNG-30R",
-   "kind": "doc",
+   "kind": "placeholder",
    "parent": "WNG-001",
-   "rated_load_n": 88.6,
-   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+   "rated_load_n": 0.2,
+   "source": "placeholder - not from source: foam_103.md L10 'Stop reaction at stall (30 N) peeling the lens cap off the skin' states 'peel of the tape skin is not covered by a foam value: pull coupon required'; the only adhesive allowable is epoxy shear (structures_a.py L17 BOND_TAU 2.0 MPa (EST)), which does not apply to peel; set to the platform's own demand (4.5 x g x subtree mass = 0.17 N, rounded up)"
   },
   "E-WNG-31L": {
    "child": "WNG-008-LL",
    "edge": "E-WNG-31L",
-   "kind": "doc",
+   "kind": "placeholder",
    "parent": "WNG-001",
-   "rated_load_n": 88.6,
-   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+   "rated_load_n": 0.2,
+   "source": "placeholder - not from source: foam_103.md L10 'Stop reaction at stall (30 N) peeling the lens cap off the skin' states 'peel of the tape skin is not covered by a foam value: pull coupon required'; the only adhesive allowable is epoxy shear (structures_a.py L17 BOND_TAU 2.0 MPa (EST)), which does not apply to peel; set to the platform's own demand (4.5 x g x subtree mass = 0.17 N, rounded up)"
   },
   "E-WNG-31R": {
    "child": "WNG-008-RL",
    "edge": "E-WNG-31R",
-   "kind": "doc",
+   "kind": "placeholder",
    "parent": "WNG-001",
-   "rated_load_n": 88.6,
-   "source": "redesign/qp/A/structures/foam_103.md 'Stop reaction at stall (30 N) peeling the lens cap off the skin', MS +0.37 at the 103 kPa basis; rated = 30 N x K 2.1562 x (1 + MS 0.37)"
+   "rated_load_n": 0.2,
+   "source": "placeholder - not from source: foam_103.md L10 'Stop reaction at stall (30 N) peeling the lens cap off the skin' states 'peel of the tape skin is not covered by a foam value: pull coupon required'; the only adhesive allowable is epoxy shear (structures_a.py L17 BOND_TAU 2.0 MPa (EST)), which does not apply to peel; set to the platform's own demand (4.5 x g x subtree mass = 0.17 N, rounded up)"
   },
   "E-WNG-4L": {
    "child": "WNG-009-L",
