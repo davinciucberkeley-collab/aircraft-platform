@@ -23,7 +23,7 @@ from .design import (Design, CheckResult, TierReport, Scorecard, SCHEMA_PATH, RE
                      PASS, FAIL, WARN, SKIP, load_standards)
 from .geometry import (component_parts, lifting_surface_properties, articulated_attachments, att_label,
                        downstream_ids, posed_component_parts, pose_transforms, pose_angles, is_point_mass,
-                       lifting_surface_halves, rotation_matrix)
+                       lifting_surface_halves, rotation_matrix, strip_planform)
 from .mass import mass_properties
 
 G = 9.80665
@@ -707,13 +707,18 @@ def _articulated_subtree(design: Design, cid: str) -> list[str]:
     return out
 
 
+def _planform_parts(design: Design, c: dict) -> tuple[list[str], list[trimesh.Trimesh]]:
+    """(geometry ids, body-frame meshes) of a planform component: the component plus its articulated children at 0 deg."""
+    geo_ids = _articulated_subtree(design, c["id"])
+    return geo_ids, [m for k in geo_ids for m in component_parts(design.component(k), design.base_dir)]
+
+
 def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
-    """Schema 0.4 planform: at each spanwise station (0, 25, 50, 75, 95 % of the semi-span, both sides if mirrored) the
-    real geometry's chordwise extent must match the planform's leading and trailing edge there, within
-    planform_match_tolerance_fraction x root_chord. The geometry is the component plus its articulated children at 0 deg.
-    Compared in the planform's own axes (x chordwise from the root LE, y spanwise), so rotation_deg is allowed."""
+    """Cross-check of the DECLARED planform against the geometry it describes. The aero numbers already come from the
+    measured geometry (tier 3), so a mismatch here does not change any number: WARN if the declared area or span differs
+    from the measured one by more than planform_match_tolerance_fraction, else PASS."""
     tol = std["aero"]["planform_match_tolerance_fraction"]["value"]
-    stations = (0.0, 0.25, 0.50, 0.75, 0.95)
+    n = std["aero"]["planform_strip_count"]["value"]
     res: list[CheckResult] = []
     for c in design.components:
         if "planform" not in c:
@@ -725,65 +730,31 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
             continue
         pf = c["planform"]
         ls = pf["lifting_surface"]
-        origin = np.array(pf["origin"], dtype=float)
-        rot = rotation_matrix(pf.get("rotation_deg"))
-        geo_ids = _articulated_subtree(design, c["id"])
+        geo_ids, parts = _planform_parts(design, c)
         scope = f"the geometry of {', '.join(geo_ids)}"
-        to_pf = np.eye(4)  # body frame -> planform frame
-        to_pf[:3, :3] = rot.T
-        to_pf[:3, 3] = -rot.T @ origin
-        parts = []
-        for k in geo_ids:
-            for m in component_parts(design.component(k), design.base_dir):
-                m = m.copy()
-                m.apply_transform(to_pf)
-                parts.append(m)
         if not parts:
             res.append(CheckResult("T3.planform_matches_geometry", FAIL, f"{c['id']}: no geometry for {scope}",
                                    STD + "planform_match_tolerance_fraction"))
             continue
+        m = strip_planform(parts, pf["origin"], pf.get("rotation_deg"), n=n)
         mirrored = ls.get("mirrored", True)
         semi = ls["span"] / 2 if mirrored else ls["span"]
-        cr, ct = ls["root_chord"], ls["tip_chord"]
-        sweep = math.tan(math.radians(ls.get("sweep_le_deg", 0)))
-        lim = tol * cr
-        rows = []  # (label, dLE, dTE) with None for a station that has no geometry
-        for f in stations:
-            for side in ((1,) if (f == 0 or not mirrored) else (1, -1)):
-                y = side * f * semi
-                ay = abs(y)
-                le = ay * sweep  # same planform outline as lifting_surface_halves
-                te = le + cr + (ct - cr) * ay / semi
-                sign = "" if f == 0 or not mirrored else ("+" if side > 0 else "-")
-                label = f"{sign}{f * 100:.0f}%"
-                lo, hi = [], []
-                for m in parts:
-                    sec = m.section(plane_origin=[0.0, y, 0.0], plane_normal=[0.0, 1.0, 0.0])
-                    if sec is not None:
-                        xs = sec.vertices[:, 0]
-                        lo.append(float(xs.min()))
-                        hi.append(float(xs.max()))
-                rows.append((label, min(lo) - le, max(hi) - te) if lo else (label, None, None))
-        bad = []
-        for label, dle, dte in rows:
-            if dle is None:
-                bad.append((math.inf, f"{label} span: no geometry at this station"))
-                continue
-            worst = max(abs(dle), abs(dte))
-            if worst > lim:
-                bad.append((worst, f"{label} span: LE {dle:+.1f} mm, TE {dte:+.1f} mm"))
-        data = {"stations": len(rows), "limit_mm": round(lim, 2)}
-        if bad:
-            bad.sort(key=lambda t: -t[0])
-            shown = "; ".join(t[1] for t in bad[:3])
-            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
-                                   f"{c['id']}: planform does not match {scope} at {len(bad)} of {len(rows)} stations "
-                                   f"(limit {lim:.1f} mm), worst first: {shown}",
-                                   STD + "planform_match_tolerance_fraction", data))
+        decl_area = semi * (ls["root_chord"] + ls["tip_chord"]) / 2 * (2 if mirrored else 1)
+        decl_span = ls["span"]
+        da = (m["area_mm2"] - decl_area) / decl_area
+        ds = (m["span_mm"] - decl_span) / decl_span
+        vals = (f"declared area {decl_area:.0f} mm^2 vs measured {m['area_mm2']:.0f} mm^2 ({da:+.1%}); "
+                f"declared span {decl_span:.0f} mm vs measured {m['span_mm']:.0f} mm ({ds:+.1%}); limit {tol:.0%}")
+        if m["missing_stations"]:
+            vals += f"; {len(m['missing_stations'])} of {n} stations have no geometry"
+        data = {"area_diff": round(da, 4), "span_diff": round(ds, 4), "measured_area_mm2": round(m["area_mm2"], 1)}
+        if abs(da) > tol or abs(ds) > tol:
+            res.append(CheckResult("T3.planform_matches_geometry", WARN,
+                                   f"{c['id']}: declared planform does not match {scope} ({vals}); the aero numbers use the "
+                                   "measured geometry", STD + "planform_match_tolerance_fraction", data))
         else:
             res.append(CheckResult("T3.planform_matches_geometry", PASS,
-                                   f"{c['id']}: planform LE and TE match {scope} at all {len(rows)} stations "
-                                   f"(0-95% of the span from the root, within {lim:.1f} mm)",
+                                   f"{c['id']}: declared planform agrees with {scope} ({vals})",
                                    STD + "planform_match_tolerance_fraction", data))
     return res
 
@@ -807,17 +778,21 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         mp = mass_properties(design, c_ang)
     # (component, lifting-surface component, properties). A planform (schema 0.4) is wrapped in a pseudo-component
     # so that it goes through the same lifting_surface_properties; it is not a geometry component.
+    n_strip = a["planform_strip_count"]["value"]
     surfaces = []
     for c in design.components:
         if "lifting_surface" in c["geometry"]:
             ls_c = c
+            p = lifting_surface_properties(c, c_tf[c["id"]] if cruise_pose else None)
+            p["span_mm"] = c["geometry"]["lifting_surface"]["span"]
         elif "planform" in c:
+            # a mesh wing: every aero number is measured from the modelled geometry (0 deg), not the declared outline
             pf = c["planform"]
-            ls_c = {"geometry": {"lifting_surface": pf["lifting_surface"]}, "position": pf["origin"],
-                    "rotation_deg": pf.get("rotation_deg", [0, 0, 0])}
+            ls_c = c
+            p = strip_planform(_planform_parts(design, c)[1], pf["origin"], pf.get("rotation_deg"), n=n_strip)
         else:
             continue
-        surfaces.append((c, ls_c, lifting_surface_properties(ls_c, c_tf[c["id"]] if cruise_pose else None)))
+        surfaces.append((c, ls_c, p))
     lifting = [(c, ls_c, p) for c, ls_c, p in surfaces if p["lifting"]]
     if lifting and design.data["morphology"]["lift"] != "multirotor":
         main_c, main_ls, main = max(lifting, key=lambda cp: cp[2]["area_mm2"])
@@ -852,9 +827,9 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
         res.append(CheckResult("T3.static_margin", st,
                                f"{sm:.1%} MAC (NP x={x_np:.0f} mm, CG x={mp['cg_mm'][0]:.0f} mm; target {lo:.0%}-{hi:.0%}; "
                                "fuselage effect not modelled)"
-                               + (" (planform declared; mesh wing)" if main_from_planform else ""),
+                               + (f" (mesh wing: chord measured at {n_strip} stations)" if main_from_planform else ""),
                                STD + "static_margin", {"static_margin": round(sm, 4), "x_np_mm": round(x_np, 1)}))
-        lat = abs(mp["cg_mm"][1]) / main_ls["geometry"]["lifting_surface"]["span"]
+        lat = abs(mp["cg_mm"][1]) / main["span_mm"]
         lim = a["lateral_cg_max_fraction_span"]["value"]
         res.append(CheckResult("T3.lateral_cg", PASS if lat <= lim else FAIL,
                                f"CG y offset {lat:.1%} of span (limit {lim:.0%})", STD + "lateral_cg_max_fraction_span"))

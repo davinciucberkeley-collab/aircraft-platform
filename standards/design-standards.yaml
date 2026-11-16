@@ -75,7 +75,11 @@ aero:
     source: internal convention
   planform_match_tolerance_fraction:
     value: 0.01
-    rule: "A declared planform must match its component's real geometry: at each spanwise station (0-95% of the span from the root, both sides if mirrored) the leading and trailing edges must agree within this fraction of root chord."
+    rule: "A declared planform's area and span must agree with the area and span measured from its real geometry within this fraction; otherwise a WARN. The aero numbers always use the measured geometry."
+    source: internal convention
+  planform_strip_count:
+    value: 41
+    rule: "Spanwise stations used to measure a mesh wing's chord distribution: the measured span is split into equal strips, each sliced at its centre (midpoint rule)."
     source: internal convention
   aft_surface_efficiency:
     value: 0.9

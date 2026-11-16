@@ -237,3 +237,55 @@ def lifting_surface_properties(component: dict, pose: np.ndarray | None = None) 
         ac_body = pose[:3, :3] @ ac_body + pose[:3, 3]
     return {"area_mm2": area, "aspect_ratio": ar, "mac_mm": mac, "x_ac_mm": float(ac_body[0]),
             "lifting": ls.get("lifting", True)}
+
+
+def _trapz(f: np.ndarray, x: np.ndarray) -> float:
+    return float(np.sum((f[1:] + f[:-1]) * np.diff(x)) / 2.0)
+
+
+def strip_planform(parts: list[trimesh.Trimesh], origin, rotation_deg=None, n: int = 41) -> dict:
+    """Aero numbers of a mesh wing measured from its geometry, not from a declared outline.
+    `parts` are body-frame meshes (the component and its articulated children at 0 deg). The planform frame has origin
+    `origin` and rotation `rotation_deg`: its x is chordwise (LE at x min), its y is spanwise. The measured span b is the
+    geometry's full y extent, split into n equal strips of width b/n, each sliced at its centre. Per strip: chord
+    c = max x - min x, LE = min x (a strip with no section counts as c = 0 and is listed). Midpoint rule:
+    S = sum c_i * dy, MAC = sum c_i^2 * dy / S, x_ac = sum (LE_i + c_i/4) c_i * dy / S, AR = b^2 / S.
+    Returns the lifting_surface_properties keys (body-frame x_ac) plus span_mm, missing_stations and source."""
+    origin = np.asarray(origin, dtype=float)
+    rot = rotation_matrix(rotation_deg)
+    to_pf = np.eye(4)  # body frame -> planform frame
+    to_pf[:3, :3] = rot.T
+    to_pf[:3, 3] = -rot.T @ origin
+    pf = []
+    for m in parts:
+        m = m.copy()
+        m.apply_transform(to_pf)
+        pf.append(m)
+    ys = np.concatenate([m.vertices[:, 1] for m in pf])
+    y0, y1 = float(ys.min()), float(ys.max())
+    b = y1 - y0
+    dy = b / n
+    centres = y0 + (np.arange(n) + 0.5) * dy
+    chord = np.zeros(n)
+    le = np.zeros(n)
+    missing = []
+    for i, y in enumerate(centres):
+        lo, hi = [], []
+        for m in pf:
+            sec = m.section(plane_origin=[0.0, float(y), 0.0], plane_normal=[0.0, 1.0, 0.0])
+            if sec is not None and len(sec.vertices):
+                xs = sec.vertices[:, 0]
+                lo.append(float(xs.min()))
+                hi.append(float(xs.max()))
+        if not lo:
+            missing.append(i)
+            continue
+        le[i] = min(lo)
+        chord[i] = max(hi) - min(lo)
+    area = float(np.sum(chord) * dy)
+    mac = float(np.sum(chord ** 2) * dy / area)
+    x_ac_pf = float(np.sum((le + 0.25 * chord) * chord) * dy / area)
+    ac_body = rot @ np.array([x_ac_pf, 0.0, 0.0]) + origin
+    return {"area_mm2": area, "aspect_ratio": b ** 2 / area, "mac_mm": mac, "x_ac_mm": float(ac_body[0]),
+            "lifting": True, "span_mm": b, "missing_stations": [int(i) for i in missing],
+            "source": f"geometry strips ({n} stations)"}
