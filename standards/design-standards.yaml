@@ -77,6 +77,10 @@ aero:
     value: 0.01
     rule: "A declared planform's area and span must agree with the area and span measured from its real geometry within this fraction; otherwise a WARN. The aero numbers always use the measured geometry."
     source: internal convention
+  planform_area_mismatch_fail_fraction:
+    value: 0.15
+    rule: "Declared and measured planform areas (and spans) may differ by at most this fraction. Beyond the planform_match_tolerance_fraction band, a WARN; beyond this fraction, a FAIL."
+    source: internal convention
   planform_strip_count:
     value: 41
     rule: "Spanwise stations used to measure a mesh wing's chord distribution: the measured span is split into equal strips, each sliced at its centre (midpoint rule)."

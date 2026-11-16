@@ -168,8 +168,8 @@ def test_planform_wing_gets_stall_and_matches_lifting_surface():
     assert "no lifting surface" not in with_planform["T3.stall"].message
     assert with_planform["T3.stall"].status == as_surface["T3.stall"].status
     assert with_planform["T3.stall"].data["stall_mps"] == pytest.approx(as_surface["T3.stall"].data["stall_mps"])
-    assert with_planform["T3.static_margin"].message.endswith("(planform declared; mesh wing)")
-    assert not as_surface["T3.static_margin"].message.endswith("(planform declared; mesh wing)")
+    assert with_planform["T3.static_margin"].message.endswith("(mesh wing: chord measured at 41 stations)")
+    assert not as_surface["T3.static_margin"].message.endswith("(mesh wing: chord measured at 41 stations)")
 
 
 def test_planform_needs_schema_040():

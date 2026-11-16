@@ -707,6 +707,9 @@ def _articulated_subtree(design: Design, cid: str) -> list[str]:
     return out
 
 
+PLANFORM_TYPES = ("wing", "tail_surface")  # the only component types that may declare a planform
+
+
 def _planform_parts(design: Design, c: dict) -> tuple[list[str], list[trimesh.Trimesh]]:
     """(geometry ids, body-frame meshes) of a planform component: the component plus its articulated children at 0 deg."""
     geo_ids = _articulated_subtree(design, c["id"])
@@ -718,10 +721,16 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
     measured geometry (tier 3), so a mismatch here does not change any number: WARN if the declared area or span differs
     from the measured one by more than planform_match_tolerance_fraction, else PASS."""
     tol = std["aero"]["planform_match_tolerance_fraction"]["value"]
+    fail_frac = std["aero"]["planform_area_mismatch_fail_fraction"]["value"]
     n = std["aero"]["planform_strip_count"]["value"]
     res: list[CheckResult] = []
     for c in design.components:
         if "planform" not in c:
+            continue
+        if c["type"] not in PLANFORM_TYPES:
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
+                                   f"{c['id']}: planform declared on a {c['type']}; only wing or tail_surface parts are lifting surfaces",
+                                   STD + "planform_match_tolerance_fraction"))
             continue
         if is_point_mass(c):
             res.append(CheckResult("T3.planform_matches_geometry", FAIL,
@@ -748,7 +757,17 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
         if m["missing_stations"]:
             vals += f"; {len(m['missing_stations'])} of {n} stations have no geometry"
         data = {"area_diff": round(da, 4), "span_diff": round(ds, 4), "measured_area_mm2": round(m["area_mm2"], 1)}
-        if abs(da) > tol or abs(ds) > tol:
+
+        def band(x: float) -> str:
+            return PASS if abs(x) <= tol else WARN if abs(x) <= fail_frac else FAIL
+        if band(da) == FAIL or band(ds) == FAIL:
+            what = "lifting areas" if band(da) == FAIL else "spans"
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
+                                   f"{c['id']}: declared and measured {what} disagree by "
+                                   f"{abs(da) if band(da) == FAIL else abs(ds):.1%}; check the declared planform and the geometry "
+                                   f"({vals}); the aero numbers use the measured geometry",
+                                   STD + "planform_area_mismatch_fail_fraction", data))
+        elif band(da) == WARN or band(ds) == WARN:
             res.append(CheckResult("T3.planform_matches_geometry", WARN,
                                    f"{c['id']}: declared planform does not match {scope} ({vals}); the aero numbers use the "
                                    "measured geometry", STD + "planform_match_tolerance_fraction", data))
@@ -785,7 +804,7 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
             ls_c = c
             p = lifting_surface_properties(c, c_tf[c["id"]] if cruise_pose else None)
             p["span_mm"] = c["geometry"]["lifting_surface"]["span"]
-        elif "planform" in c:
+        elif "planform" in c and c["type"] in PLANFORM_TYPES:
             # a mesh wing: every aero number is measured from the modelled geometry (0 deg), not the declared outline
             pf = c["planform"]
             ls_c = c

@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import copy
 
+import numpy as np
+import trimesh
+
 from aircraft_platform.checks import tier0_schema, validate
-from aircraft_platform.design import FAIL, PASS, SKIP, Design, load_design
+from aircraft_platform.design import FAIL, PASS, SKIP, WARN, Design, load_design
+from aircraft_platform.geometry import component_parts, lifting_surface_halves, strip_planform
 from aircraft_platform.importers.dbf_ratings import rating, rating_basis
 
 from conftest import EXAMPLE_PATH, statuses
@@ -110,17 +114,6 @@ def test_planform_exact_match_passes():
     sc = _run(_planform_box(0.0), tier=3)
     assert statuses(sc, "T3.planform_matches_geometry") == [PASS]
 
-
-def test_planform_shifted_5mm_aft_fails_and_other_t3_checks_still_run():
-    sc = _run(_planform_box(5.0), tier=3)  # limit 2% x 245 mm = 4.9 mm
-    rows = _rows(sc, "T3.planform_matches_geometry")
-    assert [r.status for r in rows] == [FAIL]
-    assert "does not match the geometry of wng" in rows[0].message
-    assert "LE -5.0 mm, TE -5.0 mm" in rows[0].message
-    assert "T3.stall" in {r.check_id for t in sc.tiers for r in t.results}
-
-
-# ---------------------------------------------------------------- D. placeholder ratings
 
 def test_placeholder_rating_joint_rows_skip_and_not_accepted(mutate):
     base = load_design(EXAMPLE_PATH)
@@ -275,28 +268,85 @@ def test_planform_with_articulated_elevon_matches_union_of_geometry():
     assert "core, elevon" in rows[0].message
 
 
-def test_planform_without_articulation_on_elevon_fails():
-    sc = _run(_elevon_wing(articulated=False), tier=3)
-    rows = _rows(sc, "T3.planform_matches_geometry")
-    assert [r.status for r in rows] == [FAIL]
-    assert "the geometry of core at" in rows[0].message and "TE -61.2 mm" in rows[0].message
+def _t3(sc) -> dict:
+    return {r.check_id: r for t in sc.tiers for r in t.results}
 
 
-def test_planform_shifted_3mm_fails_limit_2_45mm():
-    sc = _run(_planform_box(3.0), tier=3)  # limit 1% x 245 mm = 2.45 mm
-    rows = _rows(sc, "T3.planform_matches_geometry")
-    assert [r.status for r in rows] == [FAIL]
-    assert "LE -3.0 mm, TE -3.0 mm" in rows[0].message
+def test_declared_planform_shift_changes_no_aero_number():
+    """The aero numbers come from the measured geometry: moving the declared outline changes nothing (only a WARN if
+    the declared area or span disagree with the geometry)."""
+    base = _t3(_run(_planform_box(0.0), tier=3))
+    shifted = _t3(_run(_planform_box(3.0), tier=3))
+    assert shifted["T3.stall"].data == base["T3.stall"].data
+    assert shifted["T3.static_margin"].data == base["T3.static_margin"].data
+    assert shifted["T3.planform_matches_geometry"].status == PASS
 
 
-def test_planform_matches_only_at_tips_when_geometry_is_notched_fails():
-    """Planform 245 mm chord, rectangular. The geometry is the same box with the trailing half removed for |y| < 225 mm
-    (a notch at 50% of the semi-span): the tips match, the stations inside the notch do not."""
+def test_planform_area_mismatch_is_warn_not_fail():
+    """Declared 245 x 900 planform on a 200 x 900 box: the planform row WARNs with both areas; the numbers still come from
+    the box (no FAIL from the cross-check)."""
+    data = _planform_box(0.0)
+    data["components"][0]["geometry"] = {"box": {"size": [200, 900, 10]}}
+    t3 = _t3(_run(data, tier=3))
+    assert t3["T3.planform_matches_geometry"].status == WARN
+    assert "declared area 220500 mm^2 vs measured 180000 mm^2" in t3["T3.planform_matches_geometry"].message
+    assert t3["T3.stall"].status in (PASS, FAIL)
+    assert "(mesh wing: chord measured at 41 stations)" in t3["T3.static_margin"].message
+
+
+def test_planform_without_articulation_on_elevon_warns_and_changes_numbers():
+    """Without the elevon's articulation block the elevon is not part of the wing: the measured chord is 183.8 mm,
+    so the declared 245 mm planform WARNs and the measured MAC and x_ac differ from the articulated wing."""
+    with_art = _t3(_run(_elevon_wing(articulated=True), tier=3))
+    without = _t3(_run(_elevon_wing(articulated=False), tier=3))
+    assert with_art["T3.planform_matches_geometry"].status == PASS
+    assert without["T3.planform_matches_geometry"].status == WARN
+    assert "the geometry of core" in without["T3.planform_matches_geometry"].message
+    assert without["T3.static_margin"].data != with_art["T3.static_margin"].data
+
+
+def _notched_box() -> dict:
     data = _planform_box(0.0)
     comp = data["components"][0]
     comp["geometry"] = {"box": {"size": [245, 900, 10]}}
     comp["cavities"] = [{"geometry": {"box": {"size": [140, 450, 20]}}, "position": [70, 0, 0]}]
-    sc = _run(data, tier=3)
-    rows = _rows(sc, "T3.planform_matches_geometry")
-    assert [r.status for r in rows] == [FAIL], [r.message for r in rows]
-    assert "0% span" in rows[0].message and "stations" in rows[0].message
+    return data
+
+
+def test_notched_mesh_wing_strip_matches_analytic():
+    """Chord 245 mm outboard of |y| = 225 mm, 122.5 mm inboard (trailing half removed). Analytic area 165375 mm^2 and
+    chord-weighted quarter-chord x_ac 51.04 mm from the LE (LE at x = 0)."""
+    data = _notched_box()
+    m = strip_planform(component_parts(data["components"][0]), [0, 0, 0], None)
+    area = 2 * 225 * 245 + 450 * 122.5
+    x_ac = (0.25 * 122.5 * 122.5 * 450 + 0.25 * 245 * 245 * 450) / area
+    assert abs(m["area_mm2"] / area - 1) <= 0.01
+    assert abs(m["x_ac_mm"] - x_ac) <= 1.0
+    t3 = _t3(_run(data, tier=3))
+    assert t3["T3.planform_matches_geometry"].status == WARN
+
+
+def test_tapered_mesh_wing_strip_matches_analytic():
+    """Tapered half-wings (root 245, tip 120 mm, span 900, LE straight): analytic area and x_ac."""
+    ls = {"span": 900, "root_chord": 245, "tip_chord": 120, "mirrored": True}
+    parts = [trimesh.convex.convex_hull(v) for v in lifting_surface_halves(ls)]
+    m = strip_planform(parts, [0, 0, 0], None)
+    semi, cr, ct = 450.0, 245.0, 120.0
+    y = np.linspace(0, semi, 200001)
+    c = cr + (ct - cr) * y / semi
+    area = 2 * np.trapezoid(c, y)
+    x_ac = 2 * np.trapezoid(0.25 * c * c, y) / area
+    assert abs(m["area_mm2"] / area - 1) <= 0.01
+    assert abs(m["x_ac_mm"] - x_ac) <= 1.0
+
+
+def test_rectangular_box_wing_is_exact():
+    """Box wing 245 mm chord, 900 mm span, LE at x = 0: MAC = chord within 0.5 %, x_ac = LE + c/4 within 0.5 mm,
+    area within 0.1 %."""
+    box = trimesh.creation.box(extents=[245, 900, 10])
+    box.apply_translation([122.5, 0, 0])
+    m = strip_planform([box], [0, 0, 0], None)
+    assert abs(m["mac_mm"] / 245 - 1) <= 0.005
+    assert abs(m["x_ac_mm"] - (0 + 245 / 4)) <= 0.5
+    assert abs(m["area_mm2"] / (245 * 900) - 1) <= 0.001
+
