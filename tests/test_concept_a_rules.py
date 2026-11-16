@@ -1,11 +1,11 @@
 """Concept A validator rules: motor-to-propeller through an adapter (T1.motor_has_prop) and kinematic_link
-(T1.kinematic_link: linked child not checked against parts moved by a pose, reported as WARN)."""
+(T1.kinematic_link: linked child not checked against parts moved by a pose, reported as SKIP)."""
 from __future__ import annotations
 
 import pytest
 
 from aircraft_platform.checks import validate
-from aircraft_platform.design import FAIL, PASS, WARN, Design
+from aircraft_platform.design import FAIL, PASS, SKIP, Design
 
 from conftest import statuses
 
@@ -113,16 +113,20 @@ def linked_design(kinematic: bool, version: str = "0.4") -> dict:
     }
 
 
-def test_linked_part_clipping_only_at_pose_warns_not_fails():
+def test_linked_part_clipping_only_at_pose_skips_and_blocks_acceptance():
     sc = run(linked_design(kinematic=True))
     assert sc.tiers[0].status == PASS
     assert not fails(sc), [r.message for r in fails(sc)]
-    warns = [r for t in sc.tiers for r in t.results if r.check_id == "T1.kinematic_link"]
-    assert warns and all(r.status == WARN for r in warns)
-    hover = [r for r in warns if "pose hover (90°)" in r.message]
-    assert len(hover) == 1, [r.message for r in warns]
+    skips = [r for t in sc.tiers for r in t.results if r.check_id == "T1.kinematic_link"]
+    assert skips and all(r.status == SKIP for r in skips)
+    hover = [r for r in skips if "pose hover (90°)" in r.message]
+    assert len(hover) == 1, [r.message for r in skips]
     assert "linkage path not modelled" in hover[0].message and "rod" in hover[0].message
     assert statuses(sc, "T1.articulation") == [PASS]
+    # SKIP blocks acceptance: the unchecked pairs were never checked. Acceptance needs a full (tier 0-5) run.
+    full = validate(Design(data=linked_design(kinematic=True), path=None))
+    assert full.accepted is False
+    assert any(r.check_id == "T1.kinematic_link" and r.status == SKIP for t in full.tiers for r in t.results)
 
 
 def test_same_clip_without_kinematic_link_fails():
@@ -142,7 +146,7 @@ def _wing(planform: bool, version: str = "0.4") -> dict:
     (tier 3 only; the box gives the geometry)."""
     ls = {"span": 900, "root_chord": 245, "tip_chord": 245, "mirrored": True}
     if planform:
-        wing = {"id": "wng", "type": "wing", "geometry": {"box": {"size": [245, 900, 10]}}, "position": [0, 0, 0],
+        wing = {"id": "wng", "type": "wing", "geometry": {"box": {"size": [245, 900, 10]}}, "position": [122.5, 0, 0],
                 "mass_g": 1000, "manufacturing": _mfg(),
                 "planform": {"lifting_surface": dict(ls), "origin": [0, 0, 0]}}
     else:

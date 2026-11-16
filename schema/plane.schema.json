@@ -23,7 +23,7 @@
         "0.3",
         "0.4"
       ],
-      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.4 adds the point_mass geometry (mass at a point, no extent), attachment.kinematic_link and component.planform; 0.1-0.3 files validate unchanged."
+      "description": "0.2 adds optional attachment.articulation and flight.hover_pose / flight.cruise_pose; 0.3 adds optional component.cavities; 0.4 adds the point_mass geometry (mass at a point, no extent), attachment.kinematic_link, attachment.rating_basis and component.planform; 0.1-0.3 files validate unchanged."
     },
     "id": {
       "$ref": "#/$defs/slug"
@@ -636,6 +636,14 @@
         "rated_load_n": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "rating_basis": {
+          "description": "v0.4. Where rated_load_n comes from. sourced: a published or tested capacity. derived: an allowable times measured geometry. placeholder: no capacity in the source; the value is not a capacity, and tier-2 load checks skip this joint (never PASS or FAIL it).",
+          "enum": [
+            "sourced",
+            "derived",
+            "placeholder"
+          ]
         },
         "articulation": {
           "description": "v0.2. The joint moves. Rotation applies to the CHILD side: the child and everything attached downstream of it (reached from the child without crossing back through this joint). 0 deg = the geometry as written.",

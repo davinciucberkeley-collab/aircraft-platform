@@ -22,7 +22,8 @@ from jsonschema import Draft202012Validator
 from .design import (Design, CheckResult, TierReport, Scorecard, SCHEMA_PATH, REPO_ROOT,
                      PASS, FAIL, WARN, SKIP, load_standards)
 from .geometry import (component_parts, lifting_surface_properties, articulated_attachments, att_label,
-                       downstream_ids, posed_component_parts, pose_transforms, pose_angles, is_point_mass)
+                       downstream_ids, posed_component_parts, pose_transforms, pose_angles, is_point_mass,
+                       lifting_surface_halves, rotation_matrix)
 from .mass import mass_properties
 
 G = 9.80665
@@ -63,6 +64,10 @@ def tier0_schema(design: Design) -> TierReport:
     if uses_planform and design.data.get("schema_version") != "0.4":
         res.append(CheckResult("T0.version", FAIL,
                                "component planform needs schema_version \"0.4\"",
+                               "schema/plane.schema.json"))
+    if any("rating_basis" in a for a in design.data.get("attachments", [])) and design.data.get("schema_version") != "0.4":
+        res.append(CheckResult("T0.version", FAIL,
+                               "attachment rating_basis needs schema_version \"0.4\"",
                                "schema/plane.schema.json"))
     both = [c["id"] for c in design.data.get("components", [])
             if "planform" in c and "lifting_surface" in c.get("geometry", {})]
@@ -440,9 +445,49 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
     if unchecked:
         ids = sorted({i for pair in unchecked for i in pair})
         shown = ", ".join(ids[:6]) + (", \u2026" if len(ids) > 6 else "")
-        res.append(CheckResult("T1.kinematic_link", WARN,
+        res.append(CheckResult("T1.kinematic_link", SKIP,
                                f"{len(unchecked)} pair(s) not checked \u2014 linkage path not modelled: {shown}",
                                "schema/plane.schema.json", {"pairs": [list(p) for p in unchecked]}))
+    return res
+
+
+def _inside(parts: list[trimesh.Trimesh], p) -> bool:
+    """True if p lies strictly inside one of the parts (a point on the surface does not count)."""
+    return any(float(trimesh.proximity.signed_distance(m, np.array([p]))[0]) > 1e-6 for m in parts)
+
+
+def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]) -> list[CheckResult]:
+    """Schema 0.4 point_mass placement: (i) at its position (+cg_offset) it lies inside, or within attach_tolerance_mm
+    of, a part it is attached to that has geometry; (ii) it is not inside any propeller's geometry (the prop disc).
+    Static configuration only: a point mass on an articulated part is not posed."""
+    tol = std["geometry"]["attach_tolerance_mm"]["value"]
+    props = [c["id"] for c in design.components if c["type"] == "propeller" and c["id"] in meshes]
+    res: list[CheckResult] = []
+    for pm in design.components:
+        if not is_point_mass(pm):
+            continue
+        cid = pm["id"]
+        p = np.array(pm["position"], dtype=float) + np.array(pm.get("cg_offset", [0, 0, 0]), dtype=float)
+        at = f"({p[0]:.1f}, {p[1]:.1f}, {p[2]:.1f}) mm"
+        hosts = sorted({a["child"] if a["parent"] == cid else a["parent"] for a in atts if cid in (a["parent"], a["child"])}
+                       & set(meshes))
+        problems = []
+        if not hosts:
+            problems.append(f"{cid} at {at} has no attached part with geometry to sit on")
+        else:
+            d = min(_point_distance(meshes[h], p) for h in hosts)
+            if d > tol:
+                problems.append(f"{cid} at {at} is {d:.1f} mm from every part it is attached to "
+                                f"({', '.join(hosts)}; tolerance {tol} mm)")
+        for pid in props:
+            if _inside(meshes[pid], p):
+                problems.append(f"{cid} at {at} lies inside the prop disc of {pid}")
+        if problems:
+            res += [CheckResult("T1.point_mass_location", FAIL, m, STD + "attach_tolerance_mm") for m in problems]
+        else:
+            res.append(CheckResult("T1.point_mass_location", PASS,
+                                   f"{cid} at {at}: on or within {tol} mm of an attached part, outside every prop disc",
+                                   STD + "attach_tolerance_mm"))
     return res
 
 
@@ -478,6 +523,7 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     identity = {cid: np.eye(4) for cid in all_ids}
     cache = _PairCache()
     res += _contact_and_clash_checks(design, std, meshes, identity, atts, cache)
+    res += _point_mass_checks(design, std, meshes, atts)
 
     # articulated joints: the same contact / overlap / interference checks in every configuration
     if articulated_attachments(design):
@@ -494,11 +540,11 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
                 r.data = {**r.data, "configuration": name}
             res += fails
             for r in sub:
-                if r.status == WARN:
+                if r.status in (WARN, SKIP):
                     r.message = f"{name}: {r.message}"
                     r.data = {**r.data, "configuration": name}
                     res.append(r)
-            if not fails:
+            if not fails and not any(r.status == SKIP for r in sub):
                 res.append(CheckResult("T1.pose", PASS,
                                        f"{name}: attachments, overlap and interference all OK",
                                        STD + "interference_max_mm3", {"configuration": name}))
@@ -553,6 +599,11 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
         label = a.get("id") or f"{a['parent']}->{a['child']}"
         load = _subtree_mass(design, a["parent"], a["child"]) / 1000 * G * n
         rated = a.get("rated_load_n")
+        if a.get("rating_basis") == "placeholder":
+            res.append(CheckResult("T2.joint_load", SKIP,
+                                   f"{label}: carries {load:.1f} N; rating is a placeholder, not checked",
+                                   STD + "landing_load_factor", {"load_n": round(load, 2)}))
+            continue
         if rated is None:
             res.append(CheckResult("T2.joint_load", FAIL, f"{label}: carries {load:.1f} N at {n}g, no rated_load_n given",
                                    STD + "landing_load_factor", {"load_n": round(load, 2)}))
@@ -602,9 +653,48 @@ def tier2_physics(design: Design, std: dict, mp: dict) -> TierReport:
 
 
 # ---------------------------------------------------------------- tier 3
+def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
+    """Schema 0.4 planform: its leading edge, trailing edge and span must match the component's real geometry.
+    Both are compared in the planform's own axes (x chordwise from the root LE, y spanwise), so rotation_deg is allowed.
+    The planform outline is the lifting_surface_halves vertices, the same points as its pseudo-component mesh."""
+    tol = std["aero"]["planform_match_tolerance_fraction"]["value"]
+    res: list[CheckResult] = []
+    for c in design.components:
+        if "planform" not in c:
+            continue
+        if is_point_mass(c):
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
+                                   f"{c['id']}: a planform needs geometry to match, and a point mass has none",
+                                   STD + "planform_match_tolerance_fraction"))
+            continue
+        pf = c["planform"]
+        ls = pf["lifting_surface"]
+        origin = np.array(pf["origin"], dtype=float)
+        rot = rotation_matrix(pf.get("rotation_deg"))
+        outline = np.vstack(lifting_surface_halves(ls))
+        real_body = np.vstack([m.vertices for m in component_parts(c, design.base_dir)])
+        real = (rot.T @ (real_body - origin).T).T
+        diffs = {"LE": float(real[:, 0].min() - outline[:, 0].min()),
+                 "TE": float(real[:, 0].max() - outline[:, 0].max()),
+                 "span": float(np.ptp(real[:, 1]) - np.ptp(outline[:, 1]))}
+        limits = {"LE": tol * ls["root_chord"], "TE": tol * ls["root_chord"], "span": tol * ls["span"]}
+        bad = [f"{k} off by {d:+.1f} mm (limit {limits[k]:.1f} mm)" for k, d in diffs.items() if abs(d) > limits[k]]
+        data = {k: round(v, 2) for k, v in diffs.items()}
+        if bad:
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
+                                   f"{c['id']}: planform does not match its geometry: " + "; ".join(bad),
+                                   STD + "planform_match_tolerance_fraction", data))
+        else:
+            res.append(CheckResult("T3.planform_matches_geometry", PASS,
+                                   f"{c['id']}: planform LE/TE within {limits['LE']:.1f} mm, span within {limits['span']:.1f} mm "
+                                   "of the real geometry", STD + "planform_match_tolerance_fraction", data))
+    return res
+
+
 def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
     a = std["aero"]
     res: list[CheckResult] = []
+    res += _planform_checks(design, std)  # reported even if a later aero check fails
     req = design.data.get("requirements", {})
     flight = design.data.get("flight", {})
     mass = mp["mass_g"]

@@ -73,6 +73,12 @@ for _e in ("E-WNG-01",):
                "foam_103.md XPS shear 86 kPa x bore wrap pi x 12 mm x 0.40 m (bond rule |y| <= 0.20 m, E-WNG-01 notes, "
                "FIXES2)")
 
+def rating_basis(kind: str) -> str:
+    """Schema attachment.rating_basis for a kind returned by rating(): doc -> sourced, placeholder -> placeholder,
+    every other kind (derived) -> derived."""
+    return {"doc": "sourced", "placeholder": "placeholder"}.get(kind, "derived")
+
+
 PLACEHOLDER_VIA = {"CT-TAPE-FOAM", "CT-GEL-PAD", "CT-STRAP-VELCRO", "CT-TIE", "CT-TAPE-HINGE"}
 
 

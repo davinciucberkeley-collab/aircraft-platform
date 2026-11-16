@@ -65,6 +65,10 @@ aero:
     value: 1.0
     rule: Hover moment at or above this fraction of thrust x reference lever is a FAIL; between pass and fail ratios is a WARN.
     source: internal convention
+  planform_match_tolerance_fraction:
+    value: 0.02
+    rule: "A declared planform must match its component's real geometry: LE, TE and span within this fraction of chord/span."
+    source: internal convention
   aft_surface_efficiency:
     value: 0.9
     rule: Lift-slope multiplier for lifting surfaces other than the main wing in the neutral point estimate (dynamic pressure and interference loss).

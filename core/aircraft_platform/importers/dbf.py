@@ -518,6 +518,7 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
         if r["embed"]:
             fields.append("embed_ok: true")
         fields.append(f"rated_load_n: {_n(val, 1)}")
+        fields.append(f"rating_basis: {rt.rating_basis(kind)}")
         if child in KINEMATIC_LINK_CHILDS:
             add("  # kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against the moved parts'")
             fields.append("kinematic_link: true")
