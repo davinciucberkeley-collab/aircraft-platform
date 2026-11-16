@@ -5,6 +5,10 @@
 version: "0.1"
 
 geometry:
+  strip_gap_tolerance_mm:
+    value: 3.0
+    rule: "Gaps up to this size between pieces of a wing section (hinge gaps) are bridged when measuring chord"
+    source: internal convention
   attach_tolerance_mm:
     value: 2.0
     rule: Attached parts must touch or overlap; joint point within this distance of both parts.
@@ -80,6 +84,14 @@ aero:
   planform_area_mismatch_fail_fraction:
     value: 0.15
     rule: "Declared and measured planform areas (and spans) may differ by at most this fraction. Beyond the planform_match_tolerance_fraction band, a WARN; beyond this fraction, a FAIL."
+    source: internal convention
+  control_surface_gap_max_fraction:
+    value: 0.15
+    rule: "A wing's planform runs from its leading edge to its control surface's trailing edge; gaps between a wing and its own hinged control surfaces (hinge gaps, balance pockets) up to this fraction of local chord are part of the chord"
+    source: "standard planform definition (control surfaces included); value internal convention, sized to cover hinge gaps and balance pockets such as concept A's 23.6 mm (9.6 %)"
+  planform_axis_tolerance_deg:
+    value: 5
+    rule: "Declared planform span direction must match the measured one"
     source: internal convention
   planform_strip_count:
     value: 41

@@ -239,53 +239,77 @@ def lifting_surface_properties(component: dict, pose: np.ndarray | None = None) 
             "lifting": ls.get("lifting", True)}
 
 
-def _trapz(f: np.ndarray, x: np.ndarray) -> float:
-    return float(np.sum((f[1:] + f[:-1]) * np.diff(x)) / 2.0)
-
-
-def strip_planform(parts: list[trimesh.Trimesh], origin, rotation_deg=None, n: int = 41) -> dict:
-    """Aero numbers of a mesh wing measured from its geometry, not from a declared outline.
-    `parts` are body-frame meshes (the component and its articulated children at 0 deg). The planform frame has origin
-    `origin` and rotation `rotation_deg`: its x is chordwise (LE at x min), its y is spanwise. The measured span b is the
-    geometry's full y extent, split into n equal strips of width b/n, each sliced at its centre. Per strip: chord
-    c = max x - min x, LE = min x (a strip with no section counts as c = 0 and is listed). Midpoint rule:
-    S = sum c_i * dy, MAC = sum c_i^2 * dy / S, x_ac = sum (LE_i + c_i/4) c_i * dy / S, AR = b^2 / S.
-    Returns the lifting_surface_properties keys (body-frame x_ac) plus span_mm, missing_stations and source."""
-    origin = np.asarray(origin, dtype=float)
-    rot = rotation_matrix(rotation_deg)
-    to_pf = np.eye(4)  # body frame -> planform frame
-    to_pf[:3, :3] = rot.T
-    to_pf[:3, 3] = -rot.T @ origin
-    pf = []
-    for m in parts:
-        m = m.copy()
-        m.apply_transform(to_pf)
-        pf.append(m)
-    ys = np.concatenate([m.vertices[:, 1] for m in pf])
-    y0, y1 = float(ys.min()), float(ys.max())
-    b = y1 - y0
+def strip_planform(owners: dict[str, list[trimesh.Trimesh]], root: str, n: int = 41, gap_tol: float = 3.0,
+                   control_frac: float = 0.15) -> dict:
+    """Aero numbers of a mesh wing measured from its geometry only (the declared planform is never used here).
+    `owners` maps each component id of the wing (the root and its articulated children, control surfaces) to its
+    body-frame meshes; `root` is the planform component. Chord runs along body x (freestream). The span axis is body y
+    or body z, whichever the geometry's extent is larger along. The span extent is split into n equal strips of width
+    dy, each sliced at its centre by a plane normal to the span axis. Per strip every owner's section is projected onto
+    x as intervals (one per closed loop, tagged with its owner). Intervals are merged in x order when the gap is at most:
+      - control_frac x the strip's material envelope (min x to max x of all owners), between root material and a control
+        surface's material (hinge gaps, balance pockets);
+      - gap_tol otherwise.
+    The chord is the LONGEST merged group, LE its min x; other groups are detached material, ignored and listed. A strip
+    with no section counts as c = 0 and is listed.
+    Midpoint rule: S = sum c_i dy, MAC = sum c_i^2 dy / S, x_ac = sum (LE_i + c_i/4) c_i dy / S, AR = b^2 / S, b = span extent.
+    Returns the lifting_surface_properties keys plus span_mm, span_axis, missing_stations, ignored_strips
+    ([strip, detached length mm] pairs), control_gap_strips ([strip, bridged gap mm] pairs above gap_tol) and source."""
+    allv = np.vstack([m.vertices for meshes in owners.values() for m in meshes])
+    ext = allv.max(axis=0) - allv.min(axis=0)
+    axis = 1 if ext[1] >= ext[2] else 2
+    e = np.zeros(3)
+    e[axis] = 1.0
+    lo_s, hi_s = float(allv[:, axis].min()), float(allv[:, axis].max())
+    b = hi_s - lo_s
     dy = b / n
-    centres = y0 + (np.arange(n) + 0.5) * dy
+    centres = lo_s + (np.arange(n) + 0.5) * dy
     chord = np.zeros(n)
     le = np.zeros(n)
-    missing = []
-    for i, y in enumerate(centres):
-        lo, hi = [], []
-        for m in pf:
-            sec = m.section(plane_origin=[0.0, float(y), 0.0], plane_normal=[0.0, 1.0, 0.0])
-            if sec is not None and len(sec.vertices):
-                xs = sec.vertices[:, 0]
-                lo.append(float(xs.min()))
-                hi.append(float(xs.max()))
-        if not lo:
+    missing: list[int] = []
+    ignored: list[list[float]] = []
+    control_gaps: list[list[float]] = []
+    for i, c_pos in enumerate(centres):
+        origin = np.zeros(3)
+        origin[axis] = c_pos
+        ivs: list[tuple[float, float, str]] = []
+        for owner, meshes in owners.items():
+            for m in meshes:
+                sec = m.section(plane_origin=origin, plane_normal=e)
+                if sec is None:
+                    continue
+                for ent in sec.entities:
+                    xs = sec.vertices[ent.points][:, 0]
+                    ivs.append((float(xs.min()), float(xs.max()), owner))
+        if not ivs:
             missing.append(i)
             continue
-        le[i] = min(lo)
-        chord[i] = max(hi) - min(lo)
+        envelope = max(h for _, h, _ in ivs) - min(l for l, _, _ in ivs)
+        ivs.sort(key=lambda t: t[0])
+        merged: list[list] = []  # [lo, hi, owners]
+        for lo, hi, ow in ivs:
+            if merged:
+                grp = merged[-1]
+                gap = lo - grp[1]
+                cross = (ow != root and root in grp[2]) or (ow == root and any(o != root for o in grp[2]))
+                limit = max(gap_tol, control_frac * envelope) if cross else gap_tol
+                if gap <= limit:
+                    if cross and gap > gap_tol:
+                        control_gaps.append([i, round(gap, 2)])
+                    grp[1] = max(grp[1], hi)
+                    grp[2].add(ow)
+                    continue
+            merged.append([lo, hi, {ow}])
+        main = max(merged, key=lambda gr: gr[1] - gr[0])
+        le[i] = main[0]
+        chord[i] = main[1] - main[0]
+        rest = [gr[1] - gr[0] for gr in merged if gr is not main]
+        if rest:
+            ignored.append([i, round(max(rest), 2)])
     area = float(np.sum(chord) * dy)
     mac = float(np.sum(chord ** 2) * dy / area)
-    x_ac_pf = float(np.sum((le + 0.25 * chord) * chord) * dy / area)
-    ac_body = rot @ np.array([x_ac_pf, 0.0, 0.0]) + origin
-    return {"area_mm2": area, "aspect_ratio": b ** 2 / area, "mac_mm": mac, "x_ac_mm": float(ac_body[0]),
-            "lifting": True, "span_mm": b, "missing_stations": [int(i) for i in missing],
+    x_ac = float(np.sum((le + 0.25 * chord) * chord) * dy / area)
+    return {"area_mm2": area, "aspect_ratio": b ** 2 / area, "mac_mm": mac, "x_ac_mm": x_ac,
+            "lifting": True, "span_mm": b, "span_axis": "yz"[axis - 1], "missing_stations": missing,
+            "ignored_strips": ignored, "control_gap_strips": control_gaps,
             "source": f"geometry strips ({n} stations)"}

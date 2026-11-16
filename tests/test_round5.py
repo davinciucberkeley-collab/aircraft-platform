@@ -9,6 +9,7 @@ import trimesh
 
 from aircraft_platform.checks import tier0_schema, validate
 from aircraft_platform.design import FAIL, PASS, SKIP, WARN, Design, load_design
+from aircraft_platform.checks import _planform_parts
 from aircraft_platform.geometry import component_parts, lifting_surface_halves, strip_planform
 from aircraft_platform.importers.dbf_ratings import rating, rating_basis
 
@@ -318,7 +319,7 @@ def test_notched_mesh_wing_strip_matches_analytic():
     """Chord 245 mm outboard of |y| = 225 mm, 122.5 mm inboard (trailing half removed). Analytic area 165375 mm^2 and
     chord-weighted quarter-chord x_ac 51.04 mm from the LE (LE at x = 0)."""
     data = _notched_box()
-    m = strip_planform(component_parts(data["components"][0]), [0, 0, 0], None)
+    m = strip_planform({"box": component_parts(data["components"][0])}, "box")
     area = 2 * 225 * 245 + 450 * 122.5
     x_ac = (0.25 * 122.5 * 122.5 * 450 + 0.25 * 245 * 245 * 450) / area
     assert abs(m["area_mm2"] / area - 1) <= 0.01
@@ -331,7 +332,7 @@ def test_tapered_mesh_wing_strip_matches_analytic():
     """Tapered half-wings (root 245, tip 120 mm, span 900, LE straight): analytic area and x_ac."""
     ls = {"span": 900, "root_chord": 245, "tip_chord": 120, "mirrored": True}
     parts = [trimesh.convex.convex_hull(v) for v in lifting_surface_halves(ls)]
-    m = strip_planform(parts, [0, 0, 0], None)
+    m = strip_planform({"tail": parts}, "tail")
     semi, cr, ct = 450.0, 245.0, 120.0
     y = np.linspace(0, semi, 200001)
     c = cr + (ct - cr) * y / semi
@@ -346,7 +347,7 @@ def test_rectangular_box_wing_is_exact():
     area within 0.1 %."""
     box = trimesh.creation.box(extents=[245, 900, 10])
     box.apply_translation([122.5, 0, 0])
-    m = strip_planform([box], [0, 0, 0], None)
+    m = strip_planform({"box": [box]}, "box")
     assert abs(m["mac_mm"] / 245 - 1) <= 0.005
     assert abs(m["x_ac_mm"] - (0 + 245 / 4)) <= 0.5
     assert abs(m["area_mm2"] / (245 * 900) - 1) <= 0.001
@@ -387,4 +388,107 @@ def test_planform_area_20_percent_smaller_fails():
     sc = _run(_planform_as("wing", size=(245, 720, 10)), tier=3)  # -20% area and span
     assert statuses(sc, "T3.planform_matches_geometry") == [FAIL]
     assert sc.tiers and any(r.status == FAIL for t in sc.tiers for r in t.results if r.check_id == "T3.planform_matches_geometry")
+
+
+def _owners_box_with_elevon(gap_mm: float, control: bool = True):
+    """Core 0..200 mm chord and an elevon 25 mm chord aft of a gap_mm pocket (245 mm chord total). Returns the owner map
+    and the planform root id."""
+    core = trimesh.creation.box(extents=[200, 900, 10])
+    core.apply_translation([100, 0, 0])
+    lo = 200 + gap_mm
+    elev = trimesh.creation.box(extents=[245 - lo, 900, 10])
+    elev.apply_translation([(lo + 245) / 2, 0, 0])
+    return {"wing": [core], "elevon": [elev]}, "wing"
+
+
+def test_hinge_gap_2mm_measures_full_chord():
+    owners, root = _owners_box_with_elevon(2.0)
+    m = strip_planform(owners, root)
+    assert abs(m["area_mm2"] / (245 * 900) - 1) <= 0.001
+    assert m["ignored_strips"] == []
+
+
+def test_balance_pocket_20mm_on_245_chord_measures_full_chord():
+    """Wing and elevon separated by a 20 mm pocket (8.2% of chord, inside the 15% control-surface band): full chord."""
+    owners, root = _owners_box_with_elevon(20.0)
+    m = strip_planform(owners, root)
+    assert abs(m["area_mm2"] / (245 * 900) - 1) <= 0.001
+    assert m["control_gap_strips"]  # the pocket was bridged and is reported
+
+
+def test_non_articulated_piece_20mm_away_is_not_measured():
+    """A piece that is not articulated to the wing is not one of its owners: it is never measured, so it cannot
+    add chord. Measured wing = the wing alone."""
+    d = _planform_box(0.0)
+    piece = {"id": "piece", "type": "structure", "geometry": {"box": {"size": [25, 900, 10]}},
+             "position": [257.5, 0, 0], "mass_g": 5, "manufacturing": dict(MFG)}
+    d["components"].append(piece)
+    geo_ids, owners = _planform_parts_for(d)
+    assert geo_ids == ["wng"]
+    m = strip_planform(owners, "wng")
+    assert abs(m["area_mm2"] / (245 * 900) - 1) <= 0.001
+
+
+def _planform_parts_for(data):
+    from aircraft_platform.checks import _planform_parts
+    dsg = Design(data=data, path=None)
+    return _planform_parts(dsg, dsg.component("wng"))
+
+
+def test_s1_declared_yaw_changes_no_aero_number_and_fails_axis():
+    """Attack s1: only the declared rotation is yawed 15 deg. The slicing axes come from the geometry, so the aero numbers
+    are identical; the declared span direction is 15 deg off the measured span, which FAILs the planform row."""
+    base = _t3(_run(_planform_box(0.0), tier=3))
+    yawed_data = _planform_box(0.0)
+    yawed_data["components"][0]["planform"]["rotation_deg"] = [0, 0, 15]
+    yawed = _t3(_run(yawed_data, tier=3))
+    assert yawed["T3.static_margin"].data == base["T3.static_margin"].data
+    assert yawed["T3.stall"].data == base["T3.stall"].data
+    assert yawed["T3.planform_matches_geometry"].status == FAIL
+    assert "declared span runs 15.0 deg" in yawed["T3.planform_matches_geometry"].message
+
+
+def test_s4_detached_forward_strip_is_ignored_and_warned():
+    """Attack s4: a 10 x 200 x 1 mm articulated strip 60 mm ahead of the LE (joined by a 1 mm rod, range [0, 0]). The
+    60 mm gap is beyond 15% of the local envelope, so the strip is detached: area unchanged, planform WARN."""
+    _, base_owners = _planform_parts_for(_planform_box(0.0))
+    base = strip_planform(base_owners, "wng")
+    d = _planform_box(0.0)
+    d["components"].append({"id": "rod2", "type": "structure", "geometry": {"box": {"size": [60, 1, 1]}},
+                            "position": [-30, 200, -4.7], "mass_g": 1, "manufacturing": dict(MFG)})
+    d["components"].append({"id": "fwdstrip", "type": "structure", "geometry": {"box": {"size": [10, 200, 1]}},
+                            "position": [-65, 200, -4.7], "mass_g": 1, "manufacturing": dict(MFG)})
+    d["attachments"] += [
+        {"id": "E-FAKE-ROD2", "parent": "wng", "child": "rod2", "method": "hinge", "location": [0, 200, -4.7],
+         "rated_load_n": 5, "articulation": {"type": "revolute", "pivot": [0, 200, -4.7], "axis": [0, 1, 0],
+                                             "range_deg": [0, 0], "poses": {"neutral": 0}}},
+        {"id": "E-FAKE-STRIP", "parent": "rod2", "child": "fwdstrip", "method": "hinge", "location": [-60, 200, -4.7],
+         "rated_load_n": 5, "articulation": {"type": "revolute", "pivot": [-60, 200, -4.7], "axis": [0, 1, 0],
+                                             "range_deg": [0, 0], "poses": {"neutral": 0}}},
+    ]
+    _, owners = _planform_parts_for(d)
+    attacked = strip_planform(owners, "wng")
+    assert attacked["area_mm2"] == base["area_mm2"]
+    assert attacked["x_ac_mm"] == base["x_ac_mm"]
+    rows = _rows(_run(d, tier=3), "T3.planform_matches_geometry")
+    assert [r.status for r in rows] == [WARN]
+    assert "detached material ignored" in rows[0].message
+
+
+def test_fin_with_span_along_z_is_measured_along_z():
+    """A 60 mm chord x 3 mm thick x 200 mm fin, span along body z. Declared rotation [90, 0, 0] turns the planform's
+    span (local y) onto body z, so the declared and measured spans agree."""
+    fin = {"id": "fin", "type": "tail_surface", "geometry": {"box": {"size": [60, 3, 200]}}, "position": [30, 0, 100],
+           "mass_g": 20, "manufacturing": dict(MFG),
+           "planform": {"lifting_surface": {"span": 200, "root_chord": 60, "tip_chord": 60, "mirrored": False},
+                        "origin": [0, 0, 0], "rotation_deg": [90, 0, 0]}}
+    data = {"schema_version": "0.4", "id": "fin", "name": "fin", "status": "concept",
+            "morphology": {"lift": "other", "vtol_method": "none"}, "root": "fin", "components": [fin], "attachments": []}
+    dsg = Design(data=data, path=None)
+    geo_ids, owners = _planform_parts(dsg, dsg.component("fin"))
+    m = strip_planform(owners, "fin")
+    assert m["span_axis"] == "z"
+    assert abs(m["span_mm"] - 200) < 1e-6
+    assert abs(m["area_mm2"] / (60 * 200) - 1) <= 0.001
+    assert _rows(_run(data, tier=3), "T3.planform_matches_geometry")[0].status == PASS
 

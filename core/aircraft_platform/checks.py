@@ -710,19 +710,28 @@ def _articulated_subtree(design: Design, cid: str) -> list[str]:
 PLANFORM_TYPES = ("wing", "tail_surface")  # the only component types that may declare a planform
 
 
-def _planform_parts(design: Design, c: dict) -> tuple[list[str], list[trimesh.Trimesh]]:
-    """(geometry ids, body-frame meshes) of a planform component: the component plus its articulated children at 0 deg."""
+def _planform_parts(design: Design, c: dict) -> tuple[list[str], dict[str, list[trimesh.Trimesh]]]:
+    """(geometry ids, {id: body-frame meshes}) of a planform component: the component plus its articulated children at 0 deg."""
     geo_ids = _articulated_subtree(design, c["id"])
-    return geo_ids, [m for k in geo_ids for m in component_parts(design.component(k), design.base_dir)]
+    return geo_ids, {k: component_parts(design.component(k), design.base_dir) for k in geo_ids}
+
+
+SEVERITY = {PASS: 0, WARN: 1, FAIL: 2}
 
 
 def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
-    """Cross-check of the DECLARED planform against the geometry it describes. The aero numbers already come from the
-    measured geometry (tier 3), so a mismatch here does not change any number: WARN if the declared area or span differs
-    from the measured one by more than planform_match_tolerance_fraction, else PASS."""
+    """Cross-check of the DECLARED planform against the measured geometry. The aero numbers never come from the
+    declaration (tier 3 uses the measured strips). One T3.planform_matches_geometry row per planform component, worst status
+    of: span direction (FAIL beyond planform_axis_tolerance_deg); declared vs measured area and span (PASS within
+    planform_match_tolerance_fraction, WARN up to planform_area_mismatch_fail_fraction, FAIL beyond); detached material
+    ignored in a strip (WARN). A planform on a non-lifting type is a FAIL and is not measured."""
     tol = std["aero"]["planform_match_tolerance_fraction"]["value"]
     fail_frac = std["aero"]["planform_area_mismatch_fail_fraction"]["value"]
+    axis_tol = std["aero"]["planform_axis_tolerance_deg"]["value"]
     n = std["aero"]["planform_strip_count"]["value"]
+    gap = std["geometry"]["strip_gap_tolerance_mm"]["value"]
+    ctrl = std["aero"]["control_surface_gap_max_fraction"]["value"]
+    crit = STD + "planform_match_tolerance_fraction"
     res: list[CheckResult] = []
     for c in design.components:
         if "planform" not in c:
@@ -730,22 +739,28 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
         if c["type"] not in PLANFORM_TYPES:
             res.append(CheckResult("T3.planform_matches_geometry", FAIL,
                                    f"{c['id']}: planform declared on a {c['type']}; only wing or tail_surface parts are lifting surfaces",
-                                   STD + "planform_match_tolerance_fraction"))
+                                   crit))
             continue
         if is_point_mass(c):
             res.append(CheckResult("T3.planform_matches_geometry", FAIL,
-                                   f"{c['id']}: a planform needs geometry to match, and a point mass has none",
-                                   STD + "planform_match_tolerance_fraction"))
+                                   f"{c['id']}: a planform needs geometry to match, and a point mass has none", crit))
             continue
         pf = c["planform"]
         ls = pf["lifting_surface"]
         geo_ids, parts = _planform_parts(design, c)
         scope = f"the geometry of {', '.join(geo_ids)}"
-        if not parts:
-            res.append(CheckResult("T3.planform_matches_geometry", FAIL, f"{c['id']}: no geometry for {scope}",
-                                   STD + "planform_match_tolerance_fraction"))
+        if not any(parts.values()):
+            res.append(CheckResult("T3.planform_matches_geometry", FAIL, f"{c['id']}: no geometry for {scope}", crit))
             continue
-        m = strip_planform(parts, pf["origin"], pf.get("rotation_deg"), n=n)
+        m = strip_planform(parts, c["id"], n=n, gap_tol=gap, control_frac=ctrl)
+        found: list[tuple[str, str]] = []  # (status, text)
+        # span direction: the declared span (planform local y through its rotation) against the measured span axis
+        d = rotation_matrix(pf.get("rotation_deg")) @ np.array([0.0, 1.0, 0.0])
+        e = np.array([0.0, 1.0, 0.0]) if m["span_axis"] == "y" else np.array([0.0, 0.0, 1.0])
+        ang = math.degrees(math.acos(min(1.0, abs(float(np.dot(d, e))))))
+        if ang > axis_tol:
+            found.append((FAIL, f"declared span runs {ang:.1f} deg from the measured span (along body {m['span_axis']}); "
+                                f"limit {axis_tol:g} deg"))
         mirrored = ls.get("mirrored", True)
         semi = ls["span"] / 2 if mirrored else ls["span"]
         decl_area = semi * (ls["root_chord"] + ls["tip_chord"]) / 2 * (2 if mirrored else 1)
@@ -755,26 +770,29 @@ def _planform_checks(design: Design, std: dict) -> list[CheckResult]:
         vals = (f"declared area {decl_area:.0f} mm^2 vs measured {m['area_mm2']:.0f} mm^2 ({da:+.1%}); "
                 f"declared span {decl_span:.0f} mm vs measured {m['span_mm']:.0f} mm ({ds:+.1%}); limit {tol:.0%}")
         if m["missing_stations"]:
-            vals += f"; {len(m['missing_stations'])} of {n} stations have no geometry"
-        data = {"area_diff": round(da, 4), "span_diff": round(ds, 4), "measured_area_mm2": round(m["area_mm2"], 1)}
+            vals += f"; {len(m['missing_stations'])} of {n} strips have no geometry"
 
         def band(x: float) -> str:
             return PASS if abs(x) <= tol else WARN if abs(x) <= fail_frac else FAIL
         if band(da) == FAIL or band(ds) == FAIL:
             what = "lifting areas" if band(da) == FAIL else "spans"
-            res.append(CheckResult("T3.planform_matches_geometry", FAIL,
-                                   f"{c['id']}: declared and measured {what} disagree by "
-                                   f"{abs(da) if band(da) == FAIL else abs(ds):.1%}; check the declared planform and the geometry "
-                                   f"({vals}); the aero numbers use the measured geometry",
-                                   STD + "planform_area_mismatch_fail_fraction", data))
+            x = da if band(da) == FAIL else ds
+            found.append((FAIL, f"declared and measured {what} disagree by {abs(x):.1%}; check the declared planform and "
+                                f"the geometry ({vals}); the aero numbers use the measured geometry"))
         elif band(da) == WARN or band(ds) == WARN:
-            res.append(CheckResult("T3.planform_matches_geometry", WARN,
-                                   f"{c['id']}: declared planform does not match {scope} ({vals}); the aero numbers use the "
-                                   "measured geometry", STD + "planform_match_tolerance_fraction", data))
-        else:
+            found.append((WARN, f"declared planform does not match {scope} ({vals}); the aero numbers use the measured geometry"))
+        if m["ignored_strips"]:
+            biggest = max(length for _, length in m["ignored_strips"])
+            found.append((WARN, f"detached material ignored at {len(m['ignored_strips'])} strips (largest {biggest:g} mm long)"))
+        data = {"area_diff": round(da, 4), "span_diff": round(ds, 4), "measured_area_mm2": round(m["area_mm2"], 1),
+                "span_axis": m["span_axis"], "ignored_strips": m["ignored_strips"]}
+        if not found:
             res.append(CheckResult("T3.planform_matches_geometry", PASS,
-                                   f"{c['id']}: declared planform agrees with {scope} ({vals})",
-                                   STD + "planform_match_tolerance_fraction", data))
+                                   f"{c['id']}: declared planform agrees with {scope} ({vals})", crit, data))
+        else:
+            worst = max((st for st, _ in found), key=lambda st: SEVERITY[st])
+            res.append(CheckResult("T3.planform_matches_geometry", worst,
+                                   f"{c['id']}: " + "; ".join(t for _, t in found), crit, data))
     return res
 
 
@@ -808,7 +826,9 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
             # a mesh wing: every aero number is measured from the modelled geometry (0 deg), not the declared outline
             pf = c["planform"]
             ls_c = c
-            p = strip_planform(_planform_parts(design, c)[1], pf["origin"], pf.get("rotation_deg"), n=n_strip)
+            p = strip_planform(_planform_parts(design, c)[1], c["id"], n=n_strip,
+                               gap_tol=std["geometry"]["strip_gap_tolerance_mm"]["value"],
+                               control_frac=std["aero"]["control_surface_gap_max_fraction"]["value"])
         else:
             continue
         surfaces.append((c, ls_c, p))
