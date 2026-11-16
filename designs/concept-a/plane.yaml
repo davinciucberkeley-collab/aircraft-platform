@@ -521,7 +521,7 @@ components:
   - id: hrd-001
     type: other
     description: "Hardware: screws, nuts, epoxy fillets, paint (MASS-GATE 40 g less rib saddles) - lumped, less modelled sets; distributed mass proxy (skipped as 'mass proxy' by redesign/collision collide.py)"
-    geometry: {point_mass: {distributed: true}}
+    geometry: {point_mass: {distributed: true, reason: "hardware lumps: fasteners and small hardware spread over the airframe; skipped as 'mass proxy' by redesign/collision/collide.py"}}
     position: [100, 0, 0]
     mass_g: 26.08
     material: "steel / epoxy"
@@ -532,7 +532,7 @@ components:
   - id: hrn-001
     type: other
     description: "Harness remainder, bottom-up (D-198): phase-lead extensions, splices, ESC ribbon, sensor leads, servo ties, sleeves / ties / tape / solder - lumped; distributed mass proxy (skipped as 'mass proxy' by redesign/collision collide.py)"
-    geometry: {point_mass: {distributed: true}}
+    geometry: {point_mass: {distributed: true, reason: "wiring harness routed through the arm tubes and bay; skipped as 'mass proxy' by redesign/collision/collide.py"}}
     position: [30, 0, 20]
     mass_g: 18.4
     material: "copper / silicone"
