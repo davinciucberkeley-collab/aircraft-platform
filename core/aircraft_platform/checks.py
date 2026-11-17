@@ -1023,6 +1023,8 @@ def validate(design: Design, max_tier: int = 5) -> Scorecard:
         except ImportError:
             return rep
         rep.results.extend(tier2_sim(design, std, mp))
+        from .fea import tier2_fea
+        rep.results.extend(tier2_fea(design))
         return rep
 
     if max_tier >= 2:

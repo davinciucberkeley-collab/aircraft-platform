@@ -12,6 +12,8 @@ Logic lives in `core/aircraft_platform/`; the server is `core/aircraft_platform/
 - `get_mass_properties(design_id)` - total mass, CG, inertia and per-component mass.
 - `export_design(design_id, format)` - write glb, stl or json to `build/`; returns the paths.
 - `save_design(design_id, yaml_text, overwrite=False)` - schema-check then write designs/<id>/plane.yaml.
+- `structural_check(design_id, part_id='', all_printed=False)` - OpenCAE/CalculiX stress check of printed parts (slow; needs `plane fea --setup` once).
+- `list_structural_parts(design_id)` - printed structural parts and whether their stored stress result is current.
 - `get_schema()` - the plane.yaml JSON schema.
 - `get_standards()` - design standards plus the agent standard.
 

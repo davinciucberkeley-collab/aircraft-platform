@@ -211,6 +211,57 @@ def build_index_cmd(out_dir):
     click.echo(str(out / "index.json"))
 
 
+@cli.command("fea")
+@click.argument("path", required=False)
+@click.option("--part", "parts", multiple=True, help="Component id to check (repeatable).")
+@click.option("--all", "all_parts", is_flag=True, help="Every printed structural part.")
+@click.option("--plan", "plan_only", is_flag=True, help="Show supports and loads without running OpenCAE.")
+@click.option("--setup", is_flag=True, help="Save the OpenCAE location (with --opencae-python / --opencae-root).")
+@click.option("--opencae-python", default=None, help="Python of the environment that has OpenCAE's libraries.")
+@click.option("--opencae-root", default=None, help="OpenCAE Studio folder (the one containing opencae/).")
+def fea_cmd(path, parts, all_parts, plan_only, setup, opencae_python, opencae_root):
+    """Stress-check printed parts in OpenCAE Studio (finite elements, CalculiX)."""
+    from . import fea
+    oc = fea.find_opencae(opencae_python, opencae_root)
+    if setup:
+        if not oc["found"]:
+            _fail(f"OpenCAE not found with python={oc['python']!r} root={oc['root']!r}")
+        click.echo(f"saved {fea.save_config(oc['python'], oc['root'])}")
+        if not path:
+            return
+    if not path:
+        _fail("give a design, e.g. plane fea designs/concept-a --part cge-001")
+    design = _load(path)
+    todo = list(parts) or (fea.eligible_parts(design) if all_parts else [])
+    if not todo:
+        click.echo("printed structural parts: " + ", ".join(fea.eligible_parts(design)))
+        _fail("choose --part ID or --all")
+    drop = fea.joint_loads(design)
+    if plan_only:
+        for pid in todo:
+            try:
+                click.echo(_dumps(fea.plan(design, pid, drop=drop)["meta"]))
+            except ValueError as e:
+                click.echo(f"{pid}: {e}")
+        return
+    if not oc["found"]:
+        _fail("OpenCAE not found: run plane fea --setup --opencae-python <python> --opencae-root <folder> once")
+    worst = 0
+    for pid in todo:
+        try:
+            r = fea.run(design, pid, oc, drop=drop, log=lambda m: click.echo(m, err=True))
+        except Exception as e:  # noqa: BLE001
+            click.echo(f"{pid}: ERROR {e}")
+            worst = max(worst, 2)
+            continue
+        cases = "; ".join(f"{c['name']} {c['status']}" + (f" SF {c['safety_factor_at_ultimate']}" if c['status'] != 'SKIP'
+                                                          else f" ({c['message']})" if c.get("not_checked") else "")
+                          for c in r["cases"])
+        click.echo(f"{pid}: {r['status']}  {cases}" + (f"  ({r['error']})" if r["error"] else ""))
+        worst = max(worst, 1 if r["status"] == "FAIL" else 0)
+    sys.exit(worst)
+
+
 @cli.command("studio")
 @click.option("--port", default=8765, show_default=True, help="Local port to serve the app on.")
 @click.option("--no-browser", is_flag=True, help="Don't open a browser window.")

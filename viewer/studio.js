@@ -205,6 +205,54 @@ async function editDialog(id) {
   dlg.classList.add('wide');
 }
 
+// ---------- stress check (OpenCAE) ----------
+function feaSetup(oc, after) {
+  const py = h('input', { type: 'text', value: oc?.python || '', placeholder: 'C:\\Users\\you\\.conda\\envs\\qt_test\\python.exe' });
+  const root = h('input', { type: 'text', value: oc?.root || '', placeholder: 'C:\\Users\\you\\Documents\\OpenCAE-Studio' });
+  dialog('Connect OpenCAE', [
+    h('p', { class: 'muted' }, 'The stress check runs in OpenCAE Studio. Point the app at it once.'),
+    field('OpenCAE’s Python', py, 'python.exe of the environment that runs OpenCAE (the one with PySide6, gmsh and OCP). Tip: in that environment run  where python'),
+    field('OpenCAE folder', root, 'The folder that contains the opencae folder and launch_opencae.bat.'),
+  ], primary('Save', async (dlg) => {
+    await api('fea-setup', { python: py.value, root: root.value });
+    dlg.close(); toast('OpenCAE connected.'); after?.();
+  }));
+}
+
+async function feaDialog(id) {
+  const st = await api('fea?id=' + encodeURIComponent(id));
+  if (!st.opencae.found) return feaSetup(st.opencae, () => feaDialog(id));
+  const badge = (r) => !r.status ? h('span', { class: 'badge NONE' }, 'not run')
+    : r.up_to_date === false ? h('span', { class: 'badge WARN' }, 'out of date')
+    : r.status === 'NOT CHECKED' ? h('span', { class: 'badge WARN', title: (r.cases || []).map((c) => c.message).filter(Boolean).join('\n') }, 'not checked')
+    : h('span', { class: 'badge ' + (r.status === 'ERROR' ? 'FAIL' : r.status) }, r.status === 'FAIL' && r.error ? 'error' : r.status);
+  const boxes = [];
+  const rows = st.parts.map((r) => {
+    const cb = h('input', { type: 'checkbox', checked: !r.status || r.up_to_date === false || r.status === 'FAIL' });
+    cb.dataset.part = r.part; boxes.push(cb);
+    const worst = (r.cases || []).filter((c) => c.safety_factor_at_ultimate != null).sort((a, b) => a.safety_factor_at_ultimate - b.safety_factor_at_ultimate)[0];
+    return h('tr', { class: r.status === 'FAIL' ? 'failing' : '' },
+      h('td', {}, cb), h('td', {}, h('code', {}, r.part), h('div', { class: 'hint' }, r.description)),
+      h('td', {}, badge(r)),
+      h('td', { class: 'mono small' }, worst ? `${worst.max_von_mises_away_mpa} MPa · SF ${worst.safety_factor_at_ultimate} (${worst.name})` : (r.error ? r.error.slice(0, 80) : '—')),
+      h('td', {}, (r.files || []).filter((f) => f.kind !== 'ocae').map((f) => h('a', { href: `api/fea-file?id=${encodeURIComponent(id)}&part=${encodeURIComponent(r.part)}&name=${encodeURIComponent(f.name)}`, target: f.kind === 'html' ? '_blank' : null, class: 'filelink' }, f.kind === 'html' ? 'report' : 'ParaView'))));
+  });
+  const allow = st.allowable_mpa, uf = st.ultimate_factor;
+  const dlg = dialog(`Stress check: ${id}`, [
+    h('p', { class: 'muted' }, `Each printed part is meshed and solved in OpenCAE (CalculiX) for two load cases: the joint loads from the landing drop test, and hover at full thrust, both ×${uf}. It passes when the stress away from the clamps stays under ${allow} MPa (printed PETG, interlayer strength). Expect a few seconds to a few minutes per part.`),
+    h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: () => boxes.forEach((b) => (b.checked = true)) }, 'All'),
+      h('button', { type: 'button', class: 'btn', onclick: () => boxes.forEach((b) => (b.checked = false)) }, 'None'),
+      h('button', { type: 'button', class: 'btn', onclick: () => { dlg.close(); feaSetup(st.opencae); } }, 'OpenCAE settings')),
+    h('div', { class: 'tabpane' }, h('table', { class: 'edit' }, h('thead', {}, h('tr', {}, ['', 'Part', 'Result', 'Worst case', 'Files'].map((t) => h('th', {}, t)))), h('tbody', {}, rows))),
+  ], primary('Run selected', async (d) => {
+    const parts = boxes.filter((b) => b.checked).map((b) => b.dataset.part);
+    if (!parts.length) throw new Error('Tick at least one part.');
+    await api('fea', { id, parts });
+    d.close(); toast(`Stress check started for ${parts.length} part${parts.length > 1 ? 's' : ''}. Progress shows on the left.`);
+  }));
+  dlg.classList.add('wide');
+}
+
 // ---------- action bar on the scorecard ----------
 const EXPORTS = [
   ['glb', '3D model (.glb)', 'Opens in Windows 3D Viewer, Blender, web viewers'],
@@ -222,6 +270,7 @@ function actionBar(box, d) {
     h('button', { class: 'btn', disabled: d.pending, onclick: async () => { await api('check', { id: d.id }); toast(`Checking ${d.id}…`); } }, d.pending ? 'Checking…' : 'Check again'),
     h('button', { class: 'btn', onclick: () => editDialog(d.id).catch((e) => toast(e.message, 'err')) }, 'Edit design'),
     h('button', { class: 'btn', onclick: () => newDesignDialog(d.id) }, 'Make a copy'),
+    h('button', { class: 'btn', onclick: () => feaDialog(d.id).catch((e) => toast(e.message, 'err')) }, 'Stress check'),
     d.error || d.pending ? null : exp);
   box.querySelector('.sub')?.after(bar);
 }
@@ -234,7 +283,7 @@ function renderJobs(st) {
   const rows = recent.map((j) => h('div', { class: 'job ' + j.state, title: j.message }, j.state === 'error' ? '✕ ' : '✓ ', `${j.label}: `, h('span', { class: 'muted' }, j.message)));
   if (running.length) {
     const cur = running.find((j) => j.state === 'running') || running[0];
-    rows.unshift(h('div', { class: 'job running' }, h('span', { class: 'spin' }), cur.label, running.length > 1 ? h('span', { class: 'muted' }, ` +${running.length - 1} waiting`) : null));
+    rows.unshift(h('div', { class: 'job running' }, h('span', { class: 'spin' }), cur.label + (cur.message ? `: ${cur.message}` : ''), running.length > 1 ? h('span', { class: 'muted' }, ` +${running.length - 1} waiting`) : null));
   }
   box.replaceChildren(...rows);
   box.hidden = !running.length && !recent.length;

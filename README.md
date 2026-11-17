@@ -81,12 +81,46 @@ Claude Code: `claude mcp add aircraft-platform -- plane-mcp` (see docs/mcp.md).
 |---|---|
 | 0 Schema | file matches `schema/plane.schema.json`; ids and references valid |
 | 1 Geometry | every part connects to the root; attached parts touch; no clipping or prop strikes between unattached parts. Articulated joints (schema 0.2, e.g. a tilting wing): the contact, overlap and interference checks repeat in every named pose, at both range endpoints and in 15° sweep steps, results name the pose; `T1.articulation` checks poses lie in range and the pivot sits on both parts |
-| 2 Physics | static joint loads (limit × ultimate factor); hover moment balance (at `flight.hover_pose` if the design names one); MuJoCo drop test (0° configuration): joint forces vs ratings, comes to rest upright, numerically stable |
+| 2 Physics | static joint loads (limit × ultimate factor); hover moment balance (at `flight.hover_pose` if the design names one); MuJoCo drop test (0° configuration): joint forces vs ratings, comes to rest upright, numerically stable; OpenCAE stress check of printed parts (`T2.fea_strength`, from stored `plane fea` results) |
 | 3 Aero | mass vs MTOW, wing loading, stall speed, static margin (at `flight.cruise_pose`), lateral CG, hover thrust-to-weight (thrust axes turned to `flight.hover_pose`) |
 | 4 Manufacturing | every part's method exists at Jacobs; parts fit the machine |
 | 5 Standards | FAA Part 107 mass, registration threshold |
 
 Thresholds live only in `standards/design-standards.yaml`, each with a source (or `pending`). Change a number there, never in code or skills.
+
+## Stress check in OpenCAE (printed parts)
+
+`plane fea`, the **Stress check** button in Plane Studio and the MCP tool `structural_check` mesh a printed part and
+solve it in [OpenCAE Studio](https://github.com/davinciucberkeley-collab/OpenCAEModel) (CalculiX), with loads taken
+from the design itself:
+
+| | |
+|---|---|
+| Supports | joints whose other part is nearer the root through structure (clamped where the parts actually touch) |
+| Landing case | joint forces and moments from the tier-2 drop test, each joint at its largest force (an envelope), × `ultimate_factor` |
+| Thrust case | hover at full thrust held at the root (every motor at `max_thrust_n`, plus gravity): joint forces and moments from a static solve where every joint has the same stiffness, × `ultimate_factor` |
+| Pass | peak von Mises away from the clamps ≤ `fea_allowable_printed_petg_mpa` (12.6 MPa: PETG interlayer strength, UltiMaker TDS) |
+
+Results go to `designs/<id>/fea/<part>.json` (commit them: tier 2 reads them, and marks them out of date when the
+design changes). OpenCAE's own route is used where it can mesh the part; parts with many curved facets go straight
+to Gmsh, then fTetWild, and are solved with OpenCAE's material database, CalculiX deck and result reader. The
+check was verified on a cantilever against beam theory (`tests/test_fea.py`: 1.003 mm vs 1.000 mm, 135 MPa).
+
+One-time setup on Windows (Miniforge Prompt), with OpenCAE's GUI environment `qt_test` already working:
+
+```bat
+conda activate qt_test
+pip install pytetwild
+conda activate aircraft
+plane fea --setup --opencae-python %USERPROFILE%\.conda\envs\qt_test\python.exe --opencae-root %USERPROFILE%\Documents\OpenCAE-Studio-0.1.0
+plane fea designs\concept-a --all
+```
+
+Limits: printed PETG only so far (CFRP and foam have no sourced material record yet); solid walls assumed; each
+joint's drop-test peak is applied at once (conservative envelope); where joints form loops, the split between them
+follows equal joint stiffness, not the real parts' stiffness; the motor's reaction torque and the part's own
+inertia are left out; loads go in as statically equivalent force and moment on the touching faces, so stresses right
+at a joint's faces are approximate (the report gives the location of the peak).
 
 ## How we use agents
 

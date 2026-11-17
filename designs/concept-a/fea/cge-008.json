@@ -1,0 +1,288 @@
+{
+  "part": "cge-008",
+  "material_id": "db_petg_um",
+  "allowable_key": "fea_allowable_printed_petg_mpa",
+  "allowable_mpa": 12.6,
+  "ultimate_factor": 1.5,
+  "wall_mm": {
+    "p5": 2.0,
+    "median": 2.0
+  },
+  "part_size_mm": 129.92,
+  "supports": [
+    {
+      "joint": "E-CGE-18",
+      "other": "cge-001",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "load_joints": [
+    {
+      "joint": "E-PWR-01",
+      "other": "pwr-002",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-PWR-02",
+      "other": "pwr-001",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-PWR-03",
+      "other": "pwr-003",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-HRN-30",
+      "other": "hrn-003-r",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-HRN-31",
+      "other": "hrn-003-l",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "cases": [
+    {
+      "name": "landing",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 1.363,
+      "max_von_mises_mpa": 1.363,
+      "safety_factor_at_ultimate": 9.25,
+      "max_displacement_mm": 0.1048,
+      "nodes": 45199,
+      "mesh_size_max_mm": 2.0,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.009,
+      "location_mm": [
+        19.5,
+        -52.52,
+        18.0
+      ],
+      "project": ".studio/fea/concept-a/cge-008/concept-a-cge-008-landing.ocae",
+      "report": ".studio/fea/concept-a/cge-008/concept-a-cge-008-landing_report.html"
+    },
+    {
+      "name": "thrust",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 0.486,
+      "max_von_mises_mpa": 0.486,
+      "safety_factor_at_ultimate": 25.95,
+      "max_displacement_mm": 0.0198,
+      "nodes": 45199,
+      "mesh_size_max_mm": 2.0,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.008,
+      "location_mm": [
+        19.5,
+        -53.51,
+        18.0
+      ],
+      "project": ".studio/fea/concept-a/cge-008/concept-a-cge-008-thrust.ocae",
+      "report": ".studio/fea/concept-a/cge-008/concept-a-cge-008-thrust_report.html"
+    }
+  ],
+  "notes": [],
+  "error": null,
+  "load_cases": [
+    {
+      "name": "landing",
+      "about": "tier-2 drop test, each joint at the instant of its largest force (an envelope), force and moment, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-PWR-01 from pwr-002",
+          "force_n": [
+            10.307,
+            0.53,
+            1.39
+          ],
+          "moment_nmm": [
+            -2.43,
+            -3.24,
+            13.12
+          ],
+          "at_mm": [
+            -17.5,
+            0.0,
+            16.0
+          ]
+        },
+        {
+          "name": "E-PWR-02 from pwr-001",
+          "force_n": [
+            23.691,
+            0.087,
+            3.734
+          ],
+          "moment_nmm": [
+            -12.05,
+            -68.88,
+            45.17
+          ],
+          "at_mm": [
+            -8.493,
+            0.963,
+            23.505
+          ]
+        },
+        {
+          "name": "E-PWR-03 from pwr-003",
+          "force_n": [
+            0.408,
+            0.004,
+            0.049
+          ],
+          "moment_nmm": [
+            -0.12,
+            -0.01,
+            -0.21
+          ],
+          "at_mm": [
+            -10.0,
+            0.0,
+            8.5
+          ]
+        },
+        {
+          "name": "E-HRN-30 from hrn-003-r",
+          "force_n": [
+            -13.919,
+            14.699,
+            -10.251
+          ],
+          "moment_nmm": [
+            11.33,
+            12.42,
+            -7.53
+          ],
+          "at_mm": [
+            -11.09,
+            -1.453,
+            10.186
+          ]
+        },
+        {
+          "name": "E-HRN-31 from hrn-003-l",
+          "force_n": [
+            -14.784,
+            -14.162,
+            -11.142
+          ],
+          "moment_nmm": [
+            -7.38,
+            10.23,
+            5.98
+          ],
+          "at_mm": [
+            -11.09,
+            -1.453,
+            10.186
+          ]
+        }
+      ]
+    },
+    {
+      "name": "thrust",
+      "about": "hover at full thrust held at the root: every motor at max_thrust_n plus gravity, joint forces and moments from a static solve, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-PWR-01 from pwr-002",
+          "force_n": [
+            1.372,
+            0.001,
+            0.008
+          ],
+          "moment_nmm": [
+            0.0,
+            -6.41,
+            0.83
+          ],
+          "at_mm": [
+            -17.5,
+            0.0,
+            16.0
+          ]
+        },
+        {
+          "name": "E-PWR-02 from pwr-001",
+          "force_n": [
+            2.682,
+            -0.001,
+            -0.008
+          ],
+          "moment_nmm": [
+            0.0,
+            -3.21,
+            0.41
+          ],
+          "at_mm": [
+            -8.493,
+            0.963,
+            23.505
+          ]
+        },
+        {
+          "name": "E-PWR-03 from pwr-003",
+          "force_n": [
+            0.051,
+            -0.0,
+            -0.0
+          ],
+          "moment_nmm": [
+            0.0,
+            -0.0,
+            0.0
+          ],
+          "at_mm": [
+            -10.0,
+            0.0,
+            8.5
+          ]
+        },
+        {
+          "name": "E-HRN-30 from hrn-003-r",
+          "force_n": [
+            2.772,
+            -0.276,
+            -1.448
+          ],
+          "moment_nmm": [
+            223.81,
+            -4.09,
+            47.73
+          ],
+          "at_mm": [
+            -11.09,
+            -1.453,
+            10.186
+          ]
+        },
+        {
+          "name": "E-HRN-31 from hrn-003-l",
+          "force_n": [
+            2.582,
+            0.573,
+            1.964
+          ],
+          "moment_nmm": [
+            220.86,
+            87.99,
+            -33.78
+          ],
+          "at_mm": [
+            -11.09,
+            -1.453,
+            10.186
+          ]
+        }
+      ]
+    }
+  ],
+  "status": "PASS",
+  "worst_case": "landing",
+  "design": "concept-a",
+  "hash": "b1b85dd69ad657c4",
+  "generated": "2026-11-17T06:13:53+00:00",
+  "opencae_version": "0.2.0"
+}

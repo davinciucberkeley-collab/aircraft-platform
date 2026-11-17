@@ -1,0 +1,126 @@
+{
+  "part": "cge-003-ul",
+  "material_id": "db_petg_um",
+  "allowable_key": "fea_allowable_printed_petg_mpa",
+  "allowable_mpa": 12.6,
+  "ultimate_factor": 1.5,
+  "wall_mm": {
+    "p5": 0.9,
+    "median": 4.9
+  },
+  "part_size_mm": 68.56,
+  "supports": [
+    {
+      "joint": "E-CGE-04",
+      "other": "cge-002-ul",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "load_joints": [
+    {
+      "joint": "E-PRP-03",
+      "other": "prp-001-ul",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "cases": [
+    {
+      "name": "landing",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 1.994,
+      "max_von_mises_mpa": 1.994,
+      "safety_factor_at_ultimate": 6.32,
+      "max_displacement_mm": 0.007,
+      "nodes": 18353,
+      "mesh_size_max_mm": 4.0,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.001,
+      "location_mm": [
+        -81.96,
+        -235.05,
+        159.53
+      ],
+      "project": ".studio/fea/concept-a/cge-003-ul/direct-landing",
+      "report": null
+    },
+    {
+      "name": "thrust",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 2.77,
+      "max_von_mises_mpa": 2.77,
+      "safety_factor_at_ultimate": 4.55,
+      "max_displacement_mm": 0.007,
+      "nodes": 18353,
+      "mesh_size_max_mm": 4.0,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.0,
+      "location_mm": [
+        -81.96,
+        -235.05,
+        159.53
+      ],
+      "project": ".studio/fea/concept-a/cge-003-ul/direct-thrust",
+      "report": null
+    }
+  ],
+  "notes": [
+    "left out 4 small separate piece(s) of the part (0.0, 0.0, 0.0, 0.0 mm3)"
+  ],
+  "error": null,
+  "load_cases": [
+    {
+      "name": "landing",
+      "about": "tier-2 drop test, each joint at the instant of its largest force (an envelope), force and moment, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-PRP-03 from prp-001-ul",
+          "force_n": [
+            -5.953,
+            -7.941,
+            2.113
+          ],
+          "moment_nmm": [
+            5.21,
+            -6.99,
+            -3.54
+          ],
+          "at_mm": [
+            -98.86,
+            -232.119,
+            149.98
+          ]
+        }
+      ]
+    },
+    {
+      "name": "thrust",
+      "about": "hover at full thrust held at the root: every motor at max_thrust_n plus gravity, joint forces and moments from a static solve, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-PRP-03 from prp-001-ul",
+          "force_n": [
+            -11.412,
+            -2.182,
+            -3.189
+          ],
+          "moment_nmm": [
+            0.0,
+            1.65,
+            -1.03
+          ],
+          "at_mm": [
+            -98.86,
+            -232.119,
+            149.98
+          ]
+        }
+      ]
+    }
+  ],
+  "status": "PASS",
+  "worst_case": "thrust",
+  "design": "concept-a",
+  "hash": "6fd15acd79865de0",
+  "generated": "2026-11-17T06:11:47+00:00",
+  "opencae_version": "0.2.0"
+}

@@ -6,3 +6,4 @@ build/
 # Plane Studio local cache (results, backups)
 .studio/
 viewer/data/
+opencae.local.json

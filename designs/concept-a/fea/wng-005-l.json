@@ -1,0 +1,52 @@
+{
+  "part": "wng-005-l",
+  "material_id": "db_petg_um",
+  "allowable_key": "fea_allowable_printed_petg_mpa",
+  "allowable_mpa": 12.6,
+  "ultimate_factor": 1.5,
+  "wall_mm": {
+    "p5": 2.89,
+    "median": 2.89
+  },
+  "part_size_mm": 24.33,
+  "supports": [
+    {
+      "joint": "E-WNG-06",
+      "other": "wng-002",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "load_joints": [],
+  "cases": [
+    {
+      "name": "landing",
+      "status": "SKIP",
+      "message": "no load reaches this part in this case (or only clamped faces)"
+    },
+    {
+      "name": "thrust",
+      "status": "SKIP",
+      "message": "no load reaches this part in this case (or only clamped faces)"
+    }
+  ],
+  "notes": [],
+  "error": null,
+  "load_cases": [
+    {
+      "name": "landing",
+      "about": "tier-2 drop test, each joint at the instant of its largest force (an envelope), force and moment, x 1.5 ultimate factor",
+      "loads": []
+    },
+    {
+      "name": "thrust",
+      "about": "hover at full thrust held at the root: every motor at max_thrust_n plus gravity, joint forces and moments from a static solve, x 1.5 ultimate factor",
+      "loads": []
+    }
+  ],
+  "status": "SKIP",
+  "worst_case": null,
+  "design": "concept-a",
+  "hash": "7233f5423f4c9de7",
+  "generated": "2026-11-17T06:16:09+00:00",
+  "opencae_version": "0.2.0"
+}

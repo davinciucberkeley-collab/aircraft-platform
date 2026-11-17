@@ -52,6 +52,15 @@ structure:
     value: 1.5
     rule: Ultimate load = limit load x 1.5; joint ratings are ultimate ratings.
     source: ASTM F3298-19 and STANAG 4703 (knowledge/sources/std-astm-f3298-lightweight-uas.md, std-stanag-4703-aep-83.md)
+  fea_allowable_printed_petg_mpa:
+    value: 12.6
+    rule: A printed (3d-print-fdm) part passes the OpenCAE stress check when its peak von Mises stress away from the clamps, at ultimate load (limit x ultimate_factor), is at or below this value.
+    source: "UltiMaker PETG Technical Data Sheet v1.00 (2022-04-29), tensile stress at break of Z (upright) printed specimens 19.0 +/- 6.4 MPa, ASTM D3039 (https://um-support-files.ultimaker.com/materials/2.85mm/tds/PETG/Ultimaker-PETG-TDS-v1.00.pdf, checked 2026-11-16). OpenCAE material record db_petg_um cites the same sheet."
+    note: "Value is the mean minus one standard deviation of the weakest (interlayer) direction, because print orientation is not recorded per part and the Z scatter is large. Assumes solid walls (concept A's printed parts are thin-walled); sparse infill lowers strength and is not modelled. Method choice, review when coupons are tested."
+  fea_singularity_band_mm:
+    value: 2.0
+    rule: Stresses within this distance of a clamped face are left out of the pass/fail value (a rigid clamp is a stress singularity); the peak including them is reported alongside.
+    source: "method choice, not a standard: Saint-Venant's principle (local idealisation effects decay within about one section size); 2 mm is a few element sizes on concept A's printed parts."
 
 aero:
   static_margin:

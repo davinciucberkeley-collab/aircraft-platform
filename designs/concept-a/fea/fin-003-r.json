@@ -1,0 +1,124 @@
+{
+  "part": "fin-003-r",
+  "material_id": "db_petg_um",
+  "allowable_key": "fea_allowable_printed_petg_mpa",
+  "allowable_mpa": 12.6,
+  "ultimate_factor": 1.5,
+  "wall_mm": {
+    "p5": 2.56,
+    "median": 3.49
+  },
+  "part_size_mm": 81.73,
+  "supports": [
+    {
+      "joint": "E-FIN-02",
+      "other": "fin-002-r",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "load_joints": [
+    {
+      "joint": "E-FIN-01",
+      "other": "fin-001-r",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "cases": [
+    {
+      "name": "landing",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 1.075,
+      "max_von_mises_mpa": 1.075,
+      "safety_factor_at_ultimate": 11.72,
+      "max_displacement_mm": 0.0111,
+      "nodes": 11587,
+      "mesh_size_max_mm": 3.49,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.006,
+      "location_mm": [
+        286.0,
+        371.54,
+        -9.5
+      ],
+      "project": ".studio/fea/concept-a/fin-003-r/direct-landing",
+      "report": null
+    },
+    {
+      "name": "thrust",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 0.007,
+      "max_von_mises_mpa": 0.007,
+      "safety_factor_at_ultimate": 999.0,
+      "max_displacement_mm": 0.0,
+      "nodes": 11587,
+      "mesh_size_max_mm": 3.49,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.005,
+      "location_mm": [
+        286.0,
+        388.46,
+        9.5
+      ],
+      "project": ".studio/fea/concept-a/fin-003-r/direct-thrust",
+      "report": null
+    }
+  ],
+  "notes": [],
+  "error": null,
+  "load_cases": [
+    {
+      "name": "landing",
+      "about": "tier-2 drop test, each joint at the instant of its largest force (an envelope), force and moment, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-FIN-01 from fin-001-r",
+          "force_n": [
+            17.474,
+            0.279,
+            25.263
+          ],
+          "moment_nmm": [
+            4.59,
+            43.84,
+            -2.25
+          ],
+          "at_mm": [
+            294.0,
+            380.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "thrust",
+      "about": "hover at full thrust held at the root: every motor at max_thrust_n plus gravity, joint forces and moments from a static solve, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-FIN-01 from fin-001-r",
+          "force_n": [
+            0.249,
+            -0.0,
+            0.0
+          ],
+          "moment_nmm": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "at_mm": [
+            294.0,
+            380.0,
+            0.0
+          ]
+        }
+      ]
+    }
+  ],
+  "status": "PASS",
+  "worst_case": "landing",
+  "design": "concept-a",
+  "hash": "8dc3dd2c91e5d0a5",
+  "generated": "2026-11-17T06:14:37+00:00",
+  "opencae_version": "0.2.0"
+}

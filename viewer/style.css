@@ -174,3 +174,5 @@ table.edit td.xyz { white-space: nowrap; } table.edit td.xyz .cell { margin-righ
 table.edit tr.failing td { background: var(--fail-bg); }
 .hint.fail { color: var(--fail); max-width: 340px; }
 .mono { font-family: var(--mono); }
+.badge.PASS, .badge.FAIL, .badge.WARN, .badge.SKIP, .badge.NONE { font-size: 11px; }
+a.filelink { margin-right: 8px; color: var(--accent); }

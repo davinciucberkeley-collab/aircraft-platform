@@ -1,0 +1,370 @@
+{
+  "part": "avn-001",
+  "material_id": "db_petg_um",
+  "allowable_key": "fea_allowable_printed_petg_mpa",
+  "allowable_mpa": 12.6,
+  "ultimate_factor": 1.5,
+  "wall_mm": {
+    "p5": 1.51,
+    "median": 2.35
+  },
+  "part_size_mm": 139.86,
+  "supports": [
+    {
+      "joint": "E-AVN-01",
+      "other": "wng-001",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "load_joints": [
+    {
+      "joint": "E-PRP-09",
+      "other": "prp-003",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-AVN-02",
+      "other": "avn-007",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-AVN-04",
+      "other": "avn-003",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-AVN-05",
+      "other": "avn-004",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-AVN-06",
+      "other": "avn-005",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-AVN-08",
+      "other": "avn-008",
+      "how": "contact within 0.5 mm"
+    },
+    {
+      "joint": "E-AVN-11",
+      "other": "hwc-003",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "cases": [
+    {
+      "name": "landing",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 2.762,
+      "max_von_mises_mpa": 2.777,
+      "safety_factor_at_ultimate": 4.56,
+      "max_displacement_mm": 0.0007,
+      "nodes": 41664,
+      "mesh_size_max_mm": 2.35,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.123,
+      "location_mm": [
+        48.92,
+        9.86,
+        13.88
+      ],
+      "project": ".studio/fea/concept-a/avn-001/concept-a-avn-001-landing.ocae",
+      "report": ".studio/fea/concept-a/avn-001/concept-a-avn-001-landing_report.html"
+    },
+    {
+      "name": "thrust",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 0.268,
+      "max_von_mises_mpa": 0.296,
+      "safety_factor_at_ultimate": 47.02,
+      "max_displacement_mm": 0.0001,
+      "nodes": 41664,
+      "mesh_size_max_mm": 2.35,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.075,
+      "location_mm": [
+        48.92,
+        9.86,
+        13.88
+      ],
+      "project": ".studio/fea/concept-a/avn-001/concept-a-avn-001-thrust.ocae",
+      "report": ".studio/fea/concept-a/avn-001/concept-a-avn-001-thrust_report.html"
+    }
+  ],
+  "notes": [],
+  "error": null,
+  "load_cases": [
+    {
+      "name": "landing",
+      "about": "tier-2 drop test, each joint at the instant of its largest force (an envelope), force and moment, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-PRP-09 from prp-003",
+          "force_n": [
+            2.151,
+            0.014,
+            0.462
+          ],
+          "moment_nmm": [
+            0.06,
+            0.54,
+            -0.05
+          ],
+          "at_mm": [
+            99.423,
+            0.193,
+            16.714
+          ]
+        },
+        {
+          "name": "E-AVN-02 from avn-007",
+          "force_n": [
+            2.129,
+            0.042,
+            0.253
+          ],
+          "moment_nmm": [
+            -0.21,
+            20.76,
+            -0.35
+          ],
+          "at_mm": [
+            60.0,
+            -0.0,
+            15.38
+          ]
+        },
+        {
+          "name": "E-AVN-04 from avn-003",
+          "force_n": [
+            0.501,
+            0.004,
+            0.095
+          ],
+          "moment_nmm": [
+            0.05,
+            -0.98,
+            -0.0
+          ],
+          "at_mm": [
+            117.866,
+            -46.002,
+            15.168
+          ]
+        },
+        {
+          "name": "E-AVN-05 from avn-004",
+          "force_n": [
+            1.445,
+            0.019,
+            0.442
+          ],
+          "moment_nmm": [
+            0.01,
+            0.17,
+            -0.01
+          ],
+          "at_mm": [
+            57.5,
+            39.665,
+            17.238
+          ]
+        },
+        {
+          "name": "E-AVN-06 from avn-005",
+          "force_n": [
+            0.315,
+            0.004,
+            0.106
+          ],
+          "moment_nmm": [
+            0.0,
+            0.01,
+            -0.0
+          ],
+          "at_mm": [
+            52.795,
+            -44.737,
+            16.495
+          ]
+        },
+        {
+          "name": "E-AVN-08 from avn-008",
+          "force_n": [
+            1.086,
+            0.013,
+            0.297
+          ],
+          "moment_nmm": [
+            0.17,
+            2.34,
+            -0.05
+          ],
+          "at_mm": [
+            73.189,
+            0.095,
+            29.747
+          ]
+        },
+        {
+          "name": "E-AVN-11 from hwc-003",
+          "force_n": [
+            0.548,
+            0.011,
+            0.135
+          ],
+          "moment_nmm": [
+            -0.06,
+            6.55,
+            -0.12
+          ],
+          "at_mm": [
+            60.0,
+            0.0,
+            12.879
+          ]
+        }
+      ]
+    },
+    {
+      "name": "thrust",
+      "about": "hover at full thrust held at the root: every motor at max_thrust_n plus gravity, joint forces and moments from a static solve, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-PRP-09 from prp-003",
+          "force_n": [
+            0.294,
+            0.0,
+            -0.0
+          ],
+          "moment_nmm": [
+            -0.0,
+            0.0,
+            0.0
+          ],
+          "at_mm": [
+            99.423,
+            0.193,
+            16.714
+          ]
+        },
+        {
+          "name": "E-AVN-02 from avn-007",
+          "force_n": [
+            0.181,
+            0.0,
+            -0.0
+          ],
+          "moment_nmm": [
+            0.0,
+            -1.89,
+            0.0
+          ],
+          "at_mm": [
+            60.0,
+            -0.0,
+            15.38
+          ]
+        },
+        {
+          "name": "E-AVN-04 from avn-003",
+          "force_n": [
+            0.068,
+            0.0,
+            0.0
+          ],
+          "moment_nmm": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "at_mm": [
+            117.866,
+            -46.002,
+            15.168
+          ]
+        },
+        {
+          "name": "E-AVN-05 from avn-004",
+          "force_n": [
+            0.199,
+            -0.0,
+            -0.0
+          ],
+          "moment_nmm": [
+            -0.0,
+            -0.0,
+            0.0
+          ],
+          "at_mm": [
+            57.5,
+            39.665,
+            17.238
+          ]
+        },
+        {
+          "name": "E-AVN-06 from avn-005",
+          "force_n": [
+            0.044,
+            0.0,
+            -0.0
+          ],
+          "moment_nmm": [
+            0.0,
+            -0.0,
+            -0.0
+          ],
+          "at_mm": [
+            52.795,
+            -44.737,
+            16.495
+          ]
+        },
+        {
+          "name": "E-AVN-08 from avn-008",
+          "force_n": [
+            0.141,
+            -0.0,
+            0.0
+          ],
+          "moment_nmm": [
+            -0.0,
+            -0.0,
+            -0.0
+          ],
+          "at_mm": [
+            73.189,
+            0.095,
+            29.747
+          ]
+        },
+        {
+          "name": "E-AVN-11 from hwc-003",
+          "force_n": [
+            0.134,
+            -0.0,
+            0.0
+          ],
+          "moment_nmm": [
+            -0.0,
+            -1.8,
+            0.0
+          ],
+          "at_mm": [
+            60.0,
+            0.0,
+            12.879
+          ]
+        }
+      ]
+    }
+  ],
+  "status": "PASS",
+  "worst_case": "landing",
+  "design": "concept-a",
+  "hash": "816f1f0dfb7635c5",
+  "generated": "2026-11-17T06:06:29+00:00",
+  "opencae_version": "0.2.0"
+}

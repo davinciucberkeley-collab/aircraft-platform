@@ -188,6 +188,48 @@ class Studio:
         self.scan()
         return f"imported into designs/{new_id}"
 
+    def _job_fea(self, job, design_id: str, parts: list):
+        from . import fea
+        design = load_design(DESIGNS_DIR / design_id / "plane.yaml")
+        oc = fea.find_opencae()
+        if not oc["found"]:
+            raise RuntimeError("OpenCAE is not set up (Stress check > Settings)")
+        drop = fea.joint_loads(design)
+        done = []
+        for i, pid in enumerate(parts, 1):
+            with self.lock:
+                job["message"] = f"{pid} ({i}/{len(parts)})"
+                self._bump()
+            try:
+                r = fea.run(design, pid, oc, drop=drop, log=lambda m: job["log"].append(str(m)))
+                done.append(f"{pid} {r['status']}")
+            except Exception as e:  # noqa: BLE001
+                done.append(f"{pid} ERROR")
+                job["log"].append(f"{pid}: {type(e).__name__}: {e}")
+        self.submit("check", design_id, f"Check {design_id}")
+        return ", ".join(done)
+
+    def fea_state(self, did: str) -> dict:
+        from . import fea
+        design = load_design(DESIGNS_DIR / _check_id(did) / "plane.yaml")
+        rows = []
+        for pid in fea.eligible_parts(design):
+            f = fea.result_path(design, pid)
+            rec = json.loads(f.read_text()) if f.exists() else None
+            row = {"part": pid, "description": design.component(pid).get("description", ""), "status": None}
+            if rec:
+                row.update(status=rec.get("status"), error=rec.get("error"), notes=rec.get("notes"),
+                           up_to_date=rec.get("hash") == fea.part_hash(design, pid), generated=rec.get("generated"),
+                           cases=[{k: c.get(k) for k in ("name", "status", "max_von_mises_away_mpa", "max_von_mises_mpa",
+                                                        "safety_factor_at_ultimate", "max_displacement_mm", "message")}
+                                  for c in rec.get("cases", [])],
+                           files=_fea_files(did, pid))
+            rows.append(row)
+        oc = fea.find_opencae()
+        std = load_standards_safe()
+        return {"opencae": oc, "parts": rows, "allowable_mpa": std.get("fea_allowable_printed_petg_mpa"),
+                "ultimate_factor": std.get("ultimate_factor")}
+
     # ---------- actions (called from the HTTP thread) ----------
     def new(self, new_id: str, template: str) -> str:
         from .cli import new_design
@@ -305,6 +347,26 @@ def _schema_enums() -> dict:
     return _ENUMS
 
 
+def load_standards_safe() -> dict:
+    try:
+        from .design import load_standards
+        st = load_standards()["structure"]
+        return {k: st[k]["value"] for k in ("fea_allowable_printed_petg_mpa", "ultimate_factor") if k in st}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _fea_files(did: str, pid: str) -> list[dict]:
+    """Viewable outputs of a stored stress check: OpenCAE reports/projects and ParaView meshes."""
+    base = REPO_ROOT / ".studio" / "fea" / did / pid
+    out = []
+    if base.is_dir():
+        for f in sorted(base.rglob("*")):
+            if f.suffix in (".html", ".vtu", ".ocae") and f.is_file():
+                out.append({"name": f.relative_to(base).as_posix(), "kind": f.suffix[1:]})
+    return out
+
+
 def _zip(folder: Path) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -388,6 +450,17 @@ def make_handler(studio: Studio):
                     return self._json(studio.state())
                 if path == "/api/yaml":
                     return self._json({"id": qs.get("id"), "text": studio.read_yaml(qs.get("id", ""))})
+                if path == "/api/fea":
+                    return self._json(studio.fea_state(qs.get("id", "")))
+                if path == "/api/fea-file":
+                    did, pid = _check_id(qs.get("id", "")), _check_id(qs.get("part", ""))
+                    base = (REPO_ROOT / ".studio" / "fea" / did / pid).resolve()
+                    f = (base / qs.get("name", "")).resolve()
+                    if base not in f.parents or not f.is_file() or f.suffix not in (".html", ".vtu", ".ocae"):
+                        return self._err("not found", 404)
+                    ctype = "text/html; charset=utf-8" if f.suffix == ".html" else "application/octet-stream"
+                    extra = {} if f.suffix == ".html" else {"Content-Disposition": f'attachment; filename="{pid}-{f.name}"'}
+                    return self._send(200, f.read_bytes(), ctype, extra)
                 if path == "/api/design":
                     return self._json(studio.read_design(qs.get("id", "")))
                 if path == "/api/export":
@@ -436,6 +509,20 @@ def make_handler(studio: Studio):
                         raise ValueError("concept must be a letter such as A")
                     return self._json(studio.submit("import_dbf", new_id, f"Import concept {concept} from DBF-Combined",
                                                     root=root, concept=concept, new_id=new_id))
+                if path == "/api/fea":
+                    did = _check_id(b.get("id"))
+                    parts = [_check_id(p) for p in (b.get("parts") or [])]
+                    if not parts:
+                        raise ValueError("choose at least one part")
+                    return self._json(studio.submit("fea", did, f"Stress check {did} ({len(parts)} part{'s' if len(parts) > 1 else ''})",
+                                                    design_id=did, parts=parts))
+                if path == "/api/fea-setup":
+                    from . import fea
+                    oc = fea.find_opencae(str(b.get("python") or "").strip().strip('"'), str(b.get("root") or "").strip().strip('"'))
+                    if not oc["found"]:
+                        raise ValueError(f"OpenCAE not found there (python {oc['python']}, folder {oc['root']})")
+                    fea.save_config(oc["python"], oc["root"])
+                    return self._json(oc)
                 if path == "/api/rescan":
                     studio.scan()
                     return self._json({"ok": True})

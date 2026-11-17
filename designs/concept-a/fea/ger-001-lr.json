@@ -1,0 +1,124 @@
+{
+  "part": "ger-001-lr",
+  "material_id": "db_petg_um",
+  "allowable_key": "fea_allowable_printed_petg_mpa",
+  "allowable_mpa": 12.6,
+  "ultimate_factor": 1.5,
+  "wall_mm": {
+    "p5": 2.49,
+    "median": 3.0
+  },
+  "part_size_mm": 35.24,
+  "supports": [
+    {
+      "joint": "E-GER-05",
+      "other": "fin-001-r",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "load_joints": [
+    {
+      "joint": "E-GER-06",
+      "other": "ger-002-lr",
+      "how": "contact within 0.5 mm"
+    }
+  ],
+  "cases": [
+    {
+      "name": "landing",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 0.112,
+      "max_von_mises_mpa": 0.112,
+      "safety_factor_at_ultimate": 112.06,
+      "max_displacement_mm": 0.0006,
+      "nodes": 9153,
+      "mesh_size_max_mm": 3.0,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.02,
+      "location_mm": [
+        302.0,
+        373.23,
+        -181.5
+      ],
+      "project": ".studio/fea/concept-a/ger-001-lr/concept-a-ger-001-lr-landing.ocae",
+      "report": ".studio/fea/concept-a/ger-001-lr/concept-a-ger-001-lr-landing_report.html"
+    },
+    {
+      "name": "thrust",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 0.0,
+      "max_von_mises_mpa": 0.0,
+      "safety_factor_at_ultimate": 999.0,
+      "max_displacement_mm": 0.0,
+      "nodes": 9153,
+      "mesh_size_max_mm": 3.0,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.019,
+      "location_mm": [
+        302.0,
+        373.23,
+        -181.5
+      ],
+      "project": ".studio/fea/concept-a/ger-001-lr/concept-a-ger-001-lr-thrust.ocae",
+      "report": ".studio/fea/concept-a/ger-001-lr/concept-a-ger-001-lr-thrust_report.html"
+    }
+  ],
+  "notes": [],
+  "error": null,
+  "load_cases": [
+    {
+      "name": "landing",
+      "about": "tier-2 drop test, each joint at the instant of its largest force (an envelope), force and moment, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-GER-06 from ger-002-lr",
+          "force_n": [
+            -9.485,
+            0.0,
+            0.111
+          ],
+          "moment_nmm": [
+            0.0,
+            -1.62,
+            -0.0
+          ],
+          "at_mm": [
+            322.5,
+            380.0,
+            -177.0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "thrust",
+      "about": "hover at full thrust held at the root: every motor at max_thrust_n plus gravity, joint forces and moments from a static solve, x 1.5 ultimate factor",
+      "loads": [
+        {
+          "name": "E-GER-06 from ger-002-lr",
+          "force_n": [
+            0.01,
+            -0.0,
+            0.0
+          ],
+          "moment_nmm": [
+            0.0,
+            -0.0,
+            0.0
+          ],
+          "at_mm": [
+            322.5,
+            380.0,
+            -177.0
+          ]
+        }
+      ]
+    }
+  ],
+  "status": "PASS",
+  "worst_case": "landing",
+  "design": "concept-a",
+  "hash": "cd9a8f64e81793d6",
+  "generated": "2026-11-17T06:15:37+00:00",
+  "opencae_version": "0.2.0"
+}
