@@ -632,3 +632,44 @@ D3 is **not** covered by that policy. After one visible addition it removes all 
 1. Post the ADDED/REMOVED table as a PR comment, or require a reviewed PR in branch protection (see above).
 2. `key_data` accepts any string in data. Restrict it to a whitelist of subject fields (`joint`, `component`, `part`, `pair(s)`, `motor`, `configuration`, `band`), so a future check that stores a formatted value as a string can't churn keys.
 3. README "Known limits": add A3 (deleting a requirement silently drops its check).
+
+## Round 11 (ci-baselines)
+
+Reviewer: same Opus instance (R1). Commit reviewed: e6f12da on `ci-baselines`. Every attack ran in a fresh clone, `/tmp/ap-review11/wt` (`PYTHONPATH` pointed at the clone; git commits there for `--base-ref`). Nothing in the real repo was edited except this file.
+
+### Automated and stability
+
+- `python3 -m pytest -q`: `163 passed, 3 skipped` (it includes the new guard test that every per-subject FAIL/SKIP over all designs carries a subject in data).
+- `plane baseline check --all --format json` in the fresh clone, run twice: rc 0 both times, byte-identical output.
+
+### Round-10 blockers
+
+| # | Blocker | Status | Evidence |
+|---|---|---|---|
+| D3 | A known T0 FAIL silences the design | **CLOSED** | Unknown key `notes_v2` in c0-a2. `baseline update` gives "refused: schema or tier errors are never baselined … nothing written", rc 2. `baseline check` gives rc 1 with "did not reach tier 1 … tier 4" (one row per tier) and "Improvements: 16" shown separately. A hand-written baseline holding T0/blocked/error rows is flagged as an invalid baseline. Removed entries are listed under "Known results REMOVED". |
+| D2 | Subject missing from data (all-digit ids) | **CLOSED** | Example copy with components `'5'`/`'6'`: baseline holds T4.machine FAIL on `5`; the change fixes `5` and breaks `6`. Result: rc 1, regression "6: in-house method laser-cut needs a `machine` … not in baseline". |
+
+### DESIGN_LEVEL additions
+
+- `T0.version`: harmless. Every `T0.*` row is blocking anyway and never reaches a baseline.
+- `T4.capabilities` (SKIP "standards/manufacturing.yaml not written yet") and `T2.sim` (SKIP "mujoco not installed"): correct that they have no subject, but **each replaces a whole sub-tier with one row**. If one were baselined (a baseline made on a machine without mujoco, or with the file missing), every later T4 or drop-test regression of that design would be invisible, which is D3 again. They belong in `is_blocking`, not in DESIGN_LEVEL. In CI today neither can happen (mujoco is a core dependency and manufacturing.yaml exists); see D4 for the case that can.
+
+### New attack
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| D4 | **A broken sim model, baselined.** c0-lift-cruise: add a self-attachment `pod-self` (pod→pod, a copy of wing-pod). MuJoCo then refuses the model: T2.sim_stable FAIL "could not build simulation model: … 'pod' is repeated in equality constraint", and sim_drop_loads/sim_rest become SKIP "no model". Run `baseline update` and commit. In a later change, cut the wing-pod rating 535.8 → 100 N (its drop peak was 120.6 N). | **MISSED** in the later change (the first step is visible) | Step 1: update accepted (rc 0, 8 known), and the PR summary shows the new sim_stable FAIL as ADDED and **12 sim_drop_loads rows as REMOVED**. That is visible, as the policy needs. Step 2: rc 0, "Unchanged: 8. Regressions: 0". The static joint_load passes (50 N ≤ 100 N), and the dynamic 120.6 N > 100 N is never computed. The self-attachment itself raised no T1 row. "Could not build simulation model" is a tier error in all but name, and it disables monitoring the same way D3 did. |
+
+### Visible-but-passing policy
+
+Still acceptable: additions, count/status loosening, renames and now removals are all listed by name in the summary and as warnings, and the conductor will recommend branch protection on main (PR + 1 approval + validate). With that in place, A3/A4/A5b/D1 rest on a reviewer reading a short, explicit list. That is the right trade for "CI can't tell an intended known failure from a sneaky one". D4 is different in kind, as D3 was: after one visible step, it turns off a whole check for every later change. A sim that can't be built is not a "known failure" a design should be allowed to carry.
+
+### Verdict
+
+**NOT MERGE-READY.** One small blocker; everything else is closed.
+
+### Blocker
+
+1. **D4: a design whose sim (or a whole sub-tier) can't run can still be baselined.** Treat these as blocking in `is_blocking` / `snapshot`: T2.sim_stable "could not build simulation model", T2.sim SKIP, and T4.capabilities SKIP (or any row that stands in for a whole sub-tier). Then `baseline update` refuses them and `check` reports "did not reach …". Optionally, also have T1 flag a self-attachment (parent == child) directly; today only the sim build catches it. Add D4 as a test.
+
+Non-blocking: the T2.sim_drop_loads/sim_rest "no model" SKIPs carry no subject; they disappear once the blocker is fixed.
