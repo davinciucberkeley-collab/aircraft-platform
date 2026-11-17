@@ -235,7 +235,7 @@ async function feaDialog(id) {
       h('td', {}, cb), h('td', {}, h('code', {}, r.part), h('div', { class: 'hint' }, r.description)),
       h('td', {}, badge(r)),
       h('td', { class: 'mono small' }, worst ? `${worst.max_von_mises_away_mpa} MPa · SF ${worst.safety_factor_at_ultimate} (${worst.name})` : (r.error ? r.error.slice(0, 80) : '—')),
-      h('td', {}, (r.files || []).filter((f) => f.kind !== 'ocae').map((f) => h('a', { href: `api/fea-file?id=${encodeURIComponent(id)}&part=${encodeURIComponent(r.part)}&name=${encodeURIComponent(f.name)}`, target: f.kind === 'html' ? '_blank' : null, class: 'filelink' }, f.kind === 'html' ? 'report' : 'ParaView'))));
+      h('td', {}, (r.files || []).filter((f) => f.kind !== 'ocae').map((f) => h('a', { href: `api/fea-file?id=${encodeURIComponent(id)}&part=${encodeURIComponent(r.part)}&name=${encodeURIComponent(f.name)}`, target: f.kind === 'html' ? '_blank' : null, class: 'filelink' }, `${/thrust/.test(f.name) ? 'thrust' : 'landing'} ${f.kind === 'html' ? 'report' : '(ParaView)'}`))));
   });
   const allow = st.allowable_mpa, uf = st.ultimate_factor;
   const dlg = dialog(`Stress check: ${id}`, [
