@@ -529,3 +529,57 @@ I agree with it, with one condition that is already met. After rounds 5-7 every 
 2. validator-comparison.md: one sentence on the 3 detached LE slivers.
 3. Consider pivot-in-gap bridging instead of a 15% fraction; consider computing `envelope` (the base of the 15%) from the root and adjacent children only, since detached material currently enlarges it.
 4. Still open from earlier rounds: `rating_basis` optional in the schema; motor→prop chain via the mount (m2); validate.yml "Score every design" red on main, which predates this branch.
+
+## Round 9 — regression-only CI (ci-baselines)
+
+Reviewer: same Opus instance (R1). Commit reviewed: 14f75a8 on `ci-baselines`; plan `plans/2026-11-17-ci-baselines.md`. Every attack ran in a full throwaway copy, `/tmp/ap-review9/wt` (`cp -a` of the repo, `PYTHONPATH=/tmp/ap-review9/wt/core`, so `REPO_ROOT` is the copy), using git commits in that copy for `--base-ref`. Nothing in the real repo was edited except this file.
+
+### Automated
+
+- `python3 -m pytest -q`: `150 passed, 3 skipped, 46 warnings`.
+- `plane baseline check --all --format json`, run twice: exit 0 both times, and the outputs are **byte-identical** (deterministic). Known keys per design: c0-a1 20, c0-a2 16, c0-a3 17, c0-lift-cruise 17, concept-a 66, tiltwing-cakir 24; example accepted. Keys that merge several results: concept-a "sweep E-WNG-10/11 #°" (2 each), tiltwing "sweep wing-tilt/tail-tilt #°: clipping …" (6, 6, 4).
+
+### Attacks
+
+| # | Attack | Result | Evidence |
+|---|---|---|---|
+| A1 | **Swap inside one key.** Design `atk-a1` (the example with numeric joint ids "1".."11"); baseline has joint "4" failing its rating. The change fixes "4" and breaks "5". | **MISSED** | `#: # N at 4.5g exceeds rating # N`: "4:" and "5:" normalise to the same key, so the check says "Unchanged: 2. Regressions: 0", rc 0. The same happens wherever the subject is only in a number or past a truncated list (A1c). |
+| A1b | **Regression plus a baseline edit that adds no key.** Joints "4" and "5" both fail (count 1 → 2; the control run is caught, rc 1), and the same commit sets `count: 2` in baseline.json. `--base-ref` = previous commit. | **MISSED, silently** | rc 0, and **no "ADDED" section and no `::warning`**: `growth()` compares key sets only, so raising a `count` or changing a `status` (SKIP→FAIL) in baseline.json is invisible. Also, in the control run the regression table showed "4: … exceeds rating 0.1 N" (the old joint) and not the reason "count rose from 1 to 2". The md tables drop the `reason` field, so the reviewer is pointed at the wrong joint. |
+| A1c | **Truncated id lists.** kinematic_link ("…: mec-003-l, …, wng-006-r, …") and fea "out of date for # part(s) (…6 ids…)" show at most 6 ids. | **MISSED** (key level) | `normalize_message` of "6 pair(s) … wng-006-r, …" and "7 pair(s) … wng-006-r, …" is identical (checked in Python). A new unchecked pair, or a stale part past the 6th id, adds nothing to the key. |
+| A2 | **Value crosses the band.** concept-a: foot pads 0.7 → 50 g each, so SM 16.8% → **-1.2% (unstable)**. | Caught only by accident | The SM key is unchanged. CI failed only because every fea result went stale (new SKIP key; the mass change alters the part hashes). |
+| A2b | Same on a design without fea results. c0-lift-cruise: battery 820 → 100 g, so SM **15.3% (too stable) → 3.8% (below the 5% minimum)**; hover moment rises to a 73% WARN. | **MISSED** | "Result: pass", rc 0. The summary even lists an **Improvement** (the battery joint's drop-load FAIL went away) and tells the author to run `plane baseline update`. Static margin moving from one side of the band to the other is the classic regression, and the key `#% MAC (NP x=# mm, CG x=# mm; target #%#%; …)` can't see it (the sign is lost too: "-1.2%" becomes "#%"). WARNs are ignored by design, so the hover-moment change is also invisible. |
+| A3 | Delete `requirements.stall_speed_max_mps` from c0-a1 to silence T3.stall FAIL (12.3 > 12 m/s). | **MISSED** (shown as an improvement) | rc 0; "Improvements: T3.stall … > required 12 m/s". The validator then PASSes stall with no limit. This is mainly a validator gap (a missing requirement is silent), but the summary calls it an improvement. The plane.yaml diff shows the removal. |
+| A4 | Regression plus `plane baseline update` in the same change (new keys). | CAUGHT as visible, **not failing** | rc 0. "Known failures ADDED to the baseline in this change (reviewers: confirm each)" lists the 2 wing-pod rows, plus `::warning title=Baseline grew (c0-a2)::…` annotations. This is the plan's stated policy (growth is visible, not a failure). |
+| A5 | Same regression plus **renaming the folder** (`designs/c0-a2` → `c0-a2-renamed`). | Visible but **buried** | `baseline_at_ref` looks up the new path at the base ref, finds nothing, and lists **all 18** keys as ADDED; the 2 real additions are among them. Every rename or move of a design hides its real growth this way. |
+| A6 | Delete a non-accepted design's baseline.json. | CAUGHT | rc 1, "Missing baseline.json". All 17 rows are listed as regressions. |
+| A7 | "Accepted because a tier was skipped" | Not reachable | `baseline check` always runs `validate(design)` at tier 5. A SKIP anywhere blocks acceptance (rounds 2-6), and a partial run is never accepted. |
+| A8 | Numbers next to punctuation and units | No miss; some noise | `[1.0, 50.0, 600.0]`, `(SF 1.5;`, `12/41`, `sweep E-WNG-10 -6°` normalise; ids (`E-WNG-20`, `prop_2`, `M3x8`, `v2.0`) keep their digits. Numbers glued to a unit (`x=-5.0mm`, `4.5g`) or in exponent form (`1e-3`) are **not** normalised, so if such a value moved it would read as a new key: a false regression, not a miss. Current messages use spaced units ("2.2 N", "mm^3"). |
+
+### Workflow reasoning (validate.yml)
+
+- PR: `base = origin/<base_ref>`; `fetch-depth: 0` makes it present. Growth is measured against the base branch tip. Correct.
+- Push to main: `base = github.event.before`. For a force-push whose old head is gone, or for **the first push that introduces baselines** (the merge of this branch), `git show <before>:…/baseline.json` fails. `baseline_at_ref` returns None, so every key of every design (about 160) is reported as ADDED and annotated. That is noisy but harmless (exit 0), and it happens once on merge. A new branch (`before` = 000…) skips growth. Correct.
+- `shell: bash` runs with `-eo pipefail`, so the step fails on plane's exit 1 even before `exit ${PIPESTATUS[0]}`; the summary is still written by `tee`. Correct. The `::warning` lines also go through `tee` into the step summary as raw text (cosmetic).
+- Growth never fails CI (by policy), so the safety of this path depends on a human reading the ADDED section. A5 shows that section can be flooded.
+
+### Is the md summary readable?
+
+Mostly yes: a result line, then per design the counts, regressions, improvements and ADDED keys, each as a table or list. Two defects matter for a reviewer:
+1. The regression and improvement tables omit the `reason` field ("count rose from 1 to 2", "was SKIP in baseline, now FAIL"). With only one example message per key, they can name the wrong instance (A1b control).
+2. "Improvements" includes things that aren't (A2b, A3). The text "run `plane baseline update` … to record the improvement" invites locking in a worse design.
+
+### Verdict
+
+**NOT MERGE-READY.** Determinism, missing-baseline handling and the workflow are sound, and plain baseline growth is visible as the plan intends. But three paths let a real regression through with a green check, two of them with no trace in the summary.
+
+### Blockers
+
+1. **Baseline edits that add no key are invisible** (A1b). Make `growth` diff whole entries `(key, status, count)` against the base ref, and list any count increase or SKIP→FAIL change under "ADDED/LOOSENED". Treat a path rename as a move: match by `design_id`, not folder (A5).
+2. **The key can't see a FAIL changing side or direction** (A2b; the sign is lost). Give band checks distinct failure modes in their messages (e.g. T3.static_margin "above band" / "below band"; the same for any min/max check), or derive the key from structured data (check_id + `r.data` mode/side). Then 15.3% → 3.8% becomes a new key. Don't call a set of changes an "improvement" when another FAIL got worse in the same design.
+3. **Several results collapse into one key** (A1, A1c). Build the key from the result's *subject* (`r.data` part / pair / joint / configuration, or the full untruncated id list) rather than from display text, and list every instance. Never truncate an id list in text that forms a key. Show the `reason` column in the md tables.
+
+### Non-blocking
+
+1. A3: emit a visible row (WARN or SKIP) when a requirement the checks use is absent (`stall_speed_max_mps`, `mtow_g`), so deleting it isn't silent.
+2. Normalise numbers attached to units (`5.0mm`, `4.5g`) and exponents, to avoid false regressions.
+3. The first push after merge will annotate about 160 "Baseline grew" warnings. Consider skipping growth when the base ref has no baselines at all.
