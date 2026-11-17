@@ -673,3 +673,43 @@ Still acceptable: additions, count/status loosening, renames and now removals ar
 1. **D4: a design whose sim (or a whole sub-tier) can't run can still be baselined.** Treat these as blocking in `is_blocking` / `snapshot`: T2.sim_stable "could not build simulation model", T2.sim SKIP, and T4.capabilities SKIP (or any row that stands in for a whole sub-tier). Then `baseline update` refuses them and `check` reports "did not reach …". Optionally, also have T1 flag a self-attachment (parent == child) directly; today only the sim build catches it. Add D4 as a test.
 
 Non-blocking: the T2.sim_drop_loads/sim_rest "no model" SKIPs carry no subject; they disappear once the blocker is fixed.
+
+## Round 12 (18c8078)
+
+Reviewer: same Opus instance (R1). Every attack ran in a fresh clone, `/tmp/ap-review12/wt`. Nothing in the real repo was edited except this file.
+
+### Automated and stability
+
+- `python3 -m pytest -q`: `168 passed, 3 skipped`.
+- `plane baseline check --all --format json`, run twice in the fresh clone: rc 0 both times, byte-identical.
+
+### Re-runs
+
+| # | Attack | Result | Evidence |
+|---|---|---|---|
+| D4 | c0-lift-cruise with a self-attachment `pod-self`, so the sim model won't build | **CLOSED** | `baseline update` gives "refused: schema or tier errors are never baselined (T2.sim_stable: could not build simulation model …); nothing written", rc 2. `baseline check` gives rc 1 with "did not run: T2.sim_stable could not build …" and "did not run: T2.sim_drop_loads no model". |
+| D3 | Unknown top-level key in c0-a2 | still closed | update rc 2, check rc 1 |
+| D2 | All-digit component ids, swap which fails | still closed | Subject data is unchanged in this commit; the guard test over all designs passes. |
+
+### The NaN fix
+
+It is correct and it was needed. The loop stops at the first non-finite `qpos`/`qvel`, so `peaks` hold finite values from *before* the explosion. Python's `max(peak, nan)` also keeps the old value, so the previous code reported every joint "peak … <= rating" PASS on an exploded run: a silent false pass in the validator, not just in baselines. Now `nan or not isfinite(peak)` gives SKIP "no load, simulation went unstable" per joint (with `joint` in data), and both that SKIP and T2.sim_stable "simulation produced NaN/inf states" are blocking. That is right: there are no loads to compare, so the run can't be a known result.
+
+### Warning vs NaN
+
+The distinction is acceptable. With instability warnings but finite states, every joint still gets a measured peak and its own key, so later regressions are still compared row by row; a baselined "MuJoCo raised # instability warning(s)" FAIL doesn't silence anything. One caveat for the record: MuJoCo's bad-qacc warning resets the state mid-run, so peaks after a warning can come from a restarted drop. The rows are still produced and deterministic (two identical runs), so this affects the physics fidelity of that one design, not regression detection.
+
+### New attempts (my choice)
+
+- **Hand-edited baseline.json**: a blocking row put into `known` under another check_id (e.g. a SKIP "no model"), or `tiers_run` cut down to hide a tier. **CAUGHT** by reading the code. `compare` flags any `known` entry for which `is_blocking` is true as "invalid baseline". `tiers_run` can't hide anything, because every current blocking row is reported as "did not run" whatever the baseline says.
+- **Rewording the blocking messages**: blocking is decided by substrings of the message (`_WHOLE_GROUP_SKIPS/_FAILS`). Build failure and missing mujoco are pinned by end-to-end tests that go through sim.py (tests L395-L416), so rewording them would break a test. "simulation produced NaN/inf states", "simulation went unstable" and "standards/manufacturing.yaml not written" are only tested as literal strings (L424-L429). Rewording one of those in sim.py or checks.py would quietly make it baselinable again. Fail-safe today, fragile tomorrow. Not blocking; see suggestion 1.
+
+### Verdict
+
+**MERGE-READY**, on the condition the conductor has already taken on: branch protection on main (PR + 1 approval + validate), which the visible-but-passing policy (A3/A4/A5b/D1) relies on.
+
+### Non-blocking
+
+1. Mark blocking results at the source rather than by message text: a `blocking: true` in `CheckResult.data` (or dedicated check_ids such as `T2.sim_unavailable`). Or import the phrases as constants from sim.py/checks.py, so a rewording can't drift from `baseline.py`. Add one end-to-end NaN test (monkeypatch `mujoco.mj_step` to write NaN into `qpos`).
+2. T1 should flag a self-attachment (parent == child) directly; today only the sim build catches it.
+3. Earlier suggestions still open: README "Known limits" entry for A3 (deleting a requirement drops its check); post the ADDED/REMOVED table as a PR comment.
