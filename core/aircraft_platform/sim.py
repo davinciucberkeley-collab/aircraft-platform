@@ -193,7 +193,7 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
     for k, (name, label, a) in enumerate(welds):
         peak = float(peaks[k])
         rated = a.get("rated_load_n")
-        d = {"peak_n": round(peak, 2)}
+        d = {"peak_n": round(peak, 2), "joint": label}
         if a.get("rating_basis") == "placeholder":
             res.append(CheckResult("T2.sim_drop_loads", SKIP, f"{label}: carries {peak:.1f} N; rating is a placeholder, not checked",
                                    STD + "landing_load_factor", d))

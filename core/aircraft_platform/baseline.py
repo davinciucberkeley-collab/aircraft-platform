@@ -27,8 +27,23 @@ def normalize_message(message: str) -> str:
     return _NUMBER_RE.sub("#", text)
 
 
-def result_key(check_id: str, message: str) -> str:
-    return f"{check_id}|{normalize_message(message)}"
+def key_data(data: dict | None) -> dict:
+    """The identity-carrying part of a result's data: strings, bools, and lists of strings (no numbers, no dicts)."""
+    out = {}
+    for k, v in (data or {}).items():
+        if isinstance(v, (str, bool)):
+            out[k] = v
+        elif isinstance(v, (list, tuple)) and all(isinstance(i, str) for i in v):
+            out[k] = list(v)
+    return out
+
+
+def result_key(check_id: str, message: str, data: dict | None = None) -> str:
+    key = f"{check_id}|{normalize_message(message)}"
+    kd = key_data(data)
+    if kd:
+        key += "|" + json.dumps(kd, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return key
 
 
 def snapshot(scorecard: Scorecard) -> dict:
@@ -38,7 +53,7 @@ def snapshot(scorecard: Scorecard) -> dict:
         for r in tier.results:
             if r.status not in (FAIL, SKIP):
                 continue
-            key = result_key(r.check_id, r.message)
+            key = result_key(r.check_id, r.message, r.data)
             entry = found.get(key)
             if entry is None:
                 found[key] = {"key": key, "status": r.status, "check_id": r.check_id,
@@ -140,9 +155,56 @@ def compare(current: dict, baseline: dict | None) -> dict:
             "unchanged_count": unchanged, "missing_baseline": missing}
 
 
-def growth(base_baseline: dict | None, new_baseline: dict | None) -> list[str]:
-    """Keys present in new_baseline but not in base_baseline (None = no baseline there)."""
+def growth(base_baseline: dict | None, new_baseline: dict | None) -> list[dict]:
+    """Entries of new_baseline that are new to base_baseline, raised their count, or went SKIP -> FAIL.
+
+    Each returned entry is a copy with a "reason": "added", "count a→b", or "SKIP→FAIL" (joined when several).
+    """
     if not new_baseline:
         return []
-    old = {e["key"] for e in base_baseline.get("known", [])} if base_baseline else set()
-    return sorted(e["key"] for e in new_baseline.get("known", []) if e["key"] not in old)
+    old = {e["key"]: e for e in base_baseline.get("known", [])} if base_baseline else {}
+    out = []
+    for e in new_baseline.get("known", []):
+        b = old.get(e["key"])
+        if b is None:
+            out.append(dict(e, reason="added"))
+            continue
+        reasons = []
+        b_n, e_n = b.get("count", 1), e.get("count", 1)
+        if e_n > b_n:
+            reasons.append(f"count {b_n}\u2192{e_n}")
+        if b["status"] == SKIP and e["status"] == FAIL:
+            reasons.append("SKIP\u2192FAIL")
+        if reasons:
+            out.append(dict(e, reason="; ".join(reasons)))
+    return sorted(out, key=lambda e: e["key"])
+
+
+def keys_of(baseline: dict | None) -> frozenset:
+    return frozenset(e["key"] for e in (baseline or {}).get("known", []))
+
+
+def baselines_at_ref(ref: str) -> tuple[dict[str, dict], set[str]]:
+    """({folder: baseline} for every designs/<folder>/baseline.json at a git ref, {folders with a plane.yaml there})."""
+    def git(*args: str) -> str | None:
+        try:
+            proc = subprocess.run(["git", "-C", str(REPO_ROOT), *args], capture_output=True, text=True)
+        except OSError:
+            return None
+        return proc.stdout if proc.returncode == 0 else None
+
+    listing = git("ls-tree", "-r", "--name-only", ref, "--", "designs")
+    if listing is None:
+        return {}, set()
+    baselines, designs = {}, set()
+    for line in listing.splitlines():
+        parts = line.split("/")
+        if len(parts) != 3 or parts[0] != "designs":
+            continue
+        if parts[2] == "plane.yaml":
+            designs.add(parts[1])
+        elif parts[2] == "baseline.json":
+            text = git("show", f"{ref}:{line}")
+            if text is not None:
+                baselines[parts[1]] = json.loads(text)
+    return baselines, designs

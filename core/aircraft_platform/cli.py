@@ -14,7 +14,8 @@ import numpy as np
 import yaml
 
 from . import __version__
-from .baseline import baseline_path, compare, growth, baseline_at_ref, read_baseline, snapshot, write_baseline
+from .baseline import (baseline_path, baselines_at_ref, compare, growth, keys_of, read_baseline, snapshot,
+                       write_baseline)
 from .design import DESIGNS_DIR, FAIL, SCHEMA_PATH, SKIP, list_designs, load_design
 from .checks import validate
 from .export import export_glb, export_stl, export_json
@@ -342,9 +343,28 @@ def _md_cell(text: str) -> str:
 
 
 def _md_table(rows: list[dict]) -> list[str]:
-    lines = ["| check_id | status | message |", "|---|---|---|"]
-    lines += [f"| {_md_cell(r['check_id'])} | {r['status']} | {_md_cell(r['example'])} |" for r in rows]
+    lines = ["| check_id | status | message | reason |", "|---|---|---|---|"]
+    lines += [f"| {_md_cell(r['check_id'])} | {r['status']} | {_md_cell(r['example'])} | {_md_cell(r['reason'])} |"
+              for r in rows]
     return lines
+
+
+def _renamed_from(folder: str, cur: dict, ref_baselines: dict[str, dict]) -> str | None:
+    """A design folder that existed at the base ref, is gone now, and had the same known keys.
+
+    The folder name may appear in a message (e.g. "plane fea <folder> --all"), so it is masked before comparing.
+    """
+    def masked(keys: frozenset, name: str) -> frozenset:
+        return frozenset(k.replace(name, "<design>") for k in keys)
+
+    keys = keys_of(cur)
+    if not keys:
+        return None
+    for old, bl in sorted(ref_baselines.items()):
+        if old != folder and not (DESIGNS_DIR / old).is_dir() \
+                and masked(keys_of(bl), old) == masked(keys, folder):
+            return old
+    return None
 
 
 @baseline_group.command("check")
@@ -352,24 +372,31 @@ def _md_table(rows: list[dict]) -> list[str]:
 @click.option("--all", "all_designs", is_flag=True, help="Every design under designs/.")
 @click.option("--format", "fmt", type=click.Choice(["md", "json"]), default="md", show_default=True)
 @click.option("--base-ref", default=None,
-              help="Git ref (e.g. origin/main) whose baseline.json files the current ones are compared with for growth.")
+              help="Git ref (e.g. origin/main) to compare committed baselines with, for growth, renames and new designs.")
 def baseline_check_cmd(paths, all_designs, fmt, base_ref):
     """Compare each design with its baseline.json; exit 1 on regressions or a missing baseline."""
+    ref_baselines, ref_designs = baselines_at_ref(base_ref) if base_ref else ({}, set())
     reports = []
     for design in _designs(paths, all_designs):
-        folder = design.path.parent
+        folder_path = design.path.parent
+        folder = folder_path.name
         card = validate(design)
         snap = snapshot(card)
-        base = read_baseline(folder)
+        base = read_baseline(folder_path)
         cmp = compare(snap, base)
-        added = []
+        added, renamed, new_design = [], None, False
         if base_ref and base is not None:
-            known = {e["key"]: e for e in base["known"]}
-            for key in growth(baseline_at_ref(folder, base_ref), base):
-                added.append(known[key])
-        reports.append({"design_id": design.id, "folder": folder.name, "accepted": snap["accepted"],
-                        "known": snap["known"], "cmp": cmp, "added": added,
-                        "ok": not cmp["regressions"] and not cmp["missing_baseline"]})
+            if folder in ref_baselines:
+                added = growth(ref_baselines[folder], base)
+            else:
+                renamed = _renamed_from(folder, base, ref_baselines)
+                if renamed is None and folder not in ref_designs:
+                    new_design = True
+                elif renamed is None:
+                    added = growth(None, base)
+        reports.append({"design_id": design.id, "folder": folder, "accepted": snap["accepted"],
+                        "known": snap["known"], "cmp": cmp, "added": added, "renamed": renamed,
+                        "new_design": new_design, "ok": not cmp["regressions"] and not cmp["missing_baseline"]})
 
     if fmt == "json":
         click.echo(_dumps([{"design_id": r["design_id"], "accepted": r["accepted"],
@@ -377,8 +404,7 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
                             "regressions": r["cmp"]["regressions"], "improvements": r["cmp"]["improvements"],
                             "unchanged_count": r["cmp"]["unchanged_count"],
                             "missing_baseline": r["cmp"]["missing_baseline"],
-                            "growth": [{"key": e["key"], "check_id": e["check_id"], "status": e["status"],
-                                        "example": e["example"]} for e in r["added"]]}
+                            "growth": r["added"], "renamed_from": r["renamed"], "new_design": r["new_design"]}
                            for r in reports]) + "\n")
     else:
         lines = ["# Baseline check", ""]
@@ -394,16 +420,26 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
                 lines.append(f"Known results: {len(r['known'])} (FAIL {counts[FAIL]}, SKIP {counts[SKIP]}). "
                              f"Unchanged: {cmp['unchanged_count']}. Regressions: {len(cmp['regressions'])}. "
                              f"Improvements: {len(cmp['improvements'])}.")
+            if r["renamed"]:
+                lines += ["", f"Renamed from `{r['renamed']}`: same known failures, so nothing is listed as added."]
             if cmp["missing_baseline"]:
                 lines += ["", f"**Missing baseline.json.** Run `plane baseline update designs/{r['folder']}` and commit it."]
             if cmp["regressions"]:
                 lines += ["", "### Regressions", ""] + _md_table(cmp["regressions"])
-            if cmp["improvements"]:
+            if cmp["improvements"] and cmp["regressions"]:
+                lines += ["", "### Other changes (not improvements: this design also has regressions; do not lock these in yet)", ""]
+                lines += _md_table(cmp["improvements"])
+            elif cmp["improvements"]:
                 lines += ["", f"Locked in nothing yet: run `plane baseline update designs/{r['folder']}` and commit to record the improvement.",
                           "", "### Improvements", ""] + _md_table(cmp["improvements"])
             if r["added"]:
                 lines += ["", "### Known failures ADDED to the baseline in this change (reviewers: confirm each)", ""]
-                lines += [f"- `{e['check_id']}` {e['status']}: {e['example']}" for e in r["added"]]
+                lines += _md_table([{"check_id": e["check_id"], "status": e["status"], "example": e["example"],
+                                     "reason": e["reason"]} for e in r["added"]])
+            if r["new_design"]:
+                n = len(r["known"])
+                lines += ["", f"**New design: {n} known failures \u2014 confirm.**", ""]
+                lines += _md_table([dict(e, reason="new design") for e in r["known"]])
         click.echo("\n".join(lines) + "\n", nl=False)
         if os.environ.get("GITHUB_ACTIONS") == "true":
             for r in reports:
