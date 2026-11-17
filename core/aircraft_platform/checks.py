@@ -37,7 +37,7 @@ def tier0_schema(design: Design) -> TierReport:
     errors = sorted(Draft202012Validator(schema).iter_errors(design.data), key=lambda e: list(e.path))
     if errors:
         res = [CheckResult("T0.schema", FAIL, f"{'/'.join(map(str, e.path)) or '<root>'}: {e.message}",
-                           "schema/plane.schema.json") for e in errors[:20]]
+                           "schema/plane.schema.json", {"parts": ["/".join(map(str, e.path)) or "<root>"]}) for e in errors[:20]]
     else:
         res = [CheckResult("T0.schema", PASS, f"matches schema v{design.data.get('schema_version', '0.1')}", "schema/plane.schema.json")]
     uses_v02 = any(a.get("articulation") for a in design.data.get("attachments", [])) or \
@@ -79,17 +79,18 @@ def tier0_schema(design: Design) -> TierReport:
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:
         res.append(CheckResult("T0.unique_ids", FAIL, f"duplicate component ids: {sorted(dupes)}",
-                               "schema/plane.schema.json"))
+                               "schema/plane.schema.json", {"parts": sorted(dupes)}))
     known = set(ids)
     bad = [a for a in design.data.get("attachments", []) if a["parent"] not in known or a["child"] not in known]
     if bad:
         res.append(CheckResult("T0.attachment_refs", FAIL,
                                "attachments reference unknown components: " +
                                ", ".join(f"{a['parent']}->{a['child']}" for a in bad),
-                               "schema/plane.schema.json"))
+                               "schema/plane.schema.json",
+                               {"joint": [f"{a['parent']}->{a['child']}" for a in bad]}))
     if design.data.get("root") not in known:
         res.append(CheckResult("T0.root", FAIL, f"root '{design.data.get('root')}' is not a component",
-                               "schema/plane.schema.json"))
+                               "schema/plane.schema.json", {"parts": [str(design.data.get("root"))]}))
     return TierReport(0, "schema", res)
 
 
@@ -278,7 +279,7 @@ def _articulation_checks(design: Design, std: dict, meshes: dict) -> list[CheckR
     for key in ("hover_pose", "cruise_pose"):
         if key in flight and flight[key] not in known:
             res.append(CheckResult("T1.articulation", FAIL, f"flight.{key} '{flight[key]}' is not a pose of any articulated joint",
-                                   "schema/plane.schema.json"))
+                                   "schema/plane.schema.json", {"pose": str(flight[key])}))
     return res
 
 
@@ -410,7 +411,7 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
             res.append(CheckResult("T1.motor_has_prop", FAIL,
                                    f"{comp['id']}: has a propulsion block but no propeller attached directly or through "
                                    f"up to {PROP_CHAIN_MAX_INTERMEDIATE} bolted or press-fit other/structure parts",
-                                   STD + "embed_max_fraction_of_child", {"motor": comp["id"]}))
+                                   STD + "embed_max_fraction_of_child", {"component": comp["id"]}))
         elif len(path) == 2:
             res.append(CheckResult("T1.motor_has_prop", PASS, f"{comp['id']}: drives an attached propeller",
                                    STD + "embed_max_fraction_of_child"))
@@ -448,7 +449,7 @@ def _contact_and_clash_checks(design: Design, std: dict, meshes: dict, tf: dict,
         shown = ", ".join(ids[:6]) + (", \u2026" if len(ids) > 6 else "")
         res.append(CheckResult("T1.kinematic_link", SKIP,
                                f"{len(unchecked)} pair(s) not checked \u2014 linkage path not modelled: {shown}",
-                               "schema/plane.schema.json", {"pairs": [f"{a_} & {b_}" for a_, b_ in unchecked]}))
+                               "schema/plane.schema.json", {"pair": [f"{a_} & {b_}" for a_, b_ in unchecked]}))
     return res
 
 
@@ -473,6 +474,7 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
     res: list[CheckResult] = []
     envelope = None  # convex hull of all non-propeller geometry, built once if a distributed mass needs it
     dist_g = 0.0
+    dist_ids: list[str] = []
     for pm in design.components:
         if not is_point_mass(pm):
             continue
@@ -486,17 +488,18 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
                        & set(meshes))
         if distributed:
             dist_g += pm["mass_g"]
+            dist_ids.append(cid)
             if pm["type"] != "other":
                 extra.append(CheckResult("T1.point_mass_location", FAIL,
                                          f"{cid}: distributed point masses are only for type other (lumped hardware, harness); "
                                          f"{pm['type']} parts must be modelled with geometry",
-                                         STD + "distributed_mass_max_fraction_each"))
+                                         STD + "distributed_mass_max_fraction_each", {"component": cid}))
             share = pm["mass_g"] / total_g
             if share > lim_each:
                 extra.append(CheckResult("T1.point_mass_location", FAIL,
                                          f"{cid}: {pm['mass_g']:.1f} g is {share:.1%} of the {total_g:.0f} g aircraft; "
                                          f"a distributed point mass may carry at most {lim_each:.0%}",
-                                         STD + "distributed_mass_max_fraction_each"))
+                                         STD + "distributed_mass_max_fraction_each", {"component": cid}))
             if envelope is None:
                 pts = np.vstack([m.vertices for k in meshes if k not in props for m in meshes[k]])
                 envelope = [trimesh.convex.convex_hull(pts)]
@@ -515,7 +518,8 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
             if _inside(meshes[pid], p):
                 problems.append(f"{cid} at {at} lies inside the prop disc of {pid}")
         if problems:
-            res += [CheckResult("T1.point_mass_location", FAIL, m, STD + "attach_tolerance_mm") for m in problems]
+            res += [CheckResult("T1.point_mass_location", FAIL, m, STD + "attach_tolerance_mm", {"component": cid})
+                    for m in problems]
         elif distributed:
             res.append(CheckResult("T1.point_mass_location", PASS,
                                    f"{cid} at {at}: distributed mass inside the aircraft's envelope, outside every prop disc",
@@ -529,7 +533,7 @@ def _point_mass_checks(design: Design, std: dict, meshes: dict, atts: list[dict]
         res.append(CheckResult("T1.point_mass_location", FAIL,
                                f"distributed point masses together carry {dist_g:.1f} g ({dist_g / total_g:.1%} of the "
                                f"{total_g:.0f} g aircraft); the limit is {lim_total:.0%}",
-                               STD + "distributed_mass_max_fraction_total"))
+                               STD + "distributed_mass_max_fraction_total", {"parts": dist_ids}))
     return res
 
 
@@ -544,7 +548,7 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     leaky = [cid for cid, ps in meshes.items() if not all(p.is_watertight for p in ps)]
     res.append(CheckResult("T1.watertight", FAIL if leaky else PASS,
                            f"non-watertight: {leaky}" if leaky else "all component meshes are closed",
-                           STD + "interference_max_mm3"))
+                           STD + "interference_max_mm3", {"parts": leaky}))
 
     # connectivity
     adj = defaultdict(set)
@@ -560,7 +564,7 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
     res.append(CheckResult("T1.connectivity", FAIL if loose else PASS,
                            f"not attached to '{root}' (would fall off): {loose}" if loose
                            else f"all {len(all_ids)} components connect to '{root}'",
-                           STD + "attach_tolerance_mm"))
+                           STD + "attach_tolerance_mm", {"parts": loose}))
 
     identity = {cid: np.eye(4) for cid in all_ids}
     cache = _PairCache()
@@ -579,17 +583,17 @@ def tier1_geometry(design: Design, std: dict) -> TierReport:
             fails = [r for r in sub if r.status == FAIL and (r.check_id, r.message) not in static_fails]
             for r in fails:
                 r.message = f"{name}: {r.message}"
-                r.data = {**r.data, "configuration": name}
+                r.data = {**r.data, "pose": name}
             res += fails
             for r in sub:
                 if r.status in (WARN, SKIP):
                     r.message = f"{name}: {r.message}"
-                    r.data = {**r.data, "configuration": name}
+                    r.data = {**r.data, "pose": name}
                     res.append(r)
             if not fails and not any(r.status == SKIP for r in sub):
                 res.append(CheckResult("T1.pose", PASS,
                                        f"{name}: attachments, overlap and interference all OK",
-                                       STD + "interference_max_mm3", {"configuration": name}))
+                                       STD + "interference_max_mm3", {"pose": name}))
     return TierReport(1, "geometry", res)
 
 
@@ -944,23 +948,24 @@ def tier4_manufacturing(design: Design) -> TierReport:
                                        {"component": c["id"]}))
             else:
                 res.append(CheckResult("T4.machine", FAIL,
-                                       f"{c['id']}: in-house method {method} needs a `machine` so fit can be checked", MFG))
+                                       f"{c['id']}: in-house method {method} needs a `machine` so fit can be checked", MFG,
+                                       {"component": c["id"]}))
             continue
         mach = machines.get(mid)
         if mach is None:
             res.append(CheckResult("T4.machine", FAIL, f"{c['id']}: machine '{mid}' is not in standards/manufacturing.yaml", MFG,
-                                   {"component": c["id"]}))
+                                   {"component": c["id"], "machine": mid}))
             continue
         if method not in mach.get("methods", []):
             res.append(CheckResult("T4.method", FAIL,
                                    f"{c['id']}: {mid} does not do {method} (it does {mach.get('methods', [])})",
-                                   f"{MFG}#{mid}"))
+                                   f"{MFG}#{mid}", {"component": c["id"], "machine": mid}))
             continue
         bed = mach.get("build_volume_mm")
         if not bed:
             res.append(CheckResult("T4.fits_machine", SKIP,
                                    f"{c['id']}: fit not verified — add build_volume_mm to manufacturing.yaml ({mid})",
-                                   f"{MFG}#{mid}"))
+                                   f"{MFG}#{mid}", {"component": c["id"], "machine": mid}))
             continue
         if is_point_mass(c):  # schema 0.4: no extent, so nothing to fit on a bed
             res.append(CheckResult("T4.method", PASS, f"{c['id']}: {method} on {mid}, point mass (no extent to fit)",

@@ -160,7 +160,7 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
     except Exception as e:  # noqa: BLE001
         msg = f"could not build simulation model: {e}"
         return [CheckResult("T2.sim_stable", FAIL, msg, STD + "duration_s"),
-                CheckResult("T2.sim_drop_loads", SKIP, "no model", STD + "drop_height_m"),
+                CheckResult("T2.sim_drop_loads", SKIP, "no model", STD + "drop_height_m", {"parts": []}),
                 CheckResult("T2.sim_rest", SKIP, "no model", STD + "drop_height_m")]
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)

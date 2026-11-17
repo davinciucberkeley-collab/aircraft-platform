@@ -14,7 +14,7 @@ import numpy as np
 import yaml
 
 from . import __version__
-from .baseline import (baseline_path, baselines_at_ref, compare, growth, keys_of, read_baseline, snapshot,
+from .baseline import (baseline_path, baselines_at_ref, compare, growth, keys_of, read_baseline, removed, snapshot,
                        write_baseline)
 from .design import DESIGNS_DIR, FAIL, SCHEMA_PATH, SKIP, list_designs, load_design
 from .checks import validate
@@ -323,9 +323,16 @@ def _designs(paths, all_designs):
 @click.option("--all", "all_designs", is_flag=True, help="Every design under designs/.")
 def baseline_update_cmd(paths, all_designs):
     """Record the current known failures of each design in its baseline.json."""
+    refused = False
     for design in _designs(paths, all_designs):
         folder = design.path.parent
         card = validate(design)
+        if snapshot(card)["blocking"]:
+            first = snapshot(card)["blocking"][0]
+            click.echo(f"{design.id}: refused: schema or tier errors are never baselined "
+                       f"({first['check_id']}: {first['message']}); nothing written", err=True)
+            refused = True
+            continue
         if card.accepted:
             path = baseline_path(folder)
             if path.exists():
@@ -336,6 +343,8 @@ def baseline_update_cmd(paths, all_designs):
             continue
         path = write_baseline(folder, card)
         click.echo(f"{design.id}: wrote {path} ({len(snapshot(card)['known'])} known)")
+    if refused:
+        sys.exit(2)
 
 
 def _md_cell(text: str) -> str:
@@ -384,8 +393,9 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
         snap = snapshot(card)
         base = read_baseline(folder_path)
         cmp = compare(snap, base)
-        added, renamed, new_design = [], None, False
+        added, renamed, new_design, gone = [], None, False, []
         if base_ref and base is not None:
+            gone = removed(ref_baselines.get(folder), base)
             if folder in ref_baselines:
                 added = growth(ref_baselines[folder], base)
             else:
@@ -396,7 +406,8 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
                     added = growth(None, base)
         reports.append({"design_id": design.id, "folder": folder, "accepted": snap["accepted"],
                         "known": snap["known"], "cmp": cmp, "added": added, "renamed": renamed,
-                        "new_design": new_design, "ok": not cmp["regressions"] and not cmp["missing_baseline"]})
+                        "new_design": new_design, "removed": gone,
+                        "ok": not cmp["regressions"] and not cmp["missing_baseline"]})
 
     if fmt == "json":
         click.echo(_dumps([{"design_id": r["design_id"], "accepted": r["accepted"],
@@ -404,7 +415,8 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
                             "regressions": r["cmp"]["regressions"], "improvements": r["cmp"]["improvements"],
                             "unchanged_count": r["cmp"]["unchanged_count"],
                             "missing_baseline": r["cmp"]["missing_baseline"],
-                            "growth": r["added"], "renamed_from": r["renamed"], "new_design": r["new_design"]}
+                            "growth": r["added"], "removed": r["removed"], "renamed_from": r["renamed"],
+                            "new_design": r["new_design"]}
                            for r in reports]) + "\n")
     else:
         lines = ["# Baseline check", ""]
@@ -436,6 +448,9 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
                 lines += ["", "### Known failures ADDED to the baseline in this change (reviewers: confirm each)", ""]
                 lines += _md_table([{"check_id": e["check_id"], "status": e["status"], "example": e["example"],
                                      "reason": e["reason"]} for e in r["added"]])
+            if r["removed"]:
+                lines += ["", "### Known results REMOVED from the baseline in this change (reviewers: confirm each)", ""]
+                lines += _md_table([dict(e, reason="removed") for e in r["removed"]])
             if r["new_design"]:
                 n = len(r["known"])
                 lines += ["", f"**New design: {n} known failures \u2014 confirm.**", ""]

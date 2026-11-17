@@ -23,7 +23,7 @@
     {
       "check_id": "T2.fea_strength",
       "example": "17 printed part(s) have no OpenCAE stress check yet (plane fea c0-lift-cruise --all)",
-      "key": "T2.fea_strength|# printed part(s) have no OpenCAE stress check yet (plane fea c0-lift-cruise --all)|{\"missing\":[\"boom_clamp_f_l\",\"boom_clamp_r_l\",\"lift_mount_fl\",\"gear_clamp_fl\",\"lift_mount_rl\",\"gear_clamp_rl\",\"tail_clamp_l\",\"fin_shoe_l\",\"boom_clamp_f_r\",\"boom_clamp_r_r\",\"lift_mount_fr\",\"gear_clamp_fr\",\"lift_mount_rr\",\"gear_clamp_rr\",\"tail_clamp_r\",\"fin_shoe_r\",\"pusher_cup\"]}",
+      "key": "T2.fea_strength|# printed part(s) have no OpenCAE stress check yet (plane fea c0-lift-cruise --all)|{\"parts\":[\"boom_clamp_f_l\",\"boom_clamp_r_l\",\"lift_mount_fl\",\"gear_clamp_fl\",\"lift_mount_rl\",\"gear_clamp_rl\",\"tail_clamp_l\",\"fin_shoe_l\",\"boom_clamp_f_r\",\"boom_clamp_r_r\",\"lift_mount_fr\",\"gear_clamp_fr\",\"lift_mount_rr\",\"gear_clamp_rr\",\"tail_clamp_r\",\"fin_shoe_r\",\"pusher_cup\"]}",
       "status": "SKIP"
     },
     {
@@ -105,5 +105,13 @@
       "status": "FAIL"
     }
   ],
-  "schema": 1
+  "schema": 1,
+  "tiers_run": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
 }

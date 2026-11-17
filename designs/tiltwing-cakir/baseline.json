@@ -17,121 +17,121 @@
     {
       "check_id": "T1.interference",
       "example": "pose hover (90\u00b0): clipping: fuselage and tail overlap 479781 mm^3",
-      "key": "T1.interference|pose hover (#\u00b0): clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"pose hover (90\u00b0)\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|pose hover (#\u00b0): clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"pose hover (90\u00b0)\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "pose hover (90\u00b0): clipping: fuselage and wing overlap 1576518 mm^3",
-      "key": "T1.interference|pose hover (#\u00b0): clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"pose hover (90\u00b0)\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|pose hover (#\u00b0): clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"pose hover (90\u00b0)\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "range max of tail-tilt (95\u00b0): clipping: fuselage and tail overlap 481163 mm^3",
-      "key": "T1.interference|range max of tail-tilt (#\u00b0): clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"range max of tail-tilt (95\u00b0)\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|range max of tail-tilt (#\u00b0): clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"range max of tail-tilt (95\u00b0)\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "range max of wing-tilt (95\u00b0): clipping: fuselage and wing overlap 1582541 mm^3",
-      "key": "T1.interference|range max of wing-tilt (#\u00b0): clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"range max of wing-tilt (95\u00b0)\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|range max of wing-tilt (#\u00b0): clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"range max of wing-tilt (95\u00b0)\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep tail-tilt 15\u00b0: clipping: fuselage and tail overlap 579634 mm^3",
-      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"sweep tail-tilt 15\u00b0\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"sweep tail-tilt 15\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep tail-tilt 30\u00b0: clipping: fuselage and tail overlap 570611 mm^3",
-      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"sweep tail-tilt 30\u00b0\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"sweep tail-tilt 30\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep tail-tilt 45\u00b0: clipping: fuselage and tail overlap 549769 mm^3",
-      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"sweep tail-tilt 45\u00b0\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"sweep tail-tilt 45\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep tail-tilt 60\u00b0: clipping: fuselage and tail overlap 521932 mm^3",
-      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"sweep tail-tilt 60\u00b0\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"sweep tail-tilt 60\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep tail-tilt 75\u00b0: clipping: fuselage and tail overlap 492497 mm^3",
-      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"sweep tail-tilt 75\u00b0\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"sweep tail-tilt 75\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep tail-tilt 90\u00b0: clipping: fuselage and tail overlap 479781 mm^3",
-      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"configuration\":\"sweep tail-tilt 90\u00b0\",\"pair\":[\"fuselage\",\"tail\"]}",
+      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#|{\"pair\":[\"fuselage\",\"tail\"],\"pose\":\"sweep tail-tilt 90\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 15\u00b0: clipping: fuselage and wing overlap 1474748 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"sweep wing-tilt 15\u00b0\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"sweep wing-tilt 15\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 30\u00b0: clipping: fuselage and wing overlap 1913267 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"sweep wing-tilt 30\u00b0\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"sweep wing-tilt 30\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 45\u00b0: clipping: fuselage and wing overlap 2006426 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"sweep wing-tilt 45\u00b0\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"sweep wing-tilt 45\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 60\u00b0: clipping: fuselage and wing overlap 1820374 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"sweep wing-tilt 60\u00b0\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"sweep wing-tilt 60\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 75\u00b0: clipping: fuselage and wing overlap 1632133 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"sweep wing-tilt 75\u00b0\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"sweep wing-tilt 75\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 90\u00b0: clipping: fuselage and wing overlap 1576518 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"configuration\":\"sweep wing-tilt 90\u00b0\",\"pair\":[\"fuselage\",\"wing\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#|{\"pair\":[\"fuselage\",\"wing\"],\"pose\":\"sweep wing-tilt 90\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 15\u00b0: clipping: wing and payload overlap 419626 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"configuration\":\"sweep wing-tilt 15\u00b0\",\"pair\":[\"wing\",\"payload\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"pair\":[\"wing\",\"payload\"],\"pose\":\"sweep wing-tilt 15\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 30\u00b0: clipping: wing and payload overlap 800488 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"configuration\":\"sweep wing-tilt 30\u00b0\",\"pair\":[\"wing\",\"payload\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"pair\":[\"wing\",\"payload\"],\"pose\":\"sweep wing-tilt 30\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 45\u00b0: clipping: wing and payload overlap 667293 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"configuration\":\"sweep wing-tilt 45\u00b0\",\"pair\":[\"wing\",\"payload\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"pair\":[\"wing\",\"payload\"],\"pose\":\"sweep wing-tilt 45\u00b0\"}",
       "status": "FAIL"
     },
     {
       "check_id": "T1.interference",
       "example": "sweep wing-tilt 60\u00b0: clipping: wing and payload overlap 181278 mm^3",
-      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"configuration\":\"sweep wing-tilt 60\u00b0\",\"pair\":[\"wing\",\"payload\"]}",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#|{\"pair\":[\"wing\",\"payload\"],\"pose\":\"sweep wing-tilt 60\u00b0\"}",
       "status": "FAIL"
     },
     {
@@ -225,5 +225,13 @@
       "status": "FAIL"
     }
   ],
-  "schema": 1
+  "schema": 1,
+  "tiers_run": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
 }

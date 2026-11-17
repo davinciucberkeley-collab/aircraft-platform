@@ -193,7 +193,7 @@ def test_rename_matches_gone_folder_with_identical_keys(tmp_path):
 
 def _copy_example(tmp_path: Path) -> Path:
     folder = tmp_path / "example-tailsitter-wing"
-    folder.mkdir()
+    folder.mkdir(parents=True)
     (folder / "plane.yaml").write_text((DESIGNS_DIR / "example-tailsitter-wing" / "plane.yaml").read_text())
     return folder
 
@@ -255,3 +255,125 @@ def test_check_md_table_shows_message_and_reason(tmp_path):
     out = runner.invoke(cli, ["baseline", "check", str(folder)]).output
     assert "| check_id | status | message | reason |" in out
     assert "| T2.joint_load | FAIL | mount-l: 3.6 N at 4.5g exceeds rating 2 N | not in baseline |" in out
+
+
+# --- schema errors and tiers that did not run (D3) ---------------------------
+
+def test_schema_error_is_never_baselined(tmp_path):
+    folder = _copy_example(tmp_path)
+    data = yaml.safe_load((folder / "plane.yaml").read_text())
+    data["notes_v2"] = "unexpected"
+    (folder / "plane.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+    runner = CliRunner()
+    result = runner.invoke(cli, ["baseline", "update", str(folder)])
+    assert result.exit_code == 2, result.output
+    assert not (folder / "baseline.json").exists()
+
+
+def test_schema_error_after_a_baseline_is_a_regression(tmp_path):
+    folder = _copy_example(tmp_path)
+    runner = CliRunner()
+    _set_rating(folder, "motor-l", 3)  # a non-accepted design gets a real baseline
+    assert runner.invoke(cli, ["baseline", "update", str(folder)]).exit_code == 0
+    assert runner.invoke(cli, ["baseline", "check", str(folder)]).exit_code == 0
+    data = yaml.safe_load((folder / "plane.yaml").read_text())
+    data["notes_v2"] = "unexpected"
+    (folder / "plane.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+    check = runner.invoke(cli, ["baseline", "check", str(folder)])
+    assert check.exit_code == 1, check.output
+    assert "did not reach tier 1" in check.output
+
+
+def test_baseline_file_with_schema_entries_is_invalid(tmp_path):
+    folder = _copy_example(tmp_path)
+    _set_rating(folder, "motor-l", 3)
+    runner = CliRunner()
+    assert runner.invoke(cli, ["baseline", "update", str(folder)]).exit_code == 0
+    import json as _json
+    data = _json.loads((folder / "baseline.json").read_text())
+    data["known"].append({"key": "T0.schema|x", "status": "FAIL", "check_id": "T0.schema", "example": "x"})
+    (folder / "baseline.json").write_text(_json.dumps(data))
+    assert runner.invoke(cli, ["baseline", "check", str(folder)]).exit_code == 1
+
+
+# --- subjects on per-subject results (D2) ------------------------------------
+
+def _rename_component(data: dict, old: str, new: str) -> None:
+    for c in data["components"]:
+        if c["id"] == old:
+            c["id"] = new
+    for a in data["attachments"]:
+        for k in ("id", "parent", "child"):
+            if a.get(k) == old:
+                a[k] = new
+    if data.get("root") == old:
+        data["root"] = new
+
+
+def test_all_digit_component_ids_swap_is_a_regression(tmp_path):
+    folder = _copy_example(tmp_path)
+    data = yaml.safe_load((folder / "plane.yaml").read_text())
+    _rename_component(data, "motor_l", "5")
+    _rename_component(data, "motor_r", "6")
+    for c in data["components"]:
+        if c["id"] == "5":
+            c.pop("manufacturing", None)  # T4.method FAIL on component "5"
+    (folder / "plane.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+    runner = CliRunner()
+    assert runner.invoke(cli, ["baseline", "update", str(folder)]).exit_code == 0
+    data = yaml.safe_load((folder / "plane.yaml").read_text())
+    for c in data["components"]:
+        if c["id"] == "5":
+            c["manufacturing"] = {"method": "laser-cut", "machine": "jacobs-laser"}
+        if c["id"] == "6":
+            c.pop("manufacturing", None)  # the swap: now component "6" fails the same check
+    (folder / "plane.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+    check = runner.invoke(cli, ["baseline", "check", str(folder)])
+    assert check.exit_code == 1, check.output
+    assert "| T4.method | FAIL | 6: no manufacturing method" in check.output.split("### Improvements")[0]
+
+
+# --- every per-subject result says what it is about --------------------------
+
+def _guard_designs(tmp_path):
+    from aircraft_platform.design import list_designs
+    paths = [p for p in list_designs()]
+    folder = _copy_example(tmp_path / "m1")
+    data = yaml.safe_load((folder / "plane.yaml").read_text())
+    data["notes_v2"] = "x"
+    (folder / "plane.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+    paths.append(folder / "plane.yaml")
+    folder = _copy_example(tmp_path / "m2")
+    _set_rating(folder, "motor-l", 3)
+    paths.append(folder / "plane.yaml")
+    folder = _copy_example(tmp_path / "m3")
+    data = yaml.safe_load((folder / "plane.yaml").read_text())
+    for c in data["components"]:
+        if c["id"] == "motor_l":
+            c.pop("manufacturing", None)
+    (folder / "plane.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+    paths.append(folder / "plane.yaml")
+    folder = _copy_example(tmp_path / "m4")
+    data = yaml.safe_load((folder / "plane.yaml").read_text())
+    data["attachments"] = [a for a in data["attachments"] if a.get("child") != "prop_l"]
+    (folder / "plane.yaml").write_text(yaml.safe_dump(data, sort_keys=False))
+    paths.append(folder / "plane.yaml")
+    return paths
+
+
+def test_every_fail_or_skip_names_its_subject_or_is_design_level(tmp_path):
+    from aircraft_platform.baseline import DESIGN_LEVEL, SUBJECT_KEYS
+    from aircraft_platform.design import FAIL, SKIP
+    from aircraft_platform.checks import validate
+    from aircraft_platform.design import load_design
+    missing = []
+    for path in _guard_designs(tmp_path):
+        card = validate(load_design(path))
+        for t in card.tiers:
+            for r in t.results:
+                if r.status not in (FAIL, SKIP):
+                    continue
+                if any(k in r.data for k in SUBJECT_KEYS) or r.check_id in DESIGN_LEVEL:
+                    continue
+                missing.append((str(path.parent.name), r.check_id, r.message[:90]))
+    assert not missing, missing
