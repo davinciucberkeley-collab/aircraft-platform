@@ -18,15 +18,36 @@ plans/ reviews/  agent plans and review scorecards
 
 ## Quick start
 
+Needs Python 3.11 or newer (3.12 is what CI uses) and git. Use a fresh environment, for example
+`conda create -n aircraft -c conda-forge python=3.12 -y` then `conda activate aircraft`.
+
 ```bash
+git clone https://github.com/davinciucberkeley-collab/aircraft-platform
+cd aircraft-platform
 pip install -e ".[mcp,dev]"
+plane --version                                     # plane, version 0.1.0
 plane list
 plane validate designs/example-tailsitter-wing     # scorecard; exit 0 = accepted
 plane new my-concept --from example-tailsitter-wing
 plane export designs/my-concept --format glb --out build/my-concept.glb   # also stl, json, mjcf
-plane build-index --out viewer/data && python3 -m http.server -d viewer   # open localhost:8000
+plane build-index --out viewer/data
+python -m http.server -d viewer                    # open localhost:8000 (python3 on macOS/Linux)
 pytest -q
 ```
+
+On Windows, run these in Miniforge Prompt (or any terminal with the environment active) and write paths with `\`
+if you like: `plane validate designs\concept-a` works the same.
+
+### Re-import Dillon's concept A from DBF-Combined
+
+```bash
+git clone https://github.com/davinciucberkeley-collab/dbf-combined ../dbf-combined
+plane import dbf --dbf-root ../dbf-combined      # rewrites designs/concept-a/ (read-only on the source repo)
+plane validate designs/concept-a --out concept-a-score.md
+```
+
+The importer runs DBF-Combined's own CAD script with this environment's Python, so nothing else needs installing.
+A fresh import should differ from the committed `designs/concept-a/` only in the source commit id in its header.
 
 Claude Code: `claude mcp add aircraft-platform -- plane-mcp` (see docs/mcp.md).
 
