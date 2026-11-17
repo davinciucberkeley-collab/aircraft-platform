@@ -88,6 +88,7 @@ class Viewport {
     const token = (this.token = Symbol());
     this.clear();
     if (!design) return this.message('Select a design');
+    if (design.pending) return this.message('Checking this design… the model appears when it is done.');
     if (design.error) return this.message('No model: ' + design.error, true);
     if (!design.glb) return this.message('No GLB for this design', true);
     this.message('Loading…');
@@ -223,7 +224,7 @@ function renderSidebar() {
   if (!shown.length) list.append(h('li', { class: 'empty' }, 'No designs match.'));
   for (const d of shown) {
     const sel = state.mode === 'inspect' ? state.selected === d.id : (state.slotA === d.id || state.slotB === d.id);
-    const badge = d.error ? h('span', { class: 'badge error' }, 'error')
+    const badge = d.pending ? h('span', { class: 'badge pending' }, 'checking…') : d.error ? h('span', { class: 'badge error' }, 'error')
       : h('span', { class: 'badge ' + (d.accepted ? 'accepted' : 'rejected') }, d.accepted ? 'accepted' : 'rejected');
     const tags = Object.entries(d.morphology || {}).map(([k, v]) => h('span', { class: 'tag', title: k }, String(v)));
     const pills = TIERS.map((t) => { const s = d.tiers?.[t] ?? 'NONE'; return h('span', { class: 'pill ' + s, title: `Tier ${t}: ${s}` }, 'T' + t); });
@@ -256,6 +257,8 @@ async function renderScorecard(d) {
   const box = $('scorecard'); box.replaceChildren();
   if (!d) { box.append(h('p', { class: 'muted' }, 'Select a design from the list.')); return; }
   box.append(h('h2', {}, d.name || d.id), h('div', { class: 'sub id' }, `${d.id} · ${d.status}`));
+  window.planeViewer?.onScorecard?.(box, d);
+  if (d.pending) { box.append(h('p', { class: 'muted' }, 'Running the checks on this design. This can take up to a minute for a detailed model.')); return; }
   if (d.error) { box.append(h('div', { class: 'errbox' }, d.error)); return; }
   box.append(h('div', { class: 'summary' },
     h('span', { class: 'badge ' + (d.accepted ? 'accepted' : 'rejected') }, d.accepted ? 'accepted' : 'rejected'),
@@ -380,5 +383,24 @@ async function init() {
   state.selected = byId(p.get('d')) ? p.get('d') : state.index.designs.find((d) => !d.error)?.id ?? state.index.designs[0]?.id ?? null;
   if (p.has('a') || p.has('b')) { state.slotA = byId(p.get('a'))?.id ?? null; state.slotB = byId(p.get('b'))?.id ?? null; setMode('compare'); }
   else setMode('inspect');
+  if (state.index.studio) import('./studio.js').catch((e) => console.warn('studio UI failed to load', e));
 }
+
+// Hooks for the local studio app (studio.js). The static viewer never calls these.
+async function reload(selectId) {
+  const r = await fetch(DATA + 'index.json', { cache: 'no-store' });
+  if (!r.ok) return;
+  const prev = state.index;
+  state.index = await r.json();
+  cache.json.clear(); cache.glb.clear();
+  for (const sel of [$('sel-a'), $('sel-b')]) sel.replaceChildren(h('option', { value: '' }, '— none —'), ...state.index.designs.map((d) => h('option', { value: d.id }, d.name || d.id)));
+  if (selectId && byId(selectId)) { state.selected = selectId; if (state.mode === 'compare') setMode('inspect'); }
+  if (!byId(state.selected)) state.selected = state.index.designs[0]?.id ?? null;
+  renderSidebar();
+  const was = prev?.designs.find((d) => d.id === state.selected), now = byId(state.selected);
+  const changed = !was || JSON.stringify(was) !== JSON.stringify(now);
+  if (state.mode === 'inspect' && (changed || selectId)) { syncHash(); showInspect(); }
+  if (state.mode === 'compare') showCompare();
+}
+window.planeViewer = { reload, selected: () => state.selected, designs: () => state.index?.designs || [], refresh: () => state.mode === 'inspect' && showInspect() };
 init();

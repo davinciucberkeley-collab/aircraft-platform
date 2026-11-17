@@ -16,6 +16,30 @@ viewer/        static web viewer (GitHub Pages) — reads generated data, no per
 plans/ reviews/  agent plans and review scorecards
 ```
 
+## Plane Studio: the point-and-click app
+
+After the one-time setup below, run this (in Miniforge Prompt on Windows, with the environment active):
+
+```bash
+plane studio
+```
+
+Your browser opens on the app (it runs only on your computer, at http://127.0.0.1:8765). Keep the terminal window open while you use it.
+
+| To... | Click |
+|---|---|
+| See every design in 3D with its scorecard | a design in the list; click a part to highlight it, or a failing check to show the parts involved |
+| Compare two designs | **Compare** at the top |
+| Try a change without touching the original | **Make a copy** (copies the file and its 3D parts) |
+| Change masses, positions, materials, joint methods or strengths | **Edit design** › Parts / Joints (the Joints tab lists failing joints first) |
+| Change anything else | **Edit design** › File (advanced) |
+| Re-check a design | happens on every save; **Check again** or **Check all** to force it |
+| Bring in Dillon's latest CAD | **Import** (paste the dbf-combined folder path) |
+| Get files out | **Download** › 3D model, STL parts for printing, scorecard report, MuJoCo model |
+
+Every button calls the same core library as the CLI and CI, so the app's verdict is the one a pull request gets.
+Saves keep a backup in `.studio/backups/`; results are cached in `.studio/` so the app restarts quickly.
+
 ## Quick start
 
 Needs Python 3.11 or newer (3.12 is what CI uses) and git. Use a fresh environment, for example
@@ -42,7 +66,7 @@ if you like: `plane validate designs\concept-a` works the same.
 
 ```bash
 git clone https://github.com/davinciucberkeley-collab/dbf-combined ../dbf-combined
-plane import dbf --dbf-root ../dbf-combined      # rewrites designs/concept-a/ (read-only on the source repo)
+plane import dbf --dbf-root ../dbf-combined      # rewrites designs/concept-a/ (add --id my-name to save a separate copy)
 plane validate designs/concept-a --out concept-a-score.md
 ```
 

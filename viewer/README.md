@@ -18,4 +18,6 @@ python3 -m http.server -d viewer      # http://localhost:8000
 ## Features
 Sidebar with text and VTOL-method filters; 3D view with click-to-highlight and CG marker; scorecard with FAIL rows first; compare mode (two viewports plus table of mass, CG, tiers and key numbers). Deep links: `#d=<id>` or `#a=<id>&b=<id>`.
 
+`plane studio` serves this same page from your computer and adds `studio.js` (new, copy, edit, import, check, download) through a local API; the GitHub Pages copy never loads it.
+
 three.js 0.160.0 loads from cdn.jsdelivr.net, so the page needs network access. Deployed by `.github/workflows/pages.yml`.
