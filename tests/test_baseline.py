@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -362,7 +363,7 @@ def _guard_designs(tmp_path):
 
 
 def test_every_fail_or_skip_names_its_subject_or_is_design_level(tmp_path):
-    from aircraft_platform.baseline import DESIGN_LEVEL, SUBJECT_KEYS
+    from aircraft_platform.baseline import DESIGN_LEVEL, SUBJECT_KEYS, is_blocking
     from aircraft_platform.design import FAIL, SKIP
     from aircraft_platform.checks import validate
     from aircraft_platform.design import load_design
@@ -371,9 +372,58 @@ def test_every_fail_or_skip_names_its_subject_or_is_design_level(tmp_path):
         card = validate(load_design(path))
         for t in card.tiers:
             for r in t.results:
-                if r.status not in (FAIL, SKIP):
+                if r.status not in (FAIL, SKIP) or is_blocking(r.check_id, r.status, r.message):
                     continue
                 if any(k in r.data for k in SUBJECT_KEYS) or r.check_id in DESIGN_LEVEL:
                     continue
                 missing.append((str(path.parent.name), r.check_id, r.message[:90]))
     assert not missing, missing
+
+
+# --- a sim or whole group that does not run is blocking (D4) -----------------
+
+def test_sim_build_failure_is_never_baselined(tmp_path, monkeypatch):
+    from aircraft_platform import sim
+    folder = _copy_example(tmp_path)
+    runner = CliRunner()
+    monkeypatch.setattr(sim, "_build", lambda design: (_ for _ in ()).throw(ValueError("repeated equality")))
+    result = runner.invoke(cli, ["baseline", "update", str(folder)])
+    assert result.exit_code == 2, result.output
+    assert not (folder / "baseline.json").exists()
+
+
+def test_sim_build_failure_after_a_baseline_is_a_regression(tmp_path, monkeypatch):
+    from aircraft_platform import sim
+    folder = _copy_example(tmp_path)
+    runner = CliRunner()
+    _set_rating(folder, "motor-l", 3)  # non-accepted, so it gets a real baseline
+    assert runner.invoke(cli, ["baseline", "update", str(folder)]).exit_code == 0
+    monkeypatch.setattr(sim, "_build", lambda design: (_ for _ in ()).throw(ValueError("repeated equality")))
+    check = runner.invoke(cli, ["baseline", "check", str(folder)])
+    assert check.exit_code == 1, check.output
+    assert "did not run: T2.sim_stable could not build simulation model" in check.output
+
+
+def test_mujoco_missing_is_a_regression(tmp_path, monkeypatch):
+    folder = _copy_example(tmp_path)
+    runner = CliRunner()
+    _set_rating(folder, "motor-l", 3)
+    assert runner.invoke(cli, ["baseline", "update", str(folder)]).exit_code == 0
+    monkeypatch.setitem(sys.modules, "mujoco", None)  # makes "import mujoco" raise ImportError
+    check = runner.invoke(cli, ["baseline", "check", str(folder)])
+    assert check.exit_code == 1, check.output
+    assert "did not run: T2.sim mujoco not installed" in check.output
+
+
+def test_sim_skip_for_one_item_is_not_blocking():
+    from aircraft_platform.baseline import is_blocking
+    assert not is_blocking("T2.sim_drop_loads", SKIP, "E-1: carries 1.0 N; rating is a placeholder, not checked")
+    assert not is_blocking("T4.fits_machine", SKIP, "c: fit not verified")
+
+
+def test_exploded_sim_is_blocking_not_passing():
+    """A NaN drop test must not report joints as within rating, and can never be baselined."""
+    from aircraft_platform.baseline import is_blocking
+    assert is_blocking("T2.sim_stable", "FAIL", "simulation produced NaN/inf states")
+    assert is_blocking("T2.sim_drop_loads", "SKIP", "fin-l: no load, simulation went unstable")
+    assert not is_blocking("T2.sim_stable", "FAIL", "MuJoCo raised 3 instability warning(s) during the run")

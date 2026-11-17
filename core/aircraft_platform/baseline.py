@@ -20,10 +20,22 @@ SCHEMA_VERSION = 1
 SUBJECT_KEYS = ("component", "joint", "pair", "parts", "pose", "machine")
 DESIGN_LEVEL = frozenset({
     "T3.mass", "T3.stall", "T3.static_margin", "T3.lateral_cg", "T3.hover_tw", "T3.planform_matches_geometry",
-    "T2.hover_moment", "T2.sim_rest", "T2.sim_stable", "T2.sim",
+    "T2.hover_moment", "T2.sim_rest", "T2.sim_stable",
     "T5.part107_mass", "T5.registration",
-    "T0.version", "T4.capabilities",
+    "T0.version",
 })
+
+# SKIP messages that mean a whole group of checks did not run (not one item left unchecked).
+_WHOLE_GROUP_SKIPS = (
+    "mujoco not installed",                 # sim.py: T2.sim
+    "standards/manufacturing.yaml not written",  # checks.py: T4.capabilities
+    "no model",                             # sim.py: T2.sim_drop_loads and T2.sim_rest when the model will not build
+    "simulation went unstable",             # sim.py: T2.sim_drop_loads / T2.sim_rest after NaN states (no loads exist)
+)
+_WHOLE_GROUP_FAILS = (
+    "could not build simulation model",     # sim.py: T2.sim_stable
+    "simulation produced NaN/inf states",   # sim.py: T2.sim_stable; every drop-load row is then unmeasured
+)
 
 # Standalone numbers: not part of an identifier (wng-006-l, E-WNG-20, T2.sim_rest, mec-003 keep their digits).
 _NUMBER_RE = re.compile(r"(?<![\w.-])[-+]?\d+(?:\.\d+)?(?![\w.-])")
@@ -66,9 +78,22 @@ def tiers_run(scorecard: Scorecard) -> list[int]:
     return sorted(out)
 
 
-def is_blocking(check_id: str) -> bool:
-    """Schema errors and crashed or blocked tiers: never recorded in a baseline."""
-    return check_id.startswith("T0.") or check_id.endswith((".blocked", ".error"))
+def is_blocking(check_id: str, status: str = FAIL, message: str = "") -> bool:
+    """Results that mean a check, a tier or a whole group of checks did not run: never recorded in a baseline.
+
+    Schema errors (T0), crashed or blocked tiers (.error, .blocked), a simulation whose model will not build,
+    and SKIPs for a whole group (no mujoco, no manufacturing.yaml, no sim model). A SKIP for one item
+    (a placeholder rating, an unverified fit, a stress check not yet run for one part) is not blocking.
+    """
+    if status not in (FAIL, SKIP):
+        return False
+    if check_id.startswith("T0.") or check_id.endswith((".blocked", ".error")):
+        return True
+    if status == FAIL and any(m in message for m in _WHOLE_GROUP_FAILS):
+        return True
+    if status == SKIP and any(m in message for m in _WHOLE_GROUP_SKIPS):
+        return True
+    return False
 
 
 def snapshot(scorecard: Scorecard) -> dict:
@@ -77,11 +102,11 @@ def snapshot(scorecard: Scorecard) -> dict:
     T0 results and crashed or blocked tiers are never entries; they are listed under "blocking" instead.
     """
     found: dict[str, dict[str, Any]] = {}
-    blocking = [{"check_id": r.check_id, "message": r.message}
-                for t in scorecard.tiers for r in t.results if r.status == FAIL and is_blocking(r.check_id)]
+    blocking = [{"check_id": r.check_id, "status": r.status, "message": r.message}
+                for t in scorecard.tiers for r in t.results if is_blocking(r.check_id, r.status, r.message)]
     for tier in scorecard.tiers:
         for r in tier.results:
-            if r.status not in (FAIL, SKIP) or is_blocking(r.check_id):
+            if r.status not in (FAIL, SKIP) or is_blocking(r.check_id, r.status, r.message):
                 continue
             key = result_key(r.check_id, r.message, r.data)
             entry = found.get(key)
@@ -163,7 +188,8 @@ def compare(current: dict, baseline: dict | None) -> dict:
 
     # a design must reach every tier its baseline covers; schema errors and blocked tiers are never baselined
     blocking = current.get("blocking", [])
-    if baseline is not None and (baseline.get("blocking") or any(is_blocking(e["check_id"]) for e in baseline.get("known", []))):
+    if baseline is not None and (baseline.get("blocking") or any(
+            is_blocking(e["check_id"], e["status"], e["example"]) for e in baseline.get("known", []))):
         regressions.append({"key": "baseline.json", "check_id": "baseline.json", "status": FAIL,
                             "example": "baseline.json records schema or tier errors; regenerate it after fixing them",
                             "reason": "invalid baseline"})
@@ -174,6 +200,10 @@ def compare(current: dict, baseline: dict | None) -> dict:
         for n in missing_tiers:
             regressions.append({"key": f"tier|{n}", "check_id": f"T{n}", "status": FAIL,
                                 "example": f"did not reach tier {n}: {first}", "reason": f"did not reach tier {n}"})
+    for b in blocking:
+        regressions.append({"key": f"did-not-run|{b['check_id']}|{b['message']}", "check_id": b["check_id"],
+                            "status": b.get("status", FAIL), "example": f"did not run: {b['check_id']} {b['message']}",
+                            "reason": "did not run"})
 
     for key in sorted(cur):
         c = cur[key]
