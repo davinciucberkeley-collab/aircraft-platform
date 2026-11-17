@@ -27,40 +27,44 @@
     {
       "name": "landing",
       "status": "PASS",
-      "max_von_mises_away_mpa": 1.379,
-      "max_von_mises_mpa": 1.379,
-      "safety_factor_at_ultimate": 9.13,
+      "max_von_mises_away_mpa": 1.984,
+      "max_von_mises_mpa": 1.984,
+      "safety_factor_at_ultimate": 6.35,
       "max_displacement_mm": 0.0072,
-      "nodes": 16923,
+      "nodes": 18315,
       "mesh_size_max_mm": 4.0,
       "equilibrium_ok": true,
       "load_share_on_clamped_faces": 0.0,
       "location_mm": [
-        -81.24,
-        234.03,
-        162.77
+        -81.54,
+        234.38,
+        162.25
       ],
       "project": ".studio/fea/concept-a/cge-003-ur/direct-landing",
-      "report": null
+      "report": null,
+      "route": "direct-mesh",
+      "material_from": "OpenCAE material database"
     },
     {
       "name": "thrust",
       "status": "PASS",
-      "max_von_mises_away_mpa": 1.256,
-      "max_von_mises_mpa": 1.256,
-      "safety_factor_at_ultimate": 10.03,
-      "max_displacement_mm": 0.0066,
-      "nodes": 16923,
+      "max_von_mises_away_mpa": 1.867,
+      "max_von_mises_mpa": 1.867,
+      "safety_factor_at_ultimate": 6.75,
+      "max_displacement_mm": 0.0064,
+      "nodes": 18315,
       "mesh_size_max_mm": 4.0,
       "equilibrium_ok": true,
       "load_share_on_clamped_faces": 0.0,
       "location_mm": [
-        -81.24,
-        234.03,
-        162.77
+        -81.54,
+        234.38,
+        162.25
       ],
       "project": ".studio/fea/concept-a/cge-003-ur/direct-thrust",
-      "report": null
+      "report": null,
+      "route": "direct-mesh",
+      "material_from": "OpenCAE material database"
     }
   ],
   "notes": [
@@ -120,7 +124,7 @@
   "status": "PASS",
   "worst_case": "landing",
   "design": "concept-a",
-  "hash": "95c40e9b2defa998",
-  "generated": "2026-11-17T06:12:37+00:00",
+  "hash": "28300f2d4f885997",
+  "generated": "2026-11-17T07:09:43+00:00",
   "opencae_version": "0.2.0"
 }

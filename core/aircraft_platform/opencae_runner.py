@@ -57,6 +57,33 @@ def _face_selector(body, tol: float):
     return select
 
 
+def _material(job: dict):
+    """OpenCAE's own record when it has one (its sourced database, or its built-in library), else the record the
+    platform sends from standards/design-standards.yaml. Returns (Material, where it came from)."""
+    mid = job["material_id"]
+    try:
+        from opencae.materials import database as db
+        m = db.find(mid)
+        if m is not None:
+            return m, "OpenCAE material database"
+    except ImportError:  # OpenCAE versions without the sourced database
+        pass
+    from opencae.materials import library
+    for m in library.builtin_materials() + list(getattr(library, "drone_materials", lambda: [])()):
+        if m.id == mid:
+            return m, "OpenCAE built-in library"
+    rec = job.get("material")
+    if not rec:
+        raise ValueError(f"material {mid!r} is not in this OpenCAE and the job carries no material record")
+    from opencae.project.model import Material
+    m = Material(name=rec["name"], youngs_modulus=float(rec["youngs_modulus_mpa"]) * 1e6,
+                 poissons_ratio=float(rec["poissons_ratio"]), density=float(rec["density_kg_m3"]), id=mid)
+    for k, v in (("is_example", False), ("notes", rec.get("source", ""))):
+        if hasattr(m, k):
+            setattr(m, k, v)
+    return m, "platform standards (design-standards.yaml)"
+
+
 def _ccx_errors(out) -> str:
     """The distinct CalculiX error lines (it repeats one per element), with counts."""
     from collections import Counter
@@ -89,7 +116,6 @@ def _run_case(job: dict, case: dict, log) -> dict:
 def _run_case_session(job: dict, case: dict, log) -> dict:
     from opencae.app.session import Session
     from opencae.geometry.references import make_ref
-    from opencae.materials import database as db
     from opencae.project.model import Constraint, Load
 
     t0 = time.time()
@@ -102,9 +128,7 @@ def _run_case_session(job: dict, case: dict, log) -> dict:
         raise _UseDirect("STL could not be turned into one solid (" + "; ".join(s.regen.errors.values()) + ")")
     if len(body.faces) > MAX_CAD_FACES:
         raise _UseDirect(f"faceted solid has {len(body.faces)} faces")
-    mat = db.find(job["material_id"])
-    if mat is None:
-        raise ValueError(f"material {job['material_id']!r} not in the OpenCAE database")
+    mat, mat_from = _material(job)
     if mat.id not in [m.id for m in s.project.materials]:
         s.project.materials.append(mat)
     s.project.assign_material(body.id, mat.id)
@@ -178,7 +202,7 @@ def _run_case_session(job: dict, case: dict, log) -> dict:
     eq = equilibrium_check(s.project.results.summary) or {}
     react = np.asarray(eq.get("reactions", [np.nan] * 3), float)
     res = {
-        "case": case["name"], "route": "opencae-cad",
+        "case": case["name"], "route": "opencae-cad", "material_from": mat_from,
         "nodes": int(s.mesh.n_nodes), "elements": int(getattr(s.mesh, "n_elements", 0) or 0),
         "mesh_size_max_mm": ms.size_max, "element_order": ms.element_order,
         "max_von_mises_mpa": float(sm.get("max_von_mises_nodal", float("nan"))),
@@ -309,7 +333,6 @@ def _run_case_direct(job: dict, case: dict, log) -> dict:
     from scipy.spatial import cKDTree
     from opencae.app.session import Session
     from opencae.boundary_conditions.resolve import ResolvedModel
-    from opencae.materials import database as db
     from opencae.meshing.elements import boundary_faces
     from opencae.meshing.mesh_data import FEMesh
     from opencae.postprocessing.results import equilibrium_check
@@ -322,9 +345,7 @@ def _run_case_direct(job: dict, case: dict, log) -> dict:
         return {"case": case["name"], "skipped": "no load reaches this part in this case"}
     s = Session()
     s.new(f"{job['name']} - {case['name']}", job.get("units", "mm-N-s"))
-    mat = db.find(job["material_id"])
-    if mat is None:
-        raise ValueError(f"material {job['material_id']!r} not in the OpenCAE database")
+    mat, mat_from = _material(job)
     size, order = float(job["mesh"]["size_max"]), int(job["mesh"].get("order", 2))
     log(f"  {case['name']}: meshing the STL directly (size {size} mm)")
     key = (job["stl"], size, order, job.get("mesher"))
@@ -408,7 +429,7 @@ def _run_case_direct(job: dict, case: dict, log) -> dict:
     except Exception:  # noqa: BLE001
         pass
     return {
-        "case": case["name"], "route": "direct-mesh", "mesh_note": how,
+        "case": case["name"], "route": "direct-mesh", "mesh_note": how, "material_from": mat_from,
         "nodes": int(len(nodes)), "elements": int(len(el)), "mesh_size_max_mm": size, "element_order": order,
         "element_size_mm": elem_size,
         "max_von_mises_mpa": float(vm.max()), "max_von_mises_location": nodes[int(np.argmax(vm))].tolist(),

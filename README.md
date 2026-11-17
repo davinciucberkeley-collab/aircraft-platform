@@ -116,6 +116,8 @@ plane fea --setup --opencae-python %USERPROFILE%\.conda\envs\qt_test\python.exe 
 plane fea designs\concept-a --all
 ```
 
+Material: OpenCAE's own PETG record when it has one; otherwise the platform sends `structure.fea_material_printed_petg` from the standards, so any OpenCAE 0.2 works (tested against the GitHub version).
+
 Limits: printed PETG only so far (CFRP and foam have no sourced material record yet); solid walls assumed; each
 joint's drop-test peak is applied at once (conservative envelope); where joints form loops, the split between them
 follows equal joint stiffness, not the real parts' stiffness; the motor's reaction torque and the part's own

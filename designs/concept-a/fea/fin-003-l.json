@@ -41,7 +41,9 @@
         -9.5
       ],
       "project": ".studio/fea/concept-a/fin-003-l/direct-landing",
-      "report": null
+      "report": null,
+      "route": "direct-mesh",
+      "material_from": "OpenCAE material database"
     },
     {
       "name": "thrust",
@@ -60,7 +62,9 @@
         -9.5
       ],
       "project": ".studio/fea/concept-a/fin-003-l/direct-thrust",
-      "report": null
+      "report": null,
+      "route": "direct-mesh",
+      "material_from": "OpenCAE material database"
     }
   ],
   "notes": [],
@@ -118,7 +122,7 @@
   "status": "PASS",
   "worst_case": "landing",
   "design": "concept-a",
-  "hash": "3102e89656cc49c4",
-  "generated": "2026-11-17T06:14:12+00:00",
+  "hash": "ab0d759cffb537ae",
+  "generated": "2026-11-17T07:11:13+00:00",
   "opencae_version": "0.2.0"
 }

@@ -41,7 +41,9 @@
         -181.5
       ],
       "project": ".studio/fea/concept-a/ger-001-ll/concept-a-ger-001-ll-landing.ocae",
-      "report": ".studio/fea/concept-a/ger-001-ll/concept-a-ger-001-ll-landing_report.html"
+      "report": ".studio/fea/concept-a/ger-001-ll/concept-a-ger-001-ll-landing_report.html",
+      "route": "opencae-cad",
+      "material_from": "OpenCAE material database"
     },
     {
       "name": "thrust",
@@ -60,7 +62,9 @@
         -181.5
       ],
       "project": ".studio/fea/concept-a/ger-001-ll/concept-a-ger-001-ll-thrust.ocae",
-      "report": ".studio/fea/concept-a/ger-001-ll/concept-a-ger-001-ll-thrust_report.html"
+      "report": ".studio/fea/concept-a/ger-001-ll/concept-a-ger-001-ll-thrust_report.html",
+      "route": "opencae-cad",
+      "material_from": "OpenCAE material database"
     }
   ],
   "notes": [],
@@ -118,7 +122,7 @@
   "status": "PASS",
   "worst_case": "landing",
   "design": "concept-a",
-  "hash": "c290116c1adfd8eb",
-  "generated": "2026-11-17T06:15:28+00:00",
+  "hash": "ec22acfbc68b6b16",
+  "generated": "2026-11-17T07:12:26+00:00",
   "opencae_version": "0.2.0"
 }

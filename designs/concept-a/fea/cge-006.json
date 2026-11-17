@@ -41,7 +41,9 @@
         -0.78
       ],
       "project": ".studio/fea/concept-a/cge-006/concept-a-cge-006-landing.ocae",
-      "report": ".studio/fea/concept-a/cge-006/concept-a-cge-006-landing_report.html"
+      "report": ".studio/fea/concept-a/cge-006/concept-a-cge-006-landing_report.html",
+      "route": "opencae-cad",
+      "material_from": "OpenCAE material database"
     },
     {
       "name": "thrust",
@@ -60,7 +62,9 @@
         -0.78
       ],
       "project": ".studio/fea/concept-a/cge-006/concept-a-cge-006-thrust.ocae",
-      "report": ".studio/fea/concept-a/cge-006/concept-a-cge-006-thrust_report.html"
+      "report": ".studio/fea/concept-a/cge-006/concept-a-cge-006-thrust_report.html",
+      "route": "opencae-cad",
+      "material_from": "OpenCAE material database"
     }
   ],
   "notes": [],
@@ -118,7 +122,7 @@
   "status": "PASS",
   "worst_case": "thrust",
   "design": "concept-a",
-  "hash": "d9e6e4be2736c10d",
-  "generated": "2026-11-17T06:12:55+00:00",
+  "hash": "9755bf1a69557a5d",
+  "generated": "2026-11-17T07:09:59+00:00",
   "opencae_version": "0.2.0"
 }

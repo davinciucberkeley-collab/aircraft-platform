@@ -27,40 +27,44 @@
     {
       "name": "landing",
       "status": "PASS",
-      "max_von_mises_away_mpa": 0.927,
-      "max_von_mises_mpa": 0.927,
-      "safety_factor_at_ultimate": 13.58,
-      "max_displacement_mm": 0.0068,
-      "nodes": 18397,
-      "mesh_size_max_mm": 4.0,
-      "equilibrium_ok": true,
-      "load_share_on_clamped_faces": 0.001,
-      "location_mm": [
-        -81.86,
-        236.03,
-        -159.84
-      ],
-      "project": ".studio/fea/concept-a/cge-003-lr/direct-landing",
-      "report": null
-    },
-    {
-      "name": "thrust",
-      "status": "PASS",
-      "max_von_mises_away_mpa": 1.333,
-      "max_von_mises_mpa": 1.333,
-      "safety_factor_at_ultimate": 9.45,
-      "max_displacement_mm": 0.0065,
-      "nodes": 18397,
+      "max_von_mises_away_mpa": 0.813,
+      "max_von_mises_mpa": 0.813,
+      "safety_factor_at_ultimate": 15.51,
+      "max_displacement_mm": 0.0066,
+      "nodes": 18875,
       "mesh_size_max_mm": 4.0,
       "equilibrium_ok": true,
       "load_share_on_clamped_faces": 0.0,
       "location_mm": [
-        -81.86,
-        236.03,
-        -159.84
+        -81.26,
+        236.01,
+        -159.16
+      ],
+      "project": ".studio/fea/concept-a/cge-003-lr/direct-landing",
+      "report": null,
+      "route": "direct-mesh",
+      "material_from": "OpenCAE material database"
+    },
+    {
+      "name": "thrust",
+      "status": "PASS",
+      "max_von_mises_away_mpa": 1.031,
+      "max_von_mises_mpa": 1.031,
+      "safety_factor_at_ultimate": 12.22,
+      "max_displacement_mm": 0.0068,
+      "nodes": 18875,
+      "mesh_size_max_mm": 4.0,
+      "equilibrium_ok": true,
+      "load_share_on_clamped_faces": 0.0,
+      "location_mm": [
+        -81.9,
+        235.05,
+        -159.38
       ],
       "project": ".studio/fea/concept-a/cge-003-lr/direct-thrust",
-      "report": null
+      "report": null,
+      "route": "direct-mesh",
+      "material_from": "OpenCAE material database"
     }
   ],
   "notes": [
@@ -120,7 +124,7 @@
   "status": "PASS",
   "worst_case": "thrust",
   "design": "concept-a",
-  "hash": "ce9b37a7290816f9",
-  "generated": "2026-11-17T06:10:58+00:00",
+  "hash": "bf70bd737ce59aa6",
+  "generated": "2026-11-17T07:08:03+00:00",
   "opencae_version": "0.2.0"
 }

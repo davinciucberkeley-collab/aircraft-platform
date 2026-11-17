@@ -57,6 +57,11 @@ structure:
     rule: A printed (3d-print-fdm) part passes the OpenCAE stress check when its peak von Mises stress away from the clamps, at ultimate load (limit x ultimate_factor), is at or below this value.
     source: "UltiMaker PETG Technical Data Sheet v1.00 (2022-04-29), tensile stress at break of Z (upright) printed specimens 19.0 +/- 6.4 MPa, ASTM D3039 (https://um-support-files.ultimaker.com/materials/2.85mm/tds/PETG/Ultimaker-PETG-TDS-v1.00.pdf, checked 2026-11-16). OpenCAE material record db_petg_um cites the same sheet."
     note: "Value is the mean minus one standard deviation of the weakest (interlayer) direction, because print orientation is not recorded per part and the Z scatter is large. Assumes solid walls (concept A's printed parts are thin-walled); sparse infill lowers strength and is not modelled. Method choice, review when coupons are tested."
+  fea_material_printed_petg:
+    value: {name: "PETG, printed (UltiMaker PETG TDS)", opencae_id: db_petg_um, youngs_modulus_mpa: 1939, poissons_ratio: 0.38, density_kg_m3: 1270}
+    rule: Elastic properties sent to OpenCAE for printed (3d-print-fdm) parts when its own material database does not have opencae_id.
+    source: "UltiMaker PETG Technical Data Sheet v1.00 (2022-04-29): tensile modulus XY 1939 +/- 28 MPa (ASTM D3039), specific gravity 1.27 (ISO 1183) (https://um-support-files.ultimaker.com/materials/2.85mm/tds/PETG/Ultimaker-PETG-TDS-v1.00.pdf, checked 2026-11-16)."
+    note: "Poisson's ratio 0.38 is an estimate: the TDS gives none; it is the value OpenCAE's own PETG record uses. Stresses in these load cases depend on it only weakly."
   fea_singularity_band_mm:
     value: 2.0
     rule: Stresses within this distance of a clamped face are left out of the pass/fail value (a rigid clamp is a stress singularity); the peak including them is reported alongside.
