@@ -1,0 +1,154 @@
+{
+  "accepted": false,
+  "design_id": "tiltwing-cakir",
+  "known": [
+    {
+      "check_id": "T1.interference",
+      "example": "clipping: fuselage and tail overlap 573436 mm^3",
+      "key": "T1.interference|clipping: fuselage and tail overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "example": "clipping: fuselage and wing overlap 581376 mm^3",
+      "key": "T1.interference|clipping: fuselage and wing overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "example": "pose hover (90\u00b0): clipping: fuselage and tail overlap 479781 mm^3",
+      "key": "T1.interference|pose hover (#\u00b0): clipping: fuselage and tail overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "example": "pose hover (90\u00b0): clipping: fuselage and wing overlap 1576518 mm^3",
+      "key": "T1.interference|pose hover (#\u00b0): clipping: fuselage and wing overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "example": "range max of tail-tilt (95\u00b0): clipping: fuselage and tail overlap 481163 mm^3",
+      "key": "T1.interference|range max of tail-tilt (#\u00b0): clipping: fuselage and tail overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "example": "range max of wing-tilt (95\u00b0): clipping: fuselage and wing overlap 1582541 mm^3",
+      "key": "T1.interference|range max of wing-tilt (#\u00b0): clipping: fuselage and wing overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "count": 6,
+      "example": "sweep tail-tilt 15\u00b0: clipping: fuselage and tail overlap 579634 mm^3",
+      "key": "T1.interference|sweep tail-tilt #\u00b0: clipping: fuselage and tail overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "count": 6,
+      "example": "sweep wing-tilt 15\u00b0: clipping: fuselage and wing overlap 1474748 mm^3",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: fuselage and wing overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.interference",
+      "count": 4,
+      "example": "sweep wing-tilt 15\u00b0: clipping: wing and payload overlap 419626 mm^3",
+      "key": "T1.interference|sweep wing-tilt #\u00b0: clipping: wing and payload overlap # mm^#",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.joint_load",
+      "example": "payload-bay: 110.3 N at 4.5g exceeds rating 100 N",
+      "key": "T2.joint_load|payload-bay: # N at 4.5g exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.joint_load",
+      "example": "tail-shaft-fuselage: 371.9 N at 4.5g exceeds rating 50 N",
+      "key": "T2.joint_load|tail-shaft-fuselage: # N at 4.5g exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.joint_load",
+      "example": "wing-shaft-fuselage: 314.5 N at 4.5g exceeds rating 200 N",
+      "key": "T2.joint_load|wing-shaft-fuselage: # N at 4.5g exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "battery-bay: peak 365.9 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|battery-bay: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "electronics-bay: peak 203.6 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|electronics-bay: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "payload-bay: peak 499.7 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|payload-bay: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-motor-1: peak 91.0 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|wing-motor-1: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-motor-2: peak 53.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|wing-motor-2: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-motor-3: peak 53.7 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|wing-motor-3: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-motor-4: peak 90.7 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|wing-motor-4: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T3.static_margin",
+      "example": "18.8% MAC (NP x=844 mm, CG x=789 mm; target 5%-15%; fuselage effect not modelled)",
+      "key": "T3.static_margin|#% MAC (NP x=# mm, CG x=# mm; target #%#%; fuselage effect not modelled)",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T4.fits_machine",
+      "example": "wing_motor_1: oriented extents [55.7, 55.7, 297.0] mm do not fit jacobs-fdm-fortus bed [256, 256, 256]",
+      "key": "T4.fits_machine|wing_motor_1: oriented extents [#, #, #] mm do not fit jacobs-fdm-fortus bed [#, #, #]",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T4.fits_machine",
+      "example": "wing_motor_2: oriented extents [55.7, 55.7, 297.0] mm do not fit jacobs-fdm-fortus bed [256, 256, 256]",
+      "key": "T4.fits_machine|wing_motor_2: oriented extents [#, #, #] mm do not fit jacobs-fdm-fortus bed [#, #, #]",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T4.fits_machine",
+      "example": "wing_motor_3: oriented extents [55.7, 55.7, 297.0] mm do not fit jacobs-fdm-fortus bed [256, 256, 256]",
+      "key": "T4.fits_machine|wing_motor_3: oriented extents [#, #, #] mm do not fit jacobs-fdm-fortus bed [#, #, #]",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T4.fits_machine",
+      "example": "wing_motor_4: oriented extents [55.7, 55.7, 297.0] mm do not fit jacobs-fdm-fortus bed [256, 256, 256]",
+      "key": "T4.fits_machine|wing_motor_4: oriented extents [#, #, #] mm do not fit jacobs-fdm-fortus bed [#, #, #]",
+      "status": "FAIL"
+    }
+  ],
+  "schema": 1
+}

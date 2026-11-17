@@ -10,17 +10,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the base branch (or the previous push) must be present for --base-ref
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
       - name: Unit tests
         run: pytest -q
-      - name: Score every design
+      - name: Check designs against their baselines
+        shell: bash
         run: |
-          status=0
-          echo "# Design scorecards" >> "$GITHUB_STEP_SUMMARY"
-          for d in designs/*/; do
-            plane validate "$d" >> "$GITHUB_STEP_SUMMARY" || status=1
-          done
-          exit $status
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref || 'main' }}"
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            base="${{ github.event.before }}"
+          else
+            base=""
+          fi
+          args=(--all --format md)
+          if [ -n "$base" ]; then args+=(--base-ref "$base"); fi
+          echo "# Baseline check" >> "$GITHUB_STEP_SUMMARY"
+          plane baseline check "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit ${PIPESTATUS[0]}

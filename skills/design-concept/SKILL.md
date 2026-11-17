@@ -25,6 +25,7 @@ A new or changed `designs/<id>/plane.yaml` that conforms to `schema/plane.schema
 6. When a sim or load check fails, fix the design (stronger joint, different geometry), not the threshold. Threshold changes go through `standards/` with a source.
 6a. After any change to a printed part or its joints, re-run its stress check: `plane fea designs/<id> --part <part>` (MCP: `structural_check`), and commit `designs/<id>/fea/<part>.json`.
 6b. Moving parts (tilt wing, tilt rotor): set `schema_version: "0.2"` and add `articulation` (revolute, `pivot`, `axis`, `range_deg`, named `poses`) to the joint's attachment; rotation applies to the child side. Tier 1 re-runs its contact/clipping checks in every pose and at both range ends; name `flight.hover_pose` / `flight.cruise_pose` so tiers 2–3 use them.
+6c. After fixing failures, run `plane baseline update designs/<id>` and commit the smaller `baseline.json`. Never add entries to hide a new failure without saying why in the PR.
 7. Write `designs/<id>/README.md`: one paragraph, plus the question this concept answers.
 
 ## Pass check

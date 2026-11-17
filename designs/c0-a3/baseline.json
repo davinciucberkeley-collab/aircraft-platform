@@ -1,0 +1,109 @@
+{
+  "accepted": false,
+  "design_id": "c0-a3",
+  "known": [
+    {
+      "check_id": "T1.attachment_contact",
+      "example": "pusher-prop: parts are 5.0 mm apart (tolerance 2.0 mm)",
+      "key": "T1.attachment_contact|pusher-prop: parts are # mm apart (tolerance # mm)",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.attachment_overlap",
+      "example": "servo-ail_l: embed_ok joint overlaps 89% of the child servo_ail_l (limit 35% unless the child is >= 99% inside the parent)",
+      "key": "T1.attachment_overlap|servo-ail_l: embed_ok joint overlaps #% of the child servo_ail_l (limit #% unless the child is >= #% inside the parent)",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.attachment_overlap",
+      "example": "servo-ail_r: embed_ok joint overlaps 89% of the child servo_ail_r (limit 35% unless the child is >= 99% inside the parent)",
+      "key": "T1.attachment_overlap|servo-ail_r: embed_ok joint overlaps #% of the child servo_ail_r (limit #% unless the child is >= #% inside the parent)",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.fea_strength",
+      "example": "25 printed part(s) have no OpenCAE stress check yet (plane fea c0-a3 --all)",
+      "key": "T2.fea_strength|# printed part(s) have no OpenCAE stress check yet (plane fea c0-a3 --all)",
+      "status": "SKIP"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "clampr-boom-l: peak 138.4 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|clampr-boom-l: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "clampr-boom-r: peak 137.2 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|clampr-boom-r: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-fl: peak 102.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-fl: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-fr: peak 102.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-fr: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-rl: peak 134.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-rl: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-rr: peak 134.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-rr: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-avionics: peak 121.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|pod-avionics: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-battery: peak 220.2 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|pod-battery: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-fasteners: peak 26.0 N in drop test exceeds rating 20 N",
+      "key": "T2.sim_drop_loads|pod-fasteners: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-wiring: peak 30.9 N in drop test exceeds rating 20 N",
+      "key": "T2.sim_drop_loads|pod-wiring: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-clampr-l: peak 134.9 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|wing-clampr-l: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-clampr-r: peak 133.7 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|wing-clampr-r: peak # N in drop test exceeds rating # N",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T3.static_margin",
+      "example": "15.2% MAC (NP x=739 mm, CG x=690 mm; target 5%-15%; fuselage effect not modelled)",
+      "key": "T3.static_margin|#% MAC (NP x=# mm, CG x=# mm; target #%#%; fuselage effect not modelled)",
+      "status": "FAIL"
+    }
+  ],
+  "schema": 1
+}
