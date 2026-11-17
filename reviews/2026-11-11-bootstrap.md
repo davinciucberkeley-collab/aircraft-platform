@@ -583,3 +583,52 @@ Mostly yes: a result line, then per design the counts, regressions, improvements
 1. A3: emit a visible row (WARN or SKIP) when a requirement the checks use is absent (`stall_speed_max_mps`, `mtow_g`), so deleting it isn't silent.
 2. Normalise numbers attached to units (`5.0mm`, `4.5g`) and exponents, to avoid false regressions.
 3. The first push after merge will annotate about 160 "Baseline grew" warnings. Consider skipping growth when the base ref has no baselines at all.
+
+## Round 10 (ci-baselines)
+
+Reviewer: same Opus instance (R1). Commit reviewed: 8524d47 on `ci-baselines`. Every attack ran in a **fresh clone**, `/tmp/ap-review10/wt` (`git clone --branch ci-baselines`, `PYTHONPATH` pointed at the clone), with git commits there for `--base-ref`. Nothing in the real repo was edited except this file.
+
+### Automated and stability
+
+- `python3 -m pytest -q`: `158 passed, 3 skipped`.
+- `plane baseline check --all --format json` in the fresh clone, run twice: rc 0 both times, outputs **byte-identical**, and every design is "Unchanged" against its committed baseline.json (c0-a1 20, c0-a2 16, c0-a3 17, c0-lift-cruise 17, concept-a 68, tiltwing-cakir 37 keys; example accepted). So keys are stable across runs and across a fresh clone.
+- String data that goes into keys (all 70 distinct values in the committed baselines) is subject ids (`joint`, `component`, `pair`, `part`), `band`, and `configuration` names such as "sweep wing-tilt 45°". None is a measured value, so nothing churns between runs.
+
+### Round-9 blockers
+
+| # | Round-9 blocker | Status | Evidence |
+|---|---|---|---|
+| 1 | Baseline edits that add no key are invisible | **CLOSED** | A tiltwing baseline `count` bumped 1→2 in a commit is listed under "Known failures ADDED" with reason "count 1→2" (`--base-ref` = previous commit). SKIP→FAIL edits are also compared (growth code). Renames are detected (`_renamed_from`). |
+| 2 | Key blind to band side | **CLOSED** | A2b re-run: c0-lift-cruise battery 820→100 g, SM 15.3% → 3.8% is now a **regression**, "T3.static_margin … not in baseline", rc 1. The design's other changes are shown as "Other changes (not improvements: this design also has regressions; do not lock these in yet)". The band is in data for static_margin, stall, mass, lateral_cg and hover_tw. |
+| 3 | Several results in one key | **Mostly closed** | Joint, component, pair, part and motor subjects and full pair lists are now in data (A1 and A1c fixed, per the builder and the unit test). One residue: see D2. The md tables have a reason column. |
+
+### New attacks on the data-in-key scheme
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| D1 | **Key churn hides a real regression.** concept-a: elevon range ±21 → ±22 deg (moves every range and sweep configuration name), plus a planted regression (E-FIN-01 rating 2009.8 → 20 N). Then `plane baseline update`, committed. | Visible, not failing (policy) | Before the update: rc 1, 14 regressions, 10 other changes. After: rc 0, and "ADDED" lists 14 rows: 8 renamed kinematic_link SKIPs, 1 fea stale SKIP, **4 genuinely new clipping FAILs at ±22 deg** (wng-008 vs wng-007, 8-10 mm^3) and the planted E-FIN-01. Churn adds about 9 noise rows, but every real one is listed by name with reason "added". Same class as A4/A5b. |
+| D2 | **Subject missing from data.** Example copy with legal numeric component ids `'5'`/`'6'` (slug `^[a-z0-9][a-z0-9_-]*$` allows them); baseline has T4.machine FAIL on `5`; the change fixes `5` and breaks `6`. | **MISSED** | rc 0, "Unchanged: 1". T4.machine ("in-house method … needs a `machine`") carries no `component` in data, and "5:"/"6:" normalise to "#:". The same gap exists for T4.method "does not do", T1.connectivity (`['#']` list in text), T1.point_mass_location (verified: none of these pass data), and T0.schema paths (`components/#/…`). It only bites with all-digit ids. |
+| D3 | **A known T0 FAIL masks everything after it.** c0-a2: add one unknown top-level key (`notes_v2`), `baseline update`, commit. Then, in a later change, wing-pod rating 535.8 → 1 N and battery 820 → 100 g. | **MISSED** (first step visible, everything after silent) | Step 1 summary: one ADDED row (`T0.schema … 'notes_v2' was unexpected`). Nothing says that the 16 other known results vanished from the baseline, because growth reports additions and loosening but not shrinking. Step 2: "Known results: 1 … Regressions: 0", rc 0. `validate()` stops after a T0 FAIL (and stops tiers 2-5 after `T*.blocked`), so from then on the design is unmonitored. This is the "accepted because a tier was skipped" case in another form. |
+
+### Is visible-but-passing (A3, A4, A5b, D1) acceptable?
+
+Yes, as a documented policy (README "CI and baselines": additions are "listed … and raised as a warning, so reviewers confirm each one"). CI can't tell an intended new known failure from a sneaky one, and every one of these cases puts the real rows *by name* in the PR summary and as `::warning` annotations. Two conditions make it hold in practice; they are process, not code:
+1. Branch protection on main must require a reviewed PR. The step summary sits on the Actions run page, not in the PR conversation, so reviewers must be told to open it, or the ADDED table should be posted as a PR comment.
+2. A3 (deleting a requirement turns a FAIL into an "improvement") is a validator gap, as the builder says, and its plane.yaml diff is visible in the PR. Fine to leave, but add it to README "Known limits".
+
+D3 is **not** covered by that policy. After one visible addition it removes all later monitoring of the design with no further signal, and the shrink of the baseline itself is never shown.
+
+### Verdict
+
+**NOT MERGE-READY.** One blocker, plus a small one. Neither is a documented policy.
+
+### Blockers
+
+1. **D3: a known schema or blocked failure silences the design.** Make `plane baseline check` fail (or refuse `baseline update`) whenever a design's results contain `T0.*` FAIL or `T*.blocked`/`T*.error`: a design must at least load and run every tier to be monitored. Also have growth report entries **removed** from a baseline in the change ("REMOVED: 16 known results"), so a shrink that comes with a new blocking failure is visible.
+2. **D2: subject missing from data (all-digit ids).** Either give every per-subject FAIL/SKIP its subject in data (T4.machine, T4.method, T1.connectivity, T1.point_mass_location, T0.schema path), or (one line) change the schema slug and attachment id patterns to require a letter (`^[a-z][a-z0-9_-]*$`), so ids never normalise to `#`. No current design uses all-digit ids.
+
+### Non-blocking
+
+1. Post the ADDED/REMOVED table as a PR comment, or require a reviewed PR in branch protection (see above).
+2. `key_data` accepts any string in data. Restrict it to a whitelist of subject fields (`joint`, `component`, `part`, `pair(s)`, `motor`, `configuration`, `band`), so a future check that stores a formatted value as a string can't churn keys.
+3. README "Known limits": add A3 (deleting a requirement silently drops its check).
