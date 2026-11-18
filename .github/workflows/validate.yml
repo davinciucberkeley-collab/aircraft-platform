@@ -33,3 +33,20 @@ jobs:
           echo "# Baseline check" >> "$GITHUB_STEP_SUMMARY"
           plane baseline check "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit ${PIPESTATUS[0]}
+      - name: Check citations point at the pages they name
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref || 'main' }}"
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            base="${{ github.event.before }}"
+          else
+            base=""
+          fi
+          echo "# Citation check" >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$base" ]; then
+            echo "No previous commit to diff against (first push): nothing checked." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          plane check-citations --base-ref "$base" --format md | tee -a "$GITHUB_STEP_SUMMARY"
+          exit ${PIPESTATUS[0]}

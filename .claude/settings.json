@@ -1,0 +1,72 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" pre-agent || python \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" pre-agent",
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" pre-edit || python \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" pre-edit",
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" pre-bash || python \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" pre-bash",
+            "timeout": 30,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" post-agent || python \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" post-agent",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" post-bash || python \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" post-bash",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" subagent-stop || python \"$CLAUDE_PROJECT_DIR/tools/agent_hooks.py\" subagent-stop",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

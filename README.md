@@ -62,6 +62,8 @@ pytest -q
 On Windows, run these in Miniforge Prompt (or any terminal with the environment active) and write paths with `\`
 if you like: `plane validate designs\concept-a` works the same.
 
+For agent work in Claude Code, update Claude Code to v2.1.295 or newer: older clients let a failed agent hook through, so the block-on-failure safeguard needs the newer version.
+
 ### Re-import Dillon's concept A from DBF-Combined
 
 ```bash
@@ -131,6 +133,10 @@ CI fails only on regressions. Each design's `designs/<id>/baseline.json` lists i
 ## How we use agents
 
 See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exact instructions, builders and scouts (Haiku) execute, one reviewer (Opus) scores against named criteria. The clearer the goal, the cheaper the model.
+
+Claude Code hooks in `tools/agent_hooks.py` enforce the plan table, the edit limits and the agent log in Claude Code sessions opened in this repo. The "How this is enforced" section of `standards/agents.md` describes them, and `skills/agent-roles/SKILL.md` gives the steps.
+
+The gates use `python3` with a `python` fallback and block when neither runs. Bash writes are only detected after the fact, so a shell command can still change a protected file before the hook reports it.
 
 ## Known limits (v0.4)
 

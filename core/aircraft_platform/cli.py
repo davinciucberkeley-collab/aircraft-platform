@@ -465,6 +465,46 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
         sys.exit(1)
 
 
+def _md_cell(text: str) -> str:
+    return str(text).replace("|", "\\|").replace("\n", " ")
+
+
+@cli.command("check-citations")
+@click.option("--base-ref", default="HEAD", show_default=True,
+              help="Check citations on lines added since this git ref.")
+@click.option("--format", "fmt", type=click.Choice(["md", "json"]), default="md", show_default=True)
+def check_citations_cmd(base_ref, fmt):
+    """Fetch each citation added since BASE_REF and check the page is the one it names."""
+    from .citations import added_citations, check_detail
+    try:
+        cites = added_citations(base_ref)
+    except RuntimeError as e:
+        _fail(f"cannot diff against {base_ref}: {e}")
+    results = [check_detail(c) for c in cites]
+    if fmt == "json":
+        text = _dumps([{"url": r.citation.url, "claimed_text": r.citation.claimed_text,
+                        "path": r.citation.path, "line": r.citation.line, "status": r.status,
+                        "message": r.message, "page_title": r.page_title} for r in results]) + "\n"
+    elif not results:
+        text = f"No citations added relative to {base_ref}.\n"
+    else:
+        lines = ["| url | cited as | page title | status |", "|---|---|---|---|"]
+        for r in results:
+            status = r.status if r.status == "PASS" else f"{r.status} ({r.message})"
+            lines.append(f"| {_md_cell(r.citation.url)} | {_md_cell(r.citation.claimed_text)} | "
+                         f"{_md_cell(r.page_title or '-')} | {_md_cell(status)} |")
+        text = "\n".join(lines) + "\n"
+    click.echo(text, nl=False)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        for r in results:
+            if r.status == "PASS":
+                continue
+            kind = "error" if r.status == "FAIL" else "warning"
+            msg = r.message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            click.echo(f"::{kind} file={r.citation.path},line={r.citation.line}::{msg}")
+    sys.exit(1 if any(r.status == "FAIL" for r in results) else 0)
+
+
 def main():
     cli()
 
