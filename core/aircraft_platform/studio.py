@@ -179,12 +179,7 @@ class Studio:
     def _job_import_dbf(self, job, root: str, concept: str, new_id: str):
         from .importers.dbf import import_concept
         out = DESIGNS_DIR / new_id
-        import_concept(root, concept=concept, out_dir=str(out), log=lambda m: job["log"].append(str(m)))
-        p = out / "plane.yaml"
-        data = yaml.safe_load(p.read_text())
-        if data.get("id") != new_id:  # the importer names it after the concept; keep the name the person chose
-            text = p.read_text()
-            p.write_text(re.sub(r"(?m)^id: .*$", f"id: {new_id}", text, count=1))
+        import_concept(root, concept=concept, out_dir=str(out), design_id=new_id, log=lambda m: job["log"].append(str(m)))
         self.scan()
         return f"imported into designs/{new_id}"
 

@@ -287,22 +287,21 @@ def import_group():
 
 @import_group.command("dbf")
 @click.option("--dbf-root", required=True, type=click.Path(exists=True, file_okay=False), help="DBF-Combined checkout (read only).")
-@click.option("--concept", default="A", show_default=True)
-@click.option("--id", "new_id", default=None, help="Design id to save as (default concept-<letter>); sets both the folder and the id.")
+@click.option("--concept", default="A", show_default=True, help="Concept letter, a key of CONCEPTS in importers/dbf.py.")
+@click.option("--id", "new_id", default=None, help="Design id (default concept-<letter>): the folder name and plane.yaml id.")
 @click.option("--out", "out", type=click.Path(file_okay=False), default=None, help="Output folder (default designs/<id>).")
 def import_dbf_cmd(dbf_root, concept, new_id, out):
     """Rebuild a DBF-Combined concept as a platform design (plane.yaml + meshes/)."""
-    from .importers.dbf import import_concept
-    new_id = new_id or f"concept-{concept.lower()}"
+    from .importers.dbf import CONCEPTS, import_concept
+    key = concept.upper()
+    if key not in CONCEPTS:
+        _fail(f"unknown concept {concept!r}; known concepts: {', '.join(sorted(CONCEPTS))}")
+    new_id = new_id or f"concept-{key.lower()}"
     if not ID_RE.match(new_id):
         _fail(f"invalid id {new_id!r}: use lowercase letters, digits, - and _")
     out = out or str(DESIGNS_DIR / new_id)
-    p = Path(import_concept(dbf_root, concept=concept, out_dir=out, log=lambda m: click.echo(m, err=True)))
-    plane = p if p.name == "plane.yaml" else Path(out) / "plane.yaml"
-    text = plane.read_text()
-    if not re.search(rf"(?m)^id: {re.escape(new_id)}\s*$", text):  # the importer names it after the concept
-        plane.write_text(re.sub(r"(?m)^id: .*$", f"id: {new_id}", text, count=1))
-    click.echo(str(plane))
+    p = Path(import_concept(dbf_root, concept=key, out_dir=out, design_id=new_id, log=lambda m: click.echo(m, err=True)))
+    click.echo(str(p))
 
 
 @cli.group("baseline")

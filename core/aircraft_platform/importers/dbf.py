@@ -1,4 +1,4 @@
-"""Import a DBF-Combined concept (read only) as a platform design: `plane import dbf --dbf-root PATH`.
+"""Import a DBF-Combined concept (read only) as a platform design: `plane import dbf --dbf-root PATH --concept A --id ID`.
 
 Pipeline (see designs/concept-a/README.md for the provenance of every choice):
   1. run the team's own headless CAD build in a subprocess (`python3 -I -B _dbf_dump.py`), dump bodies, PARTS, EDGES,
@@ -7,6 +7,10 @@ Pipeline (see designs/concept-a/README.md for the provenance of every choice):
      fallback to the published GLB mesh for a part that cannot be rebuilt (none needed for concept A)
   3. map parts to components, edges to attachments (rating sources in dbf_ratings.py), write plane.yaml with a source
      comment on every number, and import-report.json with the conversion statistics
+
+Every fact that belongs to one concept (source paths, root part, linkage children, planform, mass-proxy reasons,
+manufacturing overrides, morphology, the joint-rating table and its citations) is in CONCEPTS below. Only concept A is
+listed: other concept folders need their specifics reviewed by a person before they are added.
 """
 from __future__ import annotations
 
@@ -28,22 +32,162 @@ from ..design import REPO_ROOT, load_standards
 from . import dbf_geometry as geo
 from . import dbf_ratings as rt
 
-DEFAULT_OUT = REPO_ROOT / "designs" / "concept-a"
-# Children moved by a linkage the schema does not model (servo pushrods, elevon damper stators). The source's pose
-# check leaves them out: "Not checked against the moved parts (linkage path not modelled)" in
-# redesign/qp/A/cad/out/REPORT.md. Their attachments get kinematic_link: true (schema 0.4).
-KINEMATIC_LINK_CHILDS = {"MEC-003-L", "MEC-003-R", "WNG-009-L", "WNG-009-R"}
+DESIGN_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 G = 9.80665
 
+# ----------------------------------------------------------------------------- per-concept facts
+# Structural allowables and factors of concept A's structures docs (EST values in the source; no coupons run).
+_FS_ULT, _FS_FIT, _FS_PRINT = 1.5, 1.15, 1.25          # structures_a.py L10
+_KP = _FS_ULT * _FS_FIT * _FS_PRINT                    # 2.15625 (structures_a.py L12): printed / bonded K
+_BOND_TAU_MPA = 2.0                                    # structures_a.py L17 (EST)
+_XPS_SHEAR_KPA = 86.0                                  # foam_103.md last line (EST)
+
+
+def _k(ids, limit, ms, text):
+    """A doc row analysing these joints: rated = limit x K (printed / bonded) x (1 + MS)."""
+    return {i: ("k", limit, ms, _KP, text) for i in ids}
+
+
+_DOC: dict = {}
+_DOC.update(_k(("E-FIN-01", "E-FIN-09"), 130.0, 6.17,
+               "iter2_margins.md 'Fin root block on fin tube (40 mm long, 16 mm OD)', 130 N, MS +6.17"))
+_DOC.update(_k(("E-FIN-02", "E-FIN-10"), 84.0, 28.14,
+               "iter2_margins.md 'Rib tube 14x12 in fin root block, 60 mm embed', 84 N, MS +28.14"))
+_DOC.update(_k(("E-FIN-03", "E-FIN-04", "E-FIN-11", "E-FIN-12"), 783.0, 0.34,
+               "iter2_margins.md 'Rib saddle on 12 mm spar, wrap 60 mm wide', 783 N, MS +0.34 (same saddle wrap used for the "
+               "saddle-on-rib joint)"))
+_DOC.update(_k(("E-GER-01", "E-GER-03", "E-GER-05", "E-GER-07"), 52.0, 21.41,
+               "iter2_margins.md 'Foot shoe on the fin tube end (25 mm wrap, 16 mm OD)', 52 N, MS +21.41"))
+_DOC.update(_k(("E-CGE-01", "E-CGE-03", "E-CGE-05", "E-CGE-07"), 296.0, 0.48,
+               "iter2_margins.md 'Arm 12x10 in socket, 25 mm, strike couple', 296 N, MS +0.48"))
+_DOC.update(_k(("E-CGE-09",), 188.0, 1.32,
+               "iter2_margins.md 'Bridge 12x10 in hub, strike couple', 188 N, MS +1.32"))
+_DOC.update(_k(("E-CGE-13", "E-CGE-14", "E-CGE-16", "E-CGE-17"), 19.0, 8.20,
+               "iter2_margins.md 'V strut saddles (6x4.5, 20 mm)', 19 N, MS +8.20"))
+_DOC["E-CGE-18"] = ("abs", _BOND_TAU_MPA * 600.0,
+                    "structures_run.md L225 'Pack tray to hub (PETG, 600 mm2 bond)': BOND_TAU 2.0 MPa x 600 mm2")
+for _e in ("E-PRP-01", "E-PRP-03", "E-PRP-05", "E-PRP-07"):
+    _DOC[_e] = ("abs", 4 * 20.0 * 9.3,
+                "arm_cup_checks.md 'Head pull-through': 4 screws x PETG bearing 20.0 MPa x annulus 9.3 mm2 (governs over "
+                "screw tension and thread strip)")
+for _e in ("E-MEC-03", "E-MEC-08"):
+    _DOC[_e] = ("abs", 73.0, "qp5_checks.md s1 pushrod buckling, Pcr 73 N at the CAD rod length 52.5 mm (D-194)")
+_DOC["E-WNG-01"] = ("abs", round(_XPS_SHEAR_KPA * 1e-3 * math.pi * 12.0 * 400.0, 1),
+                    "foam_103.md XPS shear 86 kPa x bore wrap pi x 12 mm x 0.40 m (bond rule |y| <= 0.20 m, E-WNG-01 notes, "
+                    "FIXES2)")
+
+CONCEPTS = {
+    "A": {
+        "title": "Concept A (scaled quad tailsitter flying wing, D-182)",
+        "name": "Concept A, scaled quad tailsitter flying wing (D-182)",
+        "description": [
+            "Four canted motors (T-Motor MN2212 KV780, APC 9x4.5 props) on four carbon arms off a printed hub, a 0.90 m x 0.245 m",
+            "XPS-foam wing (Selig S5010) with two elevons, two fin tubes that double as the four landing feet. Sits on the fin",
+            "tips nose-up for hover. Built from the team's own CAD (redesign/qp/A/cad/model, stub backend). Nothing built or flown.",
+        ],
+        "frame_note": "the origin is the wing LE at the centre, not a nose datum. Read README.md for provenance and gaps.",
+        "inspired_by": "redesign/qp/A/cad (a_model.py, amodel/), qp/A/params-A.json",
+        "morphology": {
+            "lift": "flying-wing",
+            "vtol_method": "tailsitter",
+            "tail": "none",
+            "tail_note": "no tail; two fin tubes (FIN-001/002/004) at y +-380 mm act as fins and landing legs",
+            "propulsion_count": 4,
+            "propulsion_note": "PRP-001-UR/UL/LR/LL",
+        },
+        # paths are relative to the checkout's redesign/ folder
+        "paths": {
+            "cad": "qp/A/cad",
+            "parts_csv": "qp/A/cad/out/parts-a.csv",
+            "params": "qp/A/params-A.json",
+            "glb": "site/assets/concept-a.glb",
+            "parts_src": "redesign/qp/A/cad/amodel",
+        },
+        "root_part": "WNG-001",
+        "type_overrides": {"WNG-001": "wing"},
+        # Children moved by a linkage the schema does not model (servo pushrods, elevon damper stators). The source's pose
+        # check leaves them out: "Not checked against the moved parts (linkage path not modelled)" in
+        # redesign/qp/A/cad/out/REPORT.md. Their attachments get kinematic_link: true (schema 0.4).
+        "kinematic_link_children": {"MEC-003-L", "MEC-003-R", "WNG-009-L", "WNG-009-R"},
+        "mass_proxy_reasons": {
+            "HRD-001": "hardware lumps: fasteners and small hardware spread over the airframe; "
+                       "skipped as 'mass proxy' by redesign/collision/collide.py",
+            "HRN-001": "wiring harness routed through the arm tubes and bay; "
+                       "skipped as 'mass proxy' by redesign/collision/collide.py",
+        },
+        # exact part id -> (manufacturing block, why); checked before the make_or_buy rule
+        "manufacturing": {
+            "HRD-001": ({"method": "purchased", "part_number": "BOM R05, R07"},
+                        "fasteners, epoxy, CA bought (parts-a.csv: BOM R05, R07)"),
+            "HRN-001": ({"method": "hand-cut"},
+                        "wire, heat-shrink and ties cut and made up by hand (parts-a.csv: Made from BOM W07, W05); "
+                        "the schema has no 'hand-assembled' method"),
+        },
+        # part id prefix -> (manufacturing block, why); checked after the make_or_buy rule
+        "manufacturing_prefix": {
+            "WNG-007": ({"method": "hand-cut"}, "lead strip cut by hand (parts-a.csv: Made (lead strip) from BOM R11)"),
+        },
+        "planform": {  # schema 0.4 planform of the mesh wing (tier 3 stall / SM / NP only)
+            "span": 900, "root_chord": 245, "tip_chord": 245, "sweep_le_deg": 0, "dihedral_deg": 0, "airfoil": "S5010",
+            "citation": "amodel/common.py line 32 `C, B = 0.245, 0.90` (chord, span, DOC STRUCTURES s1); origin = frame origin at the "
+                        "wing LE (common.py line 12); rectangular, no sweep/dihedral constants in common.py",
+        },
+        "propulsion": {"max_thrust_n": 8.81},
+        "notes": {
+            "mass_gate": "params-A.json req.mass_gate_kg 1.47 kg (A-P1 weigh-in gate)",
+            "cruise": "params-A.json mission.cruise_ms",
+            "stall": "params-A.json mission.cruise_ms 17 / req.cruise_ratio 1.3 (A-P6: 1.3 Vs < cruise)",
+            "budget": "params-A.json req.budget_usd",
+            "cl_max": "params-A.json mission.clmax 0.75, EST in the source (measured stall will replace it)",
+            "rho": "params-A.json env.rho_kgm3 (MISSION.md s1)",
+            "thrust": [
+                "header), cant 17 deg (amodel/common.py CANT, params-A.json prop.cant_deg). max_thrust_n 8.81 = 898 gf x 9.807: prop_a.py",
+                "output 'fresh 16.8 V duty 0.90 ... 898 gf x0.93' (APC 9x4.5MR table, 0.93 derate, Q_M_SPIN_MAX 0.90 cap, A.param)",
+            ],
+            "thrust_direction": "thrust force direction: component matrix @ (-1, 0, 0); motor-local x is the shaft, thrust toward -x "
+                                "(amodel/propulsion.py",
+            "elevon_hinge": "hinge line x 183.75 = (1 - ELEV_FRAC 0.25) x chord 245, mid-span of the elevon",
+            "elevon_range": "ELEV_STOP 21, amodel/common.py",
+            "kinematic": "kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against "
+                         "the moved parts'",
+        },
+        "ratings": {
+            "structures_dir": "redesign/qp/A/structures/",
+            "doc": _DOC,
+            # The lens-cap peel rows (foam_103.md L10) are NOT in doc: the same row says "peel of the tape skin is not covered by a
+            # foam value: pull coupon required". The lens-cap flanges are bonded (CT-EPOXY) on the tape skin; the 30 N stop reaction
+            # is a PEEL load, and the only adhesive allowable in the source is the epoxy SHEAR value, which does not apply to peel.
+            "peel_not_sourced": ("E-WNG-30R", "E-WNG-31R", "E-WNG-30L", "E-WNG-31L"),
+            "peel_text": ("foam_103.md L10 'Stop reaction at stall (30 N) peeling the lens cap off the skin' states 'peel of "
+                          "the tape skin is not covered by a foam value: pull coupon required'; the only adhesive allowable is "
+                          "epoxy shear (structures_a.py L17 BOND_TAU 2.0 MPa (EST)), which does not apply to peel"),
+            "strap_text": "structures_run.md L225 'strap: 2 x 20 mm Velcro ... not tested'",
+            "no_capacity_text": ("no capacity found in qp/A/structures or the EDGES notes, see "
+                                 "knowledge/sources/dbf-concept-a-joint-capacities.md"),
+            "bond_tau_mpa": _BOND_TAU_MPA,
+            "bond_tau_src": "structures_a.py L17 BOND_TAU 2.0 MPa (EST)",
+            "xps_shear_kpa": _XPS_SHEAR_KPA,
+            "xps_src": "foam_103.md XPS shear 86 kPa (EST)",
+            "steel_tension_mpa": 450.0,
+            "steel_tension_src": "arm_cup_checks.md steel tension allowable, EST",
+            "steel_shear_mpa": 270.0,
+            "steel_shear_src": "arm_cup_checks.md steel shear allowable, EST",
+            # tensile stress areas (mm2): M2.5 and M3 are the source's own values; M2 and M5 are NOT in the source (the ISO 898-1
+            # standard values, not opened) -> placeholder, marked.
+            "stress_area_mm2": {2.5: (3.39, "arm_cup_checks.py L82"), 3.0: (5.03, "structures_a.py L228"),
+                                2.0: (2.07, "placeholder: ISO 898-1 standard value, not opened"),
+                                5.0: (14.2, "placeholder: ISO 898-1 standard value, not opened")},
+        },
+    },
+}
+
+
 # ----------------------------------------------------------------------------- semantic tables
-SERVO_PREFIX = ("MEC-001",)
-
-
-def part_type(pid: str, name: str) -> str:
-    """Schema component type from the source part id (subsystem prefix) and name."""
+def part_type(pid: str, name: str, overrides: dict | None = None) -> str:
+    """Schema component type from the source part id (subsystem prefix) and name. `overrides` maps exact part ids."""
     p = pid
-    if p == "WNG-001":
-        return "wing"
+    if overrides and p in overrides:
+        return overrides[p]
     if p.startswith("WNG-006") or p.startswith(("FIN-004", "FIN-006")):
         return "tail_surface"          # elevons; fin fairings (the aerodynamic skin of the fins)
     if p.startswith("PRP-001"):
@@ -70,23 +214,21 @@ def part_type(pid: str, name: str) -> str:
     return "other"                     # sensors, hardware, linkage, harness, dampers, pads, mass proxies
 
 
-def manufacturing_for(pid: str, part: dict, row: dict | None, proxy: bool) -> tuple[dict, str]:
+def manufacturing_for(pid: str, part: dict, row: dict | None, proxy: bool, C: dict) -> tuple[dict, str]:
     """(manufacturing block, why). Machine ids exist in standards/manufacturing.yaml."""
     material = part.get("material") or ""
     text = (row or {}).get("vendor_or_file", "")
     boms = re.findall(r"BOM ([A-Z]\d{2})", text)
-    if pid == "HRD-001":
-        return {"method": "purchased", "part_number": "BOM R05, R07"}, "fasteners, epoxy, CA bought (parts-a.csv: BOM R05, R07)"
-    if pid == "HRN-001":
-        return {"method": "hand-cut"}, ("wire, heat-shrink and ties cut and made up by hand (parts-a.csv: Made from BOM W07, W05); "
-                                         "the schema has no 'hand-assembled' method")
+    if pid in C["manufacturing"]:
+        return C["manufacturing"][pid]
     if part.get("make_or_buy") == "buy":
         mf = {"method": "purchased"}
         if boms:
             mf["part_number"] = "BOM " + ", ".join(dict.fromkeys(boms))
         return mf, "make_or_buy 'buy' (PARTS) -> purchased; BOM id from parts-a.csv"
-    if pid.startswith("WNG-007"):
-        return {"method": "hand-cut"}, "lead strip cut by hand (parts-a.csv: Made (lead strip) from BOM R11)"
+    for prefix, override in C["manufacturing_prefix"].items():
+        if pid.startswith(prefix):
+            return override
     if "XPS" in material:
         return {"method": "hotwire-foam"}, "XPS core hot-wired (parts-a.csv: Made (hot-wired XPS, tape skin))"
     if "PETG" in material:
@@ -208,7 +350,8 @@ def _contact_point(ma: trimesh.Trimesh, mb: trimesh.Trimesh, n: int = 2500) -> n
 
 
 def _contact_area(ma: trimesh.Trimesh, mb: trimesh.Trimesh, eps: float = 0.1) -> float:
-    """Bonded area estimate (mm2): area of each mesh's surface lying within (gap + eps) of the other (20000 area-weighted samples), The source models its glue lines with a clearance (0.02-0.5 mm between bonded parts), so the area is
+    """Bonded area estimate (mm2): area of each mesh's surface lying within (gap + eps) of the other (20000 area-weighted
+    samples). The source models its glue lines with a clearance (0.02-0.5 mm between bonded parts), so the area is
     taken at the measured minimum gap plus eps = 0.1 mm, not at zero distance."""
     x, y = (ma, mb) if ma.area <= mb.area else (mb, ma)       # sample the smaller part: the bond cannot exceed its area
     pts = trimesh.sample.sample_surface(x, 20000, seed=11)[0]
@@ -234,18 +377,32 @@ def _s(x: str) -> str:
 
 
 # ----------------------------------------------------------------------------- main
-def import_concept(dbf_root, concept: str = "A", out_dir=None, log=print) -> Path:
-    """Regenerate out_dir (default designs/concept-a): plane.yaml, meshes/<id>.stl, import-report.json."""
+def default_design_id(concept: str) -> str:
+    """The design id used when none is given: concept-<letter, lowercase>."""
+    return f"concept-{str(concept).lower()}"
+
+
+def import_concept(dbf_root, concept: str = "A", out_dir=None, design_id: str | None = None, log=print) -> Path:
+    """Regenerate out_dir (default designs/<design_id>): plane.yaml, meshes/<part>.stl, import-report.json.
+    `concept` is a key of CONCEPTS (case-insensitive); `design_id` defaults to default_design_id(concept)."""
+    key = str(concept).upper()
+    if key not in CONCEPTS:
+        raise ValueError(f"unknown concept {concept!r}; known concepts: {', '.join(sorted(CONCEPTS))}")
+    C = CONCEPTS[key]
+    design_id = design_id or default_design_id(key)
+    if not DESIGN_ID_RE.match(design_id):
+        raise ValueError(f"invalid design id {design_id!r}: must match {DESIGN_ID_RE.pattern}")
     root = Path(dbf_root).resolve()
-    out = Path(out_dir) if out_dir else DEFAULT_OUT
-    qp = root / "redesign" / "qp" / concept
-    if not (qp / "cad").is_dir():
-        raise FileNotFoundError(f"{qp / 'cad'} not found: not a DBF-Combined checkout with concept {concept}")
-    data = _run_dump(root, concept)
-    parts_csv = _read_csv(qp / "cad" / "out" / "parts-a.csv", "part_id")
-    params = json.loads((qp / f"params-{concept}.json").read_text())
+    out = Path(out_dir) if out_dir else REPO_ROOT / "designs" / design_id
+    P = C["paths"]
+    cad = root / "redesign" / P["cad"]
+    if not cad.is_dir():
+        raise FileNotFoundError(f"{cad} not found: not a DBF-Combined checkout with concept {key}")
+    data = _run_dump(root, key)
+    parts_csv = _read_csv(root / "redesign" / P["parts_csv"], "part_id")
+    params = json.loads((root / "redesign" / P["params"]).read_text())
     std = load_standards()
-    glb = root / "redesign" / "site" / "assets" / f"concept-{concept.lower()}.glb"
+    glb = root / "redesign" / P["glb"]
     mesh_dir = out / "meshes"
     mesh_dir.mkdir(parents=True, exist_ok=True)
 
@@ -290,7 +447,7 @@ def import_concept(dbf_root, concept: str = "A", out_dir=None, log=print) -> Pat
 
     # ---- components
     ids = sorted(set(comps) | set(proxies))
-    root_id = "WNG-001"
+    root_id = C["root_part"]
     cg = {}  # centroid of each rebuilt part, for cg_offset
     for pid, m in meshes.items():
         cg[pid] = np.asarray(m.center_mass)
@@ -357,7 +514,6 @@ def import_concept(dbf_root, concept: str = "A", out_dir=None, log=print) -> Pat
         pm, cm = meshes.get(parent), meshes.get(child)
         row = {"edge": e, "parent": parent, "child": child}
         if pm is None or cm is None:
-            solid = pm if pm is not None else cm
             pt_id = parent if pm is None else child
             pos = proxies[pt_id]["cg_declared"]
             row.update(location=[x * 1000.0 for x in pos], embed=False, overlap_frac=None, area=None, point_mass=True)
@@ -373,7 +529,7 @@ def import_concept(dbf_root, concept: str = "A", out_dir=None, log=print) -> Pat
 
     # ---- plane.yaml
     text, rating_rows = _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params, att_rows, elevon, groups, bridging,
-                                    std, out)
+                                    std, out, C, design_id)
     (out / "plane.yaml").write_text(text)
     report["attachments"] = len(att_rows)
     report["bridging_edges_not_emitted"] = [e["id"] for e in bridging]
@@ -390,50 +546,53 @@ def _overlap_volume_fn():
 
 
 # ----------------------------------------------------------------------------- yaml
-def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params, att_rows, elevon, groups, bridging, std, out):
+def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params, att_rows, elevon, groups, bridging, std, out, C,
+                design_id):
     from ..checks import _subtree_mass
     from ..design import Design
     P = params
+    N = C["notes"]
+    M = C["morphology"]
+    root_id = C["root_part"]
     commit = data["commit"][:8]
     L: list[str] = []
     add = L.append
     mass_total = sum(PARTS[i]["mass_g"] for i in ids)
 
-    add("# Concept A (scaled quad tailsitter flying wing, D-182), imported by `plane import dbf` from")
+    add(f"# {C['title']}, imported by `plane import dbf` from")
     add(f"# davinciucberkeley-collab/dbf-combined @ {commit} (read only). GENERATED: edit the importer, not this file.")
     add("# Frame: the source's own (metres; x aft from the wing leading edge, y right, z up in cruise) scaled x1000 to mm;")
-    add("# the origin is the wing LE at the centre, not a nose datum. Read README.md for provenance and gaps.")
+    add(f"# {C['frame_note']}")
     add("# Every number cites its source in a comment; anything the source does not give is marked \"placeholder - not from source\".")
     add('schema_version: "0.4"')
-    add("id: concept-a")
-    add("name: Concept A, scaled quad tailsitter flying wing (D-182)")
+    add(f"id: {design_id}")
+    add(f"name: {C['name']}")
     add('authors: ["UC Berkeley DBF capstone team (source repo dbf-combined)", "imported for aircraft-platform by `plane import dbf`"]')
     add("status: designed")
     add("description: >")
-    add("  Four canted motors (T-Motor MN2212 KV780, APC 9x4.5 props) on four carbon arms off a printed hub, a 0.90 m x 0.245 m")
-    add("  XPS-foam wing (Selig S5010) with two elevons, two fin tubes that double as the four landing feet. Sits on the fin")
-    add("  tips nose-up for hover. Built from the team's own CAD (redesign/qp/A/cad/model, stub backend). Nothing built or flown.")
+    for line in C["description"]:
+        add(f"  {line}")
     add("lineage:")
     add("  derived_from: []")
-    add(f'  inspired_by: ["dbf-combined@{commit} redesign/qp/A/cad (a_model.py, amodel/), qp/A/params-A.json"]')
+    add(f'  inspired_by: ["dbf-combined@{commit} {C["inspired_by"]}"]')
     add("morphology:")
-    add("  lift: flying-wing")
-    add("  vtol_method: tailsitter")
-    add("  tail: none            # no tail; two fin tubes (FIN-001/002/004) at y +-380 mm act as fins and landing legs")
-    add("  propulsion_count: 4   # PRP-001-UR/UL/LR/LL")
+    add(f"  lift: {M['lift']}")
+    add(f"  vtol_method: {M['vtol_method']}")
+    add(f"  tail: {M['tail']}            # {M['tail_note']}")
+    add(f"  propulsion_count: {M['propulsion_count']}   # {M['propulsion_note']}")
     gate = P["req"]["mass_gate_kg"]["value"]
     cruise = P["mission"]["cruise_ms"]["value"]
     ratio = P["req"]["cruise_ratio"]["value"]
     add("requirements:")
-    add(f"  mtow_g: {_n(gate * 1000, 1)}              # params-A.json req.mass_gate_kg 1.47 kg (A-P1 weigh-in gate)")
-    add(f"  cruise_speed_mps: {_n(cruise, 1)}        # params-A.json mission.cruise_ms")
-    add(f"  stall_speed_max_mps: {_n(cruise / ratio, 2)}    # params-A.json mission.cruise_ms 17 / req.cruise_ratio 1.3 (A-P6: 1.3 Vs < cruise)")
-    add(f"  budget_usd: {_n(P['req']['budget_usd']['value'], 0)}           # params-A.json req.budget_usd")
+    add(f"  mtow_g: {_n(gate * 1000, 1)}              # {N['mass_gate']}")
+    add(f"  cruise_speed_mps: {_n(cruise, 1)}        # {N['cruise']}")
+    add(f"  stall_speed_max_mps: {_n(cruise / ratio, 2)}    # {N['stall']}")
+    add(f"  budget_usd: {_n(P['req']['budget_usd']['value'], 0)}           # {N['budget']}")
     add("flight:")
-    add(f"  cl_max: {_n(P['mission']['clmax']['value'], 2)}            # params-A.json mission.clmax 0.75, EST in the source (measured stall will replace it)")
-    add(f"  air_density_kgm3: {_n(P['env']['rho_kgm3']['value'], 2)}   # params-A.json env.rho_kgm3 (MISSION.md s1)")
+    add(f"  cl_max: {_n(P['mission']['clmax']['value'], 2)}            # {N['cl_max']}")
+    add(f"  air_density_kgm3: {_n(P['env']['rho_kgm3']['value'], 2)}   # {N['rho']}")
     add("  # no hover_pose: a tailsitter hovers nose-up with no tilting joint, and the validator then takes -x as up")
-    add(f"root: {root_id_slug()}")
+    add(f"root: {root_id.lower()}")
     add("")
     add("components:")
     rat_rows = {}
@@ -442,10 +601,10 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
         slug = pid.lower()
         proxy = pid in proxies
         row = parts_csv.get(pid)
-        mf, mf_why = manufacturing_for(pid, part, row, proxy)
-        t = part_type(pid, part["name"])
+        mf, mf_why = manufacturing_for(pid, part, row, proxy, C)
+        t = part_type(pid, part["name"], C["type_overrides"])
         add(f"  # {pid} {part['subsystem']}: {part['name'][:150]}")
-        src = f"PARTS[{pid}].mass_g {part['mass_g']} (redesign/qp/A/cad/amodel, via a_model.PARTS)"
+        src = f"PARTS[{pid}].mass_g {part['mass_g']} ({C['paths']['parts_src']}, via a_model.PARTS)"
         if proxy:
             cgm = proxies[pid]["cg_declared"]
             add(f"  # src: {src}; mass proxy, position = declared cg_xyz_m {cgm} m x1000 (collide.jobs_for skips it: 'mass proxy')")
@@ -455,16 +614,13 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
                 "STL in meshes/; manufacturing: " + mf_why)
         add(f"  - id: {slug}")
         add(f"    type: {t}")
-        distributed = proxy and pid in ("HRD-001", "HRN-001")
+        distributed = proxy and pid in C["mass_proxy_reasons"]
         desc = part["name"] + ("; distributed mass proxy (skipped as 'mass proxy' by redesign/collision collide.py)"
                                if distributed else "")
         add(f"    description: {_s(desc)}")
         if proxy:
             if distributed:
-                reason = {"HRD-001": "hardware lumps: fasteners and small hardware spread over the airframe; "
-                                     "skipped as 'mass proxy' by redesign/collision/collide.py",
-                          "HRN-001": "wiring harness routed through the arm tubes and bay; "
-                                     "skipped as 'mass proxy' by redesign/collision/collide.py"}[pid]
+                reason = C["mass_proxy_reasons"][pid]
                 add(f"    geometry: {{point_mass: {{distributed: true, reason: {_s(reason)}}}}}")
             else:
                 add("    geometry: {point_mass: {}}")
@@ -478,21 +634,22 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
         add(f"    mass_g: {_n(part['mass_g'], 3)}")
         if part.get("material"):
             add(f"    material: {_s(part['material'])}")
-        if pid == "WNG-001":  # mesh wing: its aero planform for tier 3 (schema 0.4 component.planform)
-            add("    # planform: amodel/common.py line 32 `C, B = 0.245, 0.90` (chord, span, DOC STRUCTURES s1); origin = frame origin at the "
-                "wing LE (common.py line 12); rectangular, no sweep/dihedral constants in common.py")
-            add("    planform: {lifting_surface: {span: 900, root_chord: 245, tip_chord: 245, sweep_le_deg: 0, dihedral_deg: 0, "
-                "mirrored: true, airfoil: S5010}, origin: [0, 0, 0]}")
+        if pid == root_id:  # mesh wing: its aero planform for tier 3 (schema 0.4 component.planform)
+            pl = C["planform"]
+            add(f"    # planform: {pl['citation']}")
+            add(f"    planform: {{lifting_surface: {{span: {pl['span']}, root_chord: {pl['root_chord']}, tip_chord: {pl['tip_chord']}, "
+                f"sweep_le_deg: {pl['sweep_le_deg']}, dihedral_deg: {pl['dihedral_deg']}, "
+                f"mirrored: true, airfoil: {pl['airfoil']}}}, origin: [0, 0, 0]}}")
         mfs = "{" + ", ".join(f"{k}: {_s(v) if k != 'method' else v}" for k, v in mf.items()) + "}"
         add(f"    manufacturing: {mfs}")
         if t == "motor":
             R = np.array(comps[pid]["matrix"])[:3, :3]
             ax = -R[:, 0]                                    # motor-local thrust is toward -x (propulsion.py header)
             ax = ax / np.linalg.norm(ax)
-            add("    # thrust force direction: component matrix @ (-1, 0, 0); motor-local x is the shaft, thrust toward -x (amodel/propulsion.py")
-            add("    # header), cant 17 deg (amodel/common.py CANT, params-A.json prop.cant_deg). max_thrust_n 8.81 = 898 gf x 9.807: prop_a.py")
-            add("    # output 'fresh 16.8 V duty 0.90 ... 898 gf x0.93' (APC 9x4.5MR table, 0.93 derate, Q_M_SPIN_MAX 0.90 cap, A.param)")
-            add(f"    propulsion: {{max_thrust_n: 8.81, axis: {_vec(ax, 4)}, role: both}}")
+            add(f"    # {N['thrust_direction']}")
+            for line in N["thrust"]:
+                add(f"    # {line}")
+            add(f"    propulsion: {{max_thrust_n: {C['propulsion']['max_thrust_n']}, axis: {_vec(ax, 4)}, role: both}}")
         add("")
 
     add("attachments:")
@@ -504,7 +661,7 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
     n_fac = std["structure"]["landing_load_factor"]["value"] * std["structure"]["ultimate_factor"]["value"]
     for r in att_rows:
         e, parent, child = r["edge"], r["parent"], r["child"]
-        val, kind, srcv = rt.rating(e, PARTS[parent], PARTS[child], r["area"])
+        val, kind, srcv = rt.rating(e, PARTS[parent], PARTS[child], r["area"], C["ratings"])
         if val is None:
             demand = _subtree_mass(stub, parent.lower(), child.lower()) / 1000 * G * n_fac
             val = math.ceil(demand * 10) / 10
@@ -529,24 +686,20 @@ def _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params,
             fields.append("embed_ok: true")
         fields.append(f"rated_load_n: {_n(val, 1)}")
         fields.append(f"rating_basis: {rt.rating_basis(kind)}")
-        if child in KINEMATIC_LINK_CHILDS:
-            add("  # kinematic_link: linkage path not modelled, same as redesign/qp/A/cad/out/REPORT.md 'Not checked against the moved parts'")
+        if child in C["kinematic_link_children"]:
+            add(f"  # {N['kinematic']}")
             fields.append("kinematic_link: true")
         if e["id"] in elevon:
             j = elevon[e["id"]]
             piv = [x * 1000 for x in j["origin"]]
             ax = -_axis_vec(j["axis"])
             lim = j["limits"]
-            add(f"  # articulation: pivot = joint origin of {e['id']} x1000 (hinge line x 183.75 = (1 - ELEV_FRAC 0.25) x chord 245, mid-span of the elevon);")
+            add(f"  # articulation: pivot = joint origin of {e['id']} x1000 ({N['elevon_hinge']});")
             add(f"  # axis = -Y so that a positive angle lifts the trailing edge (the source rotates about +Y, +angle = trailing edge down);")
-            add(f"  # range +-{lim[1]:g} deg = joint limits (ELEV_STOP 21, amodel/common.py); poses: neutral 0, up +21, down -21")
+            add(f"  # range +-{lim[1]:g} deg = joint limits ({N['elevon_range']}); poses: neutral 0, up +{lim[1]:g}, down {lim[0]:g}")
             add(f"  - {{{', '.join(fields)},")
             add(f"     articulation: {{type: revolute, pivot: {_vec(piv, 3)}, axis: {_vec(ax, 3)}, range_deg: [{_n(lim[0], 1)}, {_n(lim[1], 1)}],")
             add(f"                    poses: {{neutral: 0, up: {_n(lim[1], 1)}, down: {_n(lim[0], 1)}}}}}}}")
         else:
             add("  - {" + ", ".join(fields) + "}")
     return "\n".join(L) + "\n", rat_rows
-
-
-def root_id_slug() -> str:
-    return "wng-001"
