@@ -2,7 +2,7 @@ name: aircraft-platform
 channels:
   - conda-forge
 dependencies:
-  - python=3.12
+  - python=3.13  # matches requirements-lock.txt (captured on 3.13)
   - pip
   - pip:
       - -e ".[dev,mcp]"

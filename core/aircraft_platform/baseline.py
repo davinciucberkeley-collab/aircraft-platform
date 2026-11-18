@@ -160,7 +160,7 @@ def baseline_at_ref(design_dir: Path, ref: str) -> dict | None:
         return None
     try:
         proc = subprocess.run(["git", "-C", str(REPO_ROOT), "show", f"{ref}:{rel}/baseline.json"],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding="utf-8")
     except OSError:
         return None
     if proc.returncode != 0:
@@ -277,7 +277,7 @@ def baselines_at_ref(ref: str) -> tuple[dict[str, dict], set[str]]:
     """({folder: baseline} for every designs/<folder>/baseline.json at a git ref, {folders with a plane.yaml there})."""
     def git(*args: str) -> str | None:
         try:
-            proc = subprocess.run(["git", "-C", str(REPO_ROOT), *args], capture_output=True, text=True)
+            proc = subprocess.run(["git", "-C", str(REPO_ROOT), *args], capture_output=True, text=True, encoding="utf-8")
         except OSError:
             return None
         return proc.stdout if proc.returncode == 0 else None

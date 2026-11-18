@@ -466,6 +466,12 @@ def baseline_check_cmd(paths, all_designs, fmt, base_ref):
 
 
 def main():
+    # Windows consoles default to cp1252, which can't print the degree signs and arrows in our messages.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     cli()
 
 
