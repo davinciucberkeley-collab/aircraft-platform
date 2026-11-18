@@ -1,5 +1,7 @@
 # Viewer
 
+See every design in 3D: https://davinciucberkeley-collab.github.io/aircraft-platform/
+
 Static site that displays every design in `designs/` with no per-design HTML. It only reads generated data.
 
 ```

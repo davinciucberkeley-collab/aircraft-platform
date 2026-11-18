@@ -127,7 +127,7 @@ def _run_dump(root: Path, concept: str) -> dict:
                            capture_output=True, text=True, cwd=tmp, env=env)
         if p.returncode != 0 or not out.exists():
             raise RuntimeError(f"headless CAD build failed ({p.returncode}):\n{p.stdout[-800:]}\n{p.stderr[-1500:]}")
-        return json.loads(out.read_text())
+        return json.loads(out.read_text(encoding="utf-8"))
 
 
 def _read_csv(path: Path, key: str) -> dict[str, dict]:
@@ -243,7 +243,7 @@ def import_concept(dbf_root, concept: str = "A", out_dir=None, log=print) -> Pat
         raise FileNotFoundError(f"{qp / 'cad'} not found: not a DBF-Combined checkout with concept {concept}")
     data = _run_dump(root, concept)
     parts_csv = _read_csv(qp / "cad" / "out" / "parts-a.csv", "part_id")
-    params = json.loads((qp / f"params-{concept}.json").read_text())
+    params = json.loads((qp / f"params-{concept}.json").read_text(encoding="utf-8"))
     std = load_standards()
     glb = root / "redesign" / "site" / "assets" / f"concept-{concept.lower()}.glb"
     mesh_dir = out / "meshes"
@@ -374,13 +374,13 @@ def import_concept(dbf_root, concept: str = "A", out_dir=None, log=print) -> Pat
     # ---- plane.yaml
     text, rating_rows = _write_yaml(data, PARTS, ids, comps, proxies, meshes, cg, parts_csv, params, att_rows, elevon, groups, bridging,
                                     std, out)
-    (out / "plane.yaml").write_text(text)
+    (out / "plane.yaml").write_text(text, encoding="utf-8")
     report["attachments"] = len(att_rows)
     report["bridging_edges_not_emitted"] = [e["id"] for e in bridging]
     report["wire_edges_not_emitted"] = sorted(wire_edges)
     report["ratings"] = rating_rows
     report["embed_ok"] = sorted(r["edge"]["id"] for r in att_rows if r["embed"])
-    (out / "import-report.json").write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")
+    (out / "import-report.json").write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     return out / "plane.yaml"
 
 

@@ -66,7 +66,7 @@ class Studio:
         self.rev = 0
         self.q: queue.Queue = queue.Queue()
         try:
-            self.cache = json.loads(CACHE_FILE.read_text())
+            self.cache = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001 - a missing or corrupt cache just means recomputing
             self.cache = {}
         threading.Thread(target=self._worker, daemon=True).start()
@@ -77,7 +77,7 @@ class Studio:
         self.rev += 1
 
     def _save_cache(self):
-        CACHE_FILE.write_text(json.dumps(self.cache, indent=1))
+        CACHE_FILE.write_text(json.dumps(self.cache, indent=1), encoding="utf-8")
 
     def scan(self):
         """Pick up every design on disk: cached results where still valid, otherwise queue a check."""
@@ -102,7 +102,7 @@ class Studio:
 
     def _placeholder(self, did: str, p: Path) -> dict:
         try:
-            meta = yaml.safe_load(p.read_text()) or {}
+            meta = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
         except Exception:  # noqa: BLE001
             meta = {}
         e = error_entry(did, "", meta if isinstance(meta, dict) else {})
@@ -181,10 +181,10 @@ class Studio:
         out = DESIGNS_DIR / new_id
         import_concept(root, concept=concept, out_dir=str(out), log=lambda m: job["log"].append(str(m)))
         p = out / "plane.yaml"
-        data = yaml.safe_load(p.read_text())
+        data = yaml.safe_load(p.read_text(encoding="utf-8"))
         if data.get("id") != new_id:  # the importer names it after the concept; keep the name the person chose
-            text = p.read_text()
-            p.write_text(re.sub(r"(?m)^id: .*$", f"id: {new_id}", text, count=1))
+            text = p.read_text(encoding="utf-8")
+            p.write_text(re.sub(r"(?m)^id: .*$", f"id: {new_id}", text, count=1), encoding="utf-8")
         self.scan()
         return f"imported into designs/{new_id}"
 
@@ -215,7 +215,7 @@ class Studio:
         rows = []
         for pid in fea.eligible_parts(design):
             f = fea.result_path(design, pid)
-            rec = json.loads(f.read_text()) if f.exists() else None
+            rec = json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
             row = {"part": pid, "description": design.component(pid).get("description", ""), "status": None}
             if rec:
                 row.update(status=rec.get("status"), error=rec.get("error"), notes=rec.get("notes"),
@@ -238,7 +238,7 @@ class Studio:
         return new_id
 
     def read_yaml(self, did: str) -> str:
-        return (DESIGNS_DIR / _check_id(did) / "plane.yaml").read_text()
+        return (DESIGNS_DIR / _check_id(did) / "plane.yaml").read_text(encoding="utf-8")
 
     def write_yaml(self, did: str, text: str) -> None:
         path = DESIGNS_DIR / _check_id(did) / "plane.yaml"
@@ -254,7 +254,7 @@ class Studio:
             raise ValueError(f"id must stay {did!r} (to make a copy, use New design)")
         BACKUP_DIR.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, BACKUP_DIR / f"{did}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.yaml")
-        path.write_text(text)
+        path.write_text(text, encoding="utf-8")
         self.scan()
 
     def read_design(self, did: str) -> dict:
@@ -265,7 +265,7 @@ class Studio:
         """Apply small field edits from the form editor, keeping the file's comments and layout (ruamel round-trip)."""
         from .yamlio import dump, load
         path = DESIGNS_DIR / _check_id(did) / "plane.yaml"
-        doc = load(path.read_text())
+        doc = load(path.read_text(encoding="utf-8"))
         if not isinstance(changes, list) or not changes:
             raise ValueError("nothing to save")
         for ch in changes:
@@ -334,7 +334,7 @@ _ENUMS: dict | None = None
 def _schema_enums() -> dict:
     global _ENUMS
     if _ENUMS is None:
-        s = json.loads(SCHEMA_PATH.read_text())
+        s = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         d = s.get("$defs", {})
         _ENUMS = {
             "status": s["properties"]["status"].get("enum", []),

@@ -42,9 +42,9 @@ def design_entry(design, out_dir: Path, file_id: str | None = None) -> dict:
     export_glb(design, out_dir / f"{fid}.glb")
     card = validate(design)
     card_dict = card.to_dict()
-    (out_dir / f"{fid}.scorecard.json").write_text(dumps(card_dict) + "\n")
+    (out_dir / f"{fid}.scorecard.json").write_text(dumps(card_dict) + "\n", encoding="utf-8")
     mp = mass_properties(design)
-    (out_dir / f"{fid}.mass.json").write_text(dumps(mp) + "\n")
+    (out_dir / f"{fid}.mass.json").write_text(dumps(mp) + "\n", encoding="utf-8")
     return {
         "id": did,
         "name": str(meta.get("name", "")),

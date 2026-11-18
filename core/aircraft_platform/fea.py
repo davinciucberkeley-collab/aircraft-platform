@@ -51,7 +51,7 @@ def find_opencae(python: str | None = None, root: str | None = None) -> dict:
     cfg = {}
     if CONFIG_FILE.exists():
         try:
-            cfg = json.loads(CONFIG_FILE.read_text())
+            cfg = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             cfg = {}
     py = python or os.environ.get("OPENCAE_PYTHON") or cfg.get("python")
@@ -77,7 +77,7 @@ def find_opencae(python: str | None = None, root: str | None = None) -> dict:
 
 
 def save_config(python: str, root: str) -> Path:
-    CONFIG_FILE.write_text(json.dumps({"python": python, "root": root}, indent=2) + "\n")
+    CONFIG_FILE.write_text(json.dumps({"python": python, "root": root}, indent=2) + "\n", encoding="utf-8")
     return CONFIG_FILE
 
 
@@ -301,7 +301,7 @@ def run(design: Design, part_id: str, opencae: dict | None = None, keep_project:
         if keep_project:
             shutil.rmtree(proj_dir, ignore_errors=True)
             job["project_dir"] = str(proj_dir)
-        (work / "job.json").write_text(json.dumps(job))
+        (work / "job.json").write_text(json.dumps(job), encoding="utf-8")
         env = dict(os.environ, PYTHONPATH=str(oc["root"]) + os.pathsep + os.environ.get("PYTHONPATH", ""),
                    PYTHONIOENCODING="utf-8")
         log(f"{part_id}: {len(job['supports'])} support(s), {sum(len(c['loads']) for c in job['cases'])} load(s); "
@@ -312,7 +312,7 @@ def run(design: Design, part_id: str, opencae: dict | None = None, keep_project:
             log(line)
         if not (work / "result.json").exists():
             raise RuntimeError("OpenCAE run failed:\n" + (proc.stderr or proc.stdout)[-3000:])
-        res = json.loads((work / "result.json").read_text())
+        res = json.loads((work / "result.json").read_text(encoding="utf-8"))
     finally:
         shutil.rmtree(work, ignore_errors=True)
     for c in res.get("cases", []):  # keep stored records free of machine-specific paths
@@ -328,7 +328,7 @@ def run(design: Design, part_id: str, opencae: dict | None = None, keep_project:
                    "opencae_version": res.get("opencae_version")})
     out = result_path(design, part_id)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(record, indent=2) + "\n")
+    out.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     return record
 
 
@@ -398,7 +398,7 @@ def tier2_fea(design: Design) -> list[CheckResult]:
             missing.append(pid)
             continue
         try:
-            rec = json.loads(f.read_text())
+            rec = json.loads(f.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             missing.append(pid)
             continue

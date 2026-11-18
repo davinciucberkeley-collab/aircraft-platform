@@ -57,7 +57,7 @@ def export_stl(design: Design, out_dir: str | Path) -> list[Path]:
 
 def export_json(design: Design, out: str | Path) -> Path:
     out = Path(out)
-    out.write_text(json.dumps(design.data, indent=2))
+    out.write_text(json.dumps(design.data, indent=2), encoding="utf-8")
     return out
 
 

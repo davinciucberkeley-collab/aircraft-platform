@@ -33,3 +33,14 @@ jobs:
           echo "# Baseline check" >> "$GITHUB_STEP_SUMMARY"
           plane baseline check "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit ${PIPESTATUS[0]}
+
+  windows-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Unit tests (Windows)
+        run: pytest -q

@@ -141,7 +141,7 @@ def write_baseline(design_dir: Path, scorecard: Scorecard) -> Path:
                          f"{snap['blocking'][0]['message']}")
     snap.pop("blocking")
     path = baseline_path(design_dir)
-    path.write_text(json.dumps(snap, indent=2, sort_keys=True) + "\n")
+    path.write_text(json.dumps(snap, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return path
 
 
@@ -149,7 +149,7 @@ def read_baseline(design_dir: Path) -> dict | None:
     path = baseline_path(design_dir)
     if not path.is_file():
         return None
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def baseline_at_ref(design_dir: Path, ref: str) -> dict | None:

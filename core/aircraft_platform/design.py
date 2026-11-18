@@ -115,7 +115,7 @@ def load_design(path: str | Path) -> Design:
     p = Path(path)
     if p.is_dir():
         p = p / "plane.yaml"
-    text = p.read_text()
+    text = p.read_text(encoding="utf-8")
     data = json.loads(text) if p.suffix == ".json" else yaml.safe_load(text)
     if not isinstance(data, dict):
         raise ValueError(f"{p}: top level must be a mapping")
@@ -123,7 +123,7 @@ def load_design(path: str | Path) -> Design:
 
 
 def load_standards() -> dict:
-    return yaml.safe_load(STANDARDS_PATH.read_text())
+    return yaml.safe_load(STANDARDS_PATH.read_text(encoding="utf-8"))
 
 
 def list_designs() -> list[Path]:

@@ -407,7 +407,7 @@ def _run_case_direct(job: dict, case: dict, log) -> dict:
     s.project.mesh_settings.element_order = order
     work = Path(job.get("project_dir") or Path(job["out"]).parent) / f"direct-{case['name']}"
     work.mkdir(parents=True, exist_ok=True)
-    (work / "job.inp").write_text(write_deck(s.project, mesh, rm, mat, us))
+    (work / "job.inp").write_text(write_deck(s.project, mesh, rm, mat, us), encoding="utf-8")
     log(f"  {case['name']}: {len(nodes)} nodes, solving with CalculiX")
     out = run_blocking(s.backend.install, work, "job", 1)
     if not out.success:
@@ -445,7 +445,7 @@ def _run_case_direct(job: dict, case: dict, log) -> dict:
 
 def main(argv=None) -> int:
     argv = argv or sys.argv[1:]
-    job = json.loads(Path(argv[0]).read_text())
+    job = json.loads(Path(argv[0]).read_text(encoding="utf-8"))
     log = lambda m: print(m, flush=True)  # noqa: E731
     out = {"name": job["name"], "cases": [], "error": None}
     try:
@@ -456,7 +456,7 @@ def main(argv=None) -> int:
     except Exception as e:  # noqa: BLE001 - reported to the platform, which shows it
         out["error"] = f"{type(e).__name__}: {e}"
         out["traceback"] = traceback.format_exc(limit=6)
-    Path(job["out"]).write_text(json.dumps(out, indent=2))
+    Path(job["out"]).write_text(json.dumps(out, indent=2), encoding="utf-8")
     return 0 if not out["error"] else 1
 
 

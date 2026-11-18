@@ -139,7 +139,7 @@ def build_mjcf(design: Design) -> str:
 def export_mjcf(design: Design, out_path) -> Path:
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(build_mjcf(design))
+    out.write_text(build_mjcf(design), encoding="utf-8")
     return out
 
 

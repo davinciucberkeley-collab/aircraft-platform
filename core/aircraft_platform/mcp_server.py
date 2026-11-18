@@ -46,7 +46,7 @@ def list_designs() -> list[dict]:
     """
     out = []
     for path in _design_files():
-        data = yaml.safe_load(path.read_text()) or {}
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         out.append({
             "id": data.get("id", path.parent.name),
             "name": data.get("name"),
@@ -63,7 +63,7 @@ def get_design(design_id: str) -> str:
     Use this to read a design's full definition before editing it or to copy it as a starting point
     for save_design.
     """
-    return _design_path(design_id).read_text()
+    return _design_path(design_id).read_text(encoding="utf-8")
 
 
 @mcp.tool()
@@ -136,7 +136,7 @@ def save_design(design_id: str, yaml_text: str, overwrite: bool = False) -> dict
         raise ValueError(f"design '{design_id}' already exists; pass overwrite=true to replace it")
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml_text)
+    path.write_text(yaml_text, encoding="utf-8")
     return {"saved": True, "path": str(path),
             "scorecard": validate(load_design(path)).to_dict()}
 
@@ -147,7 +147,7 @@ def get_schema() -> dict:
 
     Use this before writing a new design from scratch so the YAML passes tier 0.
     """
-    return json.loads(SCHEMA_PATH.read_text())
+    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
 @mcp.tool()
@@ -157,8 +157,8 @@ def get_standards() -> str:
 
     Use this to learn the numeric limits and the rules the validators enforce.
     """
-    agents = (REPO_ROOT / "standards" / "agents.md").read_text()
-    return STANDARDS_PATH.read_text() + "\n---\n" + agents
+    agents = (REPO_ROOT / "standards" / "agents.md").read_text(encoding="utf-8")
+    return STANDARDS_PATH.read_text(encoding="utf-8") + "\n---\n" + agents
 
 
 @mcp.tool()
@@ -203,7 +203,7 @@ def list_structural_parts(design_id: str) -> list[dict]:
     rows = []
     for pid in fea.eligible_parts(design):
         f = fea.result_path(design, pid)
-        rec = json.loads(f.read_text()) if f.exists() else None
+        rec = json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
         rows.append({"part": pid, "description": design.component(pid).get("description", ""),
                      "result": None if rec is None else rec.get("status"),
                      "up_to_date": bool(rec) and rec.get("hash") == fea.part_hash(design, pid)})

@@ -33,7 +33,7 @@ STD = "design-standards.yaml#"
 
 # ---------------------------------------------------------------- tier 0
 def tier0_schema(design: Design) -> TierReport:
-    schema = json.loads(SCHEMA_PATH.read_text())
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     errors = sorted(Draft202012Validator(schema).iter_errors(design.data), key=lambda e: list(e.path))
     if errors:
         res = [CheckResult("T0.schema", FAIL, f"{'/'.join(map(str, e.path)) or '<root>'}: {e.message}",
@@ -929,7 +929,7 @@ def tier4_manufacturing(design: Design) -> TierReport:
     path = REPO_ROOT / "standards" / "manufacturing.yaml"
     if not path.exists():
         return TierReport(4, "manufacturing", [CheckResult("T4.capabilities", SKIP, "standards/manufacturing.yaml not written yet", MFG)])
-    caps = yaml.safe_load(path.read_text()) or {}
+    caps = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     machines = {m["id"]: m for m in caps.get("machines", [])}
     free_methods = set(caps.get("machine_optional_methods", []))
     all_methods = {m for mm in machines.values() for m in mm.get("methods", [])} | free_methods

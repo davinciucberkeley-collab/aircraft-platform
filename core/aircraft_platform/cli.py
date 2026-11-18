@@ -71,7 +71,7 @@ def validate_cmd(path, max_tier, fmt, out_file):
     text = card.to_markdown() if fmt == "md" else _dumps(card.to_dict()) + "\n"
     if out_file:
         Path(out_file).parent.mkdir(parents=True, exist_ok=True)
-        Path(out_file).write_text(text)
+        Path(out_file).write_text(text, encoding="utf-8")
         click.echo(f"wrote {out_file}")
     else:
         click.echo(text, nl=False)
@@ -169,7 +169,7 @@ def new_design(new_id: str, template: str = DEFAULT_TEMPLATE) -> Path:
     if not src.is_file():
         raise ValueError(f"template {template!r} not found")
     from .yamlio import dump, load
-    data = load(src.read_text())
+    data = load(src.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"template {src} top level must be a mapping")
     data["id"] = new_id
@@ -185,7 +185,7 @@ def new_design(new_id: str, template: str = DEFAULT_TEMPLATE) -> Path:
     while lines and lines[0].startswith("#"):  # drop the template's file header (e.g. "GENERATED: edit the importer")
         lines.pop(0)
     head = f"# Copied from designs/{template} by `plane new`; edit freely.\n"
-    (target_dir / "plane.yaml").write_text(head + "".join(lines))
+    (target_dir / "plane.yaml").write_text(head + "".join(lines), encoding="utf-8")
     return target_dir / "plane.yaml"
 
 
@@ -210,7 +210,7 @@ def build_index_cmd(out_dir):
         except Exception as e:  # noqa: BLE001
             entries.append(error_entry(str(design.data.get("id", fallback_id)), str(e), design.data))
     index = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "designs": entries}
-    (out / "index.json").write_text(_dumps(index) + "\n")
+    (out / "index.json").write_text(_dumps(index) + "\n", encoding="utf-8")
     click.echo(str(out / "index.json"))
 
 
@@ -299,9 +299,9 @@ def import_dbf_cmd(dbf_root, concept, new_id, out):
     out = out or str(DESIGNS_DIR / new_id)
     p = Path(import_concept(dbf_root, concept=concept, out_dir=out, log=lambda m: click.echo(m, err=True)))
     plane = p if p.name == "plane.yaml" else Path(out) / "plane.yaml"
-    text = plane.read_text()
+    text = plane.read_text(encoding="utf-8")
     if not re.search(rf"(?m)^id: {re.escape(new_id)}\s*$", text):  # the importer names it after the concept
-        plane.write_text(re.sub(r"(?m)^id: .*$", f"id: {new_id}", text, count=1))
+        plane.write_text(re.sub(r"(?m)^id: .*$", f"id: {new_id}", text, count=1), encoding="utf-8")
     click.echo(str(plane))
 
 

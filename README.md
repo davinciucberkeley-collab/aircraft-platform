@@ -1,5 +1,7 @@
 # Aircraft Design Platform
 
+See every design in 3D: https://davinciucberkeley-collab.github.io/aircraft-platform/
+
 One shared place, format and toolset for our aircraft designs, so everything we make can plug into everything else and be checked against the same bar.
 
 **One schema; every tool reads and writes it.**
@@ -42,20 +44,37 @@ Saves keep a backup in `.studio/backups/`; results are cached in `.studio/` so t
 
 ## Quick start
 
-Needs Python 3.11 or newer (3.12 is what CI uses) and git. Use a fresh environment, for example
-`conda create -n aircraft -c conda-forge python=3.12 -y` then `conda activate aircraft`.
+Needs Python 3.11 or newer (3.12 is what CI uses) and git.
+
+**One-step setup (conda, Windows or macOS/Linux):** from the repo root, with Miniforge or conda installed:
 
 ```bash
 git clone https://github.com/davinciucberkeley-collab/aircraft-platform
 cd aircraft-platform
-pip install -e ".[mcp,dev]"
-plane --version                                     # plane, version 0.1.0
+conda env create -f environment.yml     # creates env "aircraft-platform" (python 3.12, pip install -e ".[dev,mcp]")
+conda activate aircraft-platform
+plane --version                         # plane, version 0.1.0
+pytest -q
+```
+
+**Plain pip (any Python 3.12 environment):** `requirements-lock.txt` pins the exact runtime versions the platform was tested with.
+
+```bash
+pip install -r requirements-lock.txt -e ".[dev]"
+```
+
+The walkthrough below works in either environment.
+
+```bash
 plane list
 plane validate designs/example-tailsitter-wing     # scorecard; exit 0 = accepted
 plane new my-concept --from example-tailsitter-wing
 plane export designs/my-concept --format glb --out build/my-concept.glb   # also stl, json, mjcf
 plane build-index --out viewer/data
 python -m http.server -d viewer                    # open localhost:8000 (python3 on macOS/Linux)
+```
+
+```bash
 pytest -q
 ```
 
