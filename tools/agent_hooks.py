@@ -34,6 +34,11 @@ CONDUCTOR_LOG = "plans/conductor-edits.md"
 AGENT_LOG = "plans/agent-log.jsonl"
 FROZEN_FILE = "standards/design-standards.yaml"
 AGENT_TYPE_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+PLAN_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-.+\.md$")
+COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+FENCE_OPEN_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+CONDUCTOR_REASON_MIN_CHARS = 15
+CONDUCTOR_REASON_MIN_WORDS = 3
 CASE_FOLD = os.name == "nt"
 GIT_TIMEOUT = 20
 BASH_STATE_DIR = Path(tempfile.gettempdir()) / "agent_hooks_bash"
@@ -106,9 +111,30 @@ def _is_separator(line):
     return bool(cells) and all(re.fullmatch(r":?-+:?", c) for c in cells)
 
 
+def strip_noise(text):
+    """Blank out HTML comments and fenced code blocks (``` or ~~~), keeping line count."""
+    text = COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    out = []
+    fence = None
+    for line in text.splitlines():
+        if fence is None:
+            m = FENCE_OPEN_RE.match(line)
+            if m:
+                fence = m.group(1)
+                out.append("")
+                continue
+            out.append(line)
+        else:
+            s = line.strip()
+            if s and set(s) <= {fence[0]} and len(s) >= len(fence):
+                fence = None
+            out.append("")
+    return "\n".join(out)
+
+
 def parse_tables(text, required):
     """Return rows (dicts keyed by lower-cased header) of every table whose header has all `required` columns."""
-    lines = text.splitlines()
+    lines = strip_noise(text).splitlines()
     rows_out = []
     i = 0
     while i < len(lines):
@@ -211,12 +237,32 @@ def locate(root, file_path):
 
 # ---------- plan gate helpers ----------
 
+def plan_date(path):
+    """The YYYY-MM-DD prefix of a plan filename, or None when it has none."""
+    m = PLAN_DATE_RE.match(path.name)
+    if not m:
+        return None
+    try:
+        return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).date()
+    except ValueError:
+        return None
+
+
 def recent_plans(root):
+    """Plans whose filename date is within the window. Mtime is ignored: checkouts reset it."""
     plans_dir = root / "plans"
     if not plans_dir.is_dir():
         return []
-    cutoff = time.time() - PLAN_WINDOW_DAYS * 86400
-    return [p for p in sorted(plans_dir.glob("*.md")) if p.stat().st_mtime >= cutoff]
+    today = datetime.now(timezone.utc).date()
+    out = []
+    for p in sorted(plans_dir.glob("*.md")):
+        d = plan_date(p)
+        if d is None:
+            continue
+        age = (today - d).days
+        if -1 <= age <= PLAN_WINDOW_DAYS:  # -1 allows a plan dated tomorrow in another timezone
+            out.append(p)
+    return out
 
 
 def plan_rows(root):
@@ -280,18 +326,22 @@ def model_ok(row_model, model):
 def role_ok(role, subagent_type):
     """Does a plan row's Role accept this subagent_type?
 
-    - A launch of a role agent (builder, scout, tactician, reviewer) needs a row that names that exact type.
-    - Any other type (general-purpose, missing, claude-code-guide, ...) is accepted only when the Role
-      names that type, or the Role says "its own" and names no role agent. general-purpose is never
-      accepted for a row that names a role agent.
+    A role agent (builder, scout, tactician, reviewer) matches only when it is the first word of the Role
+    cell, so "builder (not reviewer)" is a builder row. Any other type (general-purpose, missing,
+    claude-code-guide, ...) is accepted only when the Role names it, or the Role says "its own" and its
+    first word is not a role agent. general-purpose is never accepted for a row whose Role is a role agent.
     """
     low = role.lower()
     tokens = set(re.findall(r"[a-z0-9_.-]+", low))
+    first = re.match(r"[a-z0-9_.-]+", low.strip())
+    first = first.group(0) if first else ""
     if subagent_type in ROLE_TYPES:
-        return subagent_type in tokens
+        return first == subagent_type
+    if first in ROLE_TYPES and subagent_type == "general-purpose":
+        return False
     if subagent_type in tokens:
         return True
-    if "its own" in low and not (tokens & set(ROLE_TYPES)):
+    if "its own" in low and first not in ROLE_TYPES:
         return subagent_type != "general-purpose"
     return False
 
@@ -344,8 +394,10 @@ def conductor_approved(base, rel):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     text = log.read_text(encoding="utf-8", errors="replace")
     for row in parse_tables(text, ("date", "file", "reason")):
+        reason = row["reason"].strip()
         if (row["date"] == today and _clean_path(row["file"]) == norm_rel(rel)
-                and row["reason"].strip()):
+                and len(reason) >= CONDUCTOR_REASON_MIN_CHARS
+                and len(reason.split()) >= CONDUCTOR_REASON_MIN_WORDS):
             return True
     return False
 
@@ -361,6 +413,15 @@ def edit_verdict(base, rel, data):
                            "Fix: hand the change to a builder (launch it with a plan step id), or "
                            f"log it in {CONDUCTOR_LOG} with today's date (UTC), File '{rel}' and a Reason, then retry.")
         return True, None
+
+    if top == "plans" and agent_type not in ("scout", "reviewer"):
+        # Subagents never edit plan tables or the conductor log. A tactician may write its briefs.
+        parts = rel.split("/")
+        if len(parts) >= 4 and parts[2] == "briefs":
+            return True, None
+        return False, (f"Edit blocked: {agent_type or 'this'} agents may not edit {rel}. The conductor owns "
+                       "plans/*.md and plans/conductor-edits.md; tacticians write briefs under "
+                       "plans/<plan-name>/briefs/. Fix: send the table change to the conductor.")
 
     if is_enforcement(rel):
         return False, (f"Edit blocked: {rel} is enforcement and no agent may edit it, including "
