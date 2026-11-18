@@ -810,3 +810,54 @@ Reviewer: same Opus instance (R1, step R1 of `plans/2026-11-18-agent-enforcement
 4. C4: reject placeholder reasons ("-", "n/a", under ~10 characters).
 5. G12: make plans/ conductor-only (subagents may append to `plans/agent-log.jsonl` only via the hook).
 6. K8: when a frontmatter `title:` changes, re-check that file's `source_url`.
+
+## Round 14 (agent-enforcement)
+
+Reviewer: same Opus instance (R1). Branch `agent-enforcement` @ 3a2f3a2. Hook inputs were fed through a shell harness to `tools/agent_hooks.py` in a scratch git copy of the worktree, which has its own linked worktree so the W cases are real. The citation checker ran with fake fetchers. Nothing in the repo was edited except this file.
+
+`pytest tests/test_agent_hooks.py tests/test_citations.py`: 96 passed.
+
+### Round-13 attacks re-run
+
+| # | Attack | Round 13 | Now |
+|---|---|---|---|
+| H1 | `python` missing | fails open | **CLOSED**: each command is `python3 … \|\| python …` with `"onFailure": "block"` on the three PreToolUse gates. If python3 exits non-zero, the `python` fallback reruns on an empty stdin and fails closed with a reason. Correct either way. |
+| G5 | general-purpose under B15 / R1 / S9 | MISSED | **CLOSED**: all three denied. `claude-code-guide` under S9, whose Role names it, is allowed. |
+| G8 | Plan dated 2026-09-01 with fresh mtime | MISSED | **CLOSED** (the filename date is used) |
+| G9 | Table in a ``` fence or an HTML comment | MISSED | **CLOSED** |
+| G10 | "builder (not reviewer)" row, reviewer launch | MISSED | **CLOSED** (first word) |
+| G12 | Tactician edits a plan table | MISSED | **CLOSED**; `plans/<plan>/briefs/…` is still allowed, as intended |
+| E6 | `Core/…`, `Tools/Agent_Hooks.py` | MISSED on macOS/Windows | **CLOSED** (case-folded comparison) |
+| E8, E9 | Main session edits `.claude/settings.json`, `tools/agent_hooks.py` | MISSED | **CLOSED** (needs a conductor-edits row) |
+| E15 | Builder edits `tools/agent_hooks.py` | MISSED | **CLOSED** for every subagent |
+| W1-W3 | Edits in a linked worktree (main, scout, builder → hook script) | MISSED | **CLOSED** (same git common dir, so worktree paths are gated) |
+| C4 | Reason "-" | MISSED | **CLOSED** (at least 15 characters and 3 words) |
+| C10 | Row for `.github/…` | lstrip bug | **CLOSED** (an authorised row works) |
+| B1 | Shell write to core/ by the main session; scout writes standards/ via shell | MISSED | **Detected after the fact** (post-Bash "block" message plus `bash_write_violation` in the log). This is the documented limit. |
+| K1-K5, K7 | law review, 404, generic-only titles, homepage redirect, search page, bare URL, `source_url:` | 3 MISSED | **all CLOSED** |
+
+### New attempts
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| N1 | **Shell write plus commit in the same Bash call**: `echo … >> core/aircraft_platform/__init__.py && git commit -qam sneaky` from the main session | **MISSED** | The pre/post snapshots compare `git status` only. After the commit the file is clean, so post-bash sees no change: no block message and no log line. The same goes for `git stash`, `git checkout <other> -- core/…`, `git reset`, `git apply --cached && git commit`. |
+| N2 | **Cross-checkout shell write**: Bash running in a linked worktree writes into the main checkout's `core/` | **MISSED** | Only the `cwd` checkout is snapshotted. The Edit gate covers worktrees now; the Bash detector does not. |
+| N3 | Citation: same-host redirect to a section page whose nav says "Tailsitter"; a soft-404 ("Page not found", HTTP 200) whose menu says "Airfoil" | MISSED (PASS "name found: …") | One distinctive word of 5+ letters in the first 5000 characters is enough. Plurals ("Tailsitters") fail only by accident. |
+| N4 | Citation false positives: a legitimate `…/research/s1223.html` page ("re**search**"), and `…/index.php?title=Tailsitter` (claim word in the query) | **False FAIL** | `_search_page` matches substrings of the path and any claim word in the query. No existing citation is affected (scanned: 0 hits), but the first `/research/` or wiki `?title=` citation will fail CI. |
+| N5 | An indented "    ```" (an indented code line, not a fence) followed by a real agent table | Blocks a valid launch (fails closed) | `FENCE_OPEN_RE` allows any indentation, so the real table is hidden. Minor. |
+
+### Verdict
+
+**NOT MERGE-READY**: two small blockers. Every round-13 blocker is closed, and the remaining Bash gap is honestly documented. But the detector that limit relies on can be skipped by a one-word addition (`&& git commit`), and the `onFailure` guarantee depends on a Claude Code version the docs don't yet state.
+
+### Blockers
+
+1. **N1: the Bash write detector misses changes that are committed (or stashed or reset) inside the same command.** In `pre_bash`, also record `git rev-parse HEAD` (and `git stash list` length). In `post_bash`, add `git diff --name-only <old> <new>` when HEAD moved, and flag a stash change. That is a few lines, and it turns "detected after the fact" back into a true statement.
+2. **State the minimum Claude Code version.** `onFailure: "block"` exists from v2.1.295 (hooks docs). On an older client a gate that can't start is again a non-blocking error, so the system silently fails open. Put "requires Claude Code ≥ v2.1.295" in standards/agents.md's limits and the README. Optionally add a SessionStart hook that warns when the version is older.
+
+### Non-blocking
+
+1. N2: in `pre_bash`/`post_bash`, snapshot every checkout listed by `git worktree list --porcelain`, not only `cwd` (or say in the limits that cross-checkout shell writes are not seen).
+2. N3: when only the body matches, require two distinctive tokens. Treat titles matching `not found|404|page.*(missing|exist)` as dead links.
+3. N4: match `SEARCH_PATH_WORDS` as whole path segments (`/search`, `/results`, `/find`), not substrings, and check the query only when the path looks like a search endpoint.
+4. N5: accept a fence opener only with at most 3 leading spaces (CommonMark).
