@@ -4,15 +4,21 @@
 Subcommands read hook JSON on stdin:
   pre-agent      plan gate before an Agent launch (fails closed)
   pre-edit       edit gate before Edit/Write/NotebookEdit (fails closed)
+  pre-bash       snapshots git-visible file state before a Bash call (never blocks)
+  post-bash      after a Bash call, blocks (tells the model) if it changed files the caller may not edit
   post-agent     appends an agent_done line to plans/agent-log.jsonl (never blocks)
   subagent-stop  appends a subagent_stop line to plans/agent-log.jsonl (never blocks)
 
 Stdlib only. Set AGENT_HOOKS_ROOT to override the repo root (tests only).
 """
+import hashlib
 import json
 import os
+import posixpath
 import re
+import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,10 +28,15 @@ STEP_RE = re.compile(r"^([A-Z]+\d+[a-z]?)\b")
 ROLE_TYPES = ("builder", "scout", "tactician", "reviewer")
 FAMILIES = ("haiku", "sonnet", "opus")
 MAIN_PROTECTED = ("core", "tests", "designs", "schema", ".github")
+ENFORCEMENT_FILES = ("tools/agent_hooks.py",)  # lower case; no agent may edit these
+ENFORCEMENT_DIR = ".claude"                     # likewise everything under it
 CONDUCTOR_LOG = "plans/conductor-edits.md"
 AGENT_LOG = "plans/agent-log.jsonl"
 FROZEN_FILE = "standards/design-standards.yaml"
 AGENT_TYPE_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+CASE_FOLD = os.name == "nt"
+GIT_TIMEOUT = 20
+BASH_STATE_DIR = Path(tempfile.gettempdir()) / "agent_hooks_bash"
 
 
 def repo_root():
@@ -120,6 +131,84 @@ def parse_tables(text, required):
     return rows_out
 
 
+# ---------- paths ----------
+
+def norm_rel(s):
+    """Normalised POSIX repo-relative path: no backslashes, no leading ./, case-folded only on Windows."""
+    s = str(s).strip().replace("\\", "/")
+    while s.startswith("./"):
+        s = s[2:]
+    s = posixpath.normpath(s) if s else ""
+    if s == ".":
+        s = ""
+    return s.casefold() if CASE_FOLD else s
+
+
+def is_enforcement(rel):
+    low = rel.casefold()
+    return low in ENFORCEMENT_FILES or low == ENFORCEMENT_DIR or low.startswith(ENFORCEMENT_DIR + "/")
+
+
+def _existing_dir(path):
+    p = Path(path)
+    while not p.is_dir():
+        if p.parent == p:
+            return None
+        p = p.parent
+    return p
+
+
+def git_info(path):
+    """(toplevel, git common dir) of the checkout containing `path`, or None if it is not in git."""
+    if path is None:
+        return None
+    try:
+        top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=str(path),
+                             capture_output=True, text=True, timeout=GIT_TIMEOUT)
+        common = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=str(path),
+                                capture_output=True, text=True, timeout=GIT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if top.returncode != 0 or common.returncode != 0:
+        return None
+    top_p = Path(top.stdout.strip()).resolve()
+    common_p = (Path(path) / common.stdout.strip()).resolve()
+    return top_p, common_p
+
+
+def _is_within(path, base):
+    try:
+        path.relative_to(base)
+        return True
+    except ValueError:
+        return False
+
+
+def locate(root, file_path):
+    """Return (base, rel) for a target path, or None when it is outside every checkout of this repo.
+
+    base is the repo root, or the top-level of a worktree of the same repo (same git common dir).
+    """
+    p = Path(file_path)
+    if not p.is_absolute():
+        p = root / p
+    target = p.resolve()
+    base = root.resolve()
+    info = git_info(_existing_dir(target))
+    repo = git_info(base)
+    if info and repo and info[1] == repo[1]:
+        base = info[0]
+    elif not _is_within(target, base):
+        return None
+    try:
+        rel = target.relative_to(base).as_posix()
+    except ValueError:
+        return None
+    if rel in ("", "."):
+        return None
+    return base, rel
+
+
 # ---------- plan gate helpers ----------
 
 def recent_plans(root):
@@ -189,9 +278,22 @@ def model_ok(row_model, model):
 
 
 def role_ok(role, subagent_type):
-    if subagent_type not in ROLE_TYPES:
+    """Does a plan row's Role accept this subagent_type?
+
+    - A launch of a role agent (builder, scout, tactician, reviewer) needs a row that names that exact type.
+    - Any other type (general-purpose, missing, claude-code-guide, ...) is accepted only when the Role
+      names that type, or the Role says "its own" and names no role agent. general-purpose is never
+      accepted for a row that names a role agent.
+    """
+    low = role.lower()
+    tokens = set(re.findall(r"[a-z0-9_.-]+", low))
+    if subagent_type in ROLE_TYPES:
+        return subagent_type in tokens
+    if subagent_type in tokens:
         return True
-    return subagent_type in role.lower()
+    if "its own" in low and not (tokens & set(ROLE_TYPES)):
+        return subagent_type != "general-purpose"
+    return False
 
 
 def gate_agent(data):
@@ -231,56 +333,39 @@ def gate_agent(data):
 
 # ---------- edit gate ----------
 
-def repo_rel(root, file_path):
-    p = Path(file_path)
-    if not p.is_absolute():
-        p = root / p
-    try:
-        rel = p.resolve().relative_to(root.resolve())
-    except ValueError:
-        return None
-    rel_s = rel.as_posix()
-    return None if rel_s in ("", ".") else rel_s
-
-
 def _clean_path(cell):
-    return _clean(cell).replace("\\", "/").lstrip("./") if cell else ""
+    return norm_rel(_clean(cell)) if cell else ""
 
 
-def conductor_approved(root, rel):
-    log = root / CONDUCTOR_LOG
+def conductor_approved(base, rel):
+    log = base / CONDUCTOR_LOG
     if not log.is_file():
         return False
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     text = log.read_text(encoding="utf-8", errors="replace")
     for row in parse_tables(text, ("date", "file", "reason")):
-        if (row["date"] == today and _clean_path(row["file"]) == rel
+        if (row["date"] == today and _clean_path(row["file"]) == norm_rel(rel)
                 and row["reason"].strip()):
             return True
     return False
 
 
-def gate_edit(data):
-    root = repo_root()
-    tool_input = data.get("tool_input") or {}
-    if not isinstance(tool_input, dict):
-        raise ValueError("tool_input is not an object")
-    target = tool_input.get("file_path") or tool_input.get("notebook_path")
-    if not target:
-        return True, None
-    rel = repo_rel(root, str(target))
-    if rel is None:
-        return True, None
-    top = rel.split("/")[0]
+def edit_verdict(base, rel, data):
+    """Apply the edit rules to one repo-relative path for the caller described by hook data."""
     agent_type = str(data.get("agent_type") or "")
+    top = rel.split("/")[0].casefold()
 
     if not data.get("agent_id"):  # main session = conductor
-        if top in MAIN_PROTECTED and not conductor_approved(root, rel):
+        if (top in MAIN_PROTECTED or is_enforcement(rel)) and not conductor_approved(base, rel):
             return False, (f"Edit blocked: the conductor (main session) may not edit {rel}. "
                            "Fix: hand the change to a builder (launch it with a plan step id), or "
                            f"log it in {CONDUCTOR_LOG} with today's date (UTC), File '{rel}' and a Reason, then retry.")
         return True, None
 
+    if is_enforcement(rel):
+        return False, (f"Edit blocked: {rel} is enforcement and no agent may edit it, including "
+                       f"{agent_type or 'this'} agents. Fix: the conductor logs the change in "
+                       f"{CONDUCTOR_LOG} with today's date and a reason, then the main session makes it.")
     if agent_type == "scout":
         if rel.startswith("knowledge/") or rel.startswith("standards/proposals/"):
             return True, None
@@ -291,11 +376,142 @@ def gate_edit(data):
             return True, None
         return False, (f"Edit blocked: a reviewer may edit only reviews/, not {rel}. "
                        "Fix: write the scorecard into reviews/ and report the problem to the conductor.")
-    if rel == FROZEN_FILE or top == ".claude":
+    if rel.casefold() == FROZEN_FILE.casefold():
         return False, (f"Edit blocked: {rel} is not editable by {agent_type or 'this'} agents. "
-                       "Thresholds change only by a conductor-reviewed proposal in standards/proposals/; "
-                       ".claude/ rules are set by the conductor.")
+                       "Thresholds change only by a conductor-reviewed proposal in standards/proposals/.")
     return True, None
+
+
+def gate_edit(data):
+    root = repo_root()
+    tool_input = data.get("tool_input") or {}
+    if not isinstance(tool_input, dict):
+        raise ValueError("tool_input is not an object")
+    target = tool_input.get("file_path") or tool_input.get("notebook_path")
+    if not target:
+        return True, None
+    loc = locate(root, str(target))
+    if loc is None:
+        return True, None
+    base, rel = loc
+    return edit_verdict(base, rel, data)
+
+
+# ---------- bash writes (detected after the fact) ----------
+
+def _file_state(path):
+    if path.is_file():
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    if os.path.lexists(path):
+        return "other"
+    return "missing"
+
+
+def _git_status_paths(cwd):
+    """(toplevel, repo-relative paths listed by git status) for the checkout at cwd, or None."""
+    info = git_info(cwd)
+    if info is None:
+        return None
+    try:
+        proc = subprocess.run(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+                              cwd=str(cwd), capture_output=True, timeout=GIT_TIMEOUT * 3)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    tokens = proc.stdout.split(b"\0")
+    paths = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        i += 1
+        if len(tok) < 4:
+            continue
+        xy = tok[:2].decode("ascii", "replace")
+        paths.append(tok[3:].decode("utf-8", "surrogateescape"))
+        if ("R" in xy or "C" in xy) and i < len(tokens):  # rename/copy: the original path follows
+            if tokens[i]:
+                paths.append(tokens[i].decode("utf-8", "surrogateescape"))
+            i += 1
+    return info[0], paths
+
+
+def bash_state_path(tool_use_id):
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(tool_use_id))[:200]
+    return BASH_STATE_DIR / f"{safe}.json"
+
+
+def pre_bash(data):
+    tool_use_id = data.get("tool_use_id")
+    if not tool_use_id:
+        return
+    cwd = Path(str(data.get("cwd") or repo_root()))
+    got = _git_status_paths(cwd)
+    if got is None:
+        return
+    top, paths = got
+    snap = {"cwd": str(cwd), "toplevel": str(top),
+            "files": {p: _file_state(top / p) for p in paths}}
+    BASH_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    bash_state_path(tool_use_id).write_text(json.dumps(snap), encoding="utf-8")
+
+
+def changed_since(pre_files, top, post_paths):
+    """Paths whose content or dirty/clean state differs between the snapshot and now."""
+    post = {p: _file_state(top / p) for p in post_paths}
+    changed = []
+    for p in sorted(set(pre_files) | set(post)):
+        if p in pre_files and p in post:
+            if pre_files[p] != post[p]:
+                changed.append(p)
+        else:  # newly dirty, or dirty before and clean now
+            changed.append(p)
+    return changed
+
+
+def post_bash(data):
+    tool_use_id = data.get("tool_use_id")
+    if not tool_use_id:
+        return 0
+    state = bash_state_path(tool_use_id)
+    if not state.is_file():
+        return 0
+    try:
+        snap = json.loads(state.read_text(encoding="utf-8"))
+    finally:
+        state.unlink(missing_ok=True)
+    cwd = Path(str(data.get("cwd") or snap.get("cwd") or repo_root()))
+    got = _git_status_paths(cwd)
+    if got is None:
+        return 0
+    top, paths = got
+    changed = changed_since(snap.get("files", {}), top, paths)
+    if not changed:
+        return 0
+    if data.get("agent_id"):
+        caller = str(data.get("agent_type") or "subagent")
+    else:
+        caller = "main session"
+    violations = [p for p in changed if not edit_verdict(top, p, data)[0]]
+    if not violations:
+        return 0
+    try:
+        append_log(repo_root(), {
+            "ts": now_iso(),
+            "event": "bash_write_violation",
+            "caller": caller,
+            "files": violations,
+        })
+    except Exception:
+        pass
+    out = {
+        "decision": "block",
+        "reason": (f"{', '.join(violations)} were changed by a shell command but {caller} may not edit "
+                   "them; revert them or hand the change to the right role"),
+    }
+    sys.stdout.write(json.dumps(out) + "\n")
+    sys.stdout.flush()
+    return 0
 
 
 # ---------- logger ----------
@@ -378,9 +594,18 @@ def log_subagent_stop(data):
     append_log(repo_root(), entry)
 
 
+def _run_post_bash():
+    try:
+        return post_bash(read_stdin())
+    except Exception:  # detection must never break the tool call
+        return 0
+
+
 HANDLERS = {
     "pre-agent": lambda: run_gate("pre-agent", gate_agent),
     "pre-edit": lambda: run_gate("pre-edit", gate_edit),
+    "pre-bash": lambda: run_logger(pre_bash),
+    "post-bash": _run_post_bash,
     "post-agent": lambda: run_logger(log_post_agent),
     "subagent-stop": lambda: run_logger(log_subagent_stop),
 }

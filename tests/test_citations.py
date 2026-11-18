@@ -277,3 +277,64 @@ def test_url_added_inside_existing_line_and_plus_prefixed_line_are_found(tmp_pat
         ("https://example.org/b", 5),
         ("https://example.org/plus", 6),
     ]
+
+
+# ---------------------------------------------------------------- search pages
+
+def test_redirect_to_search_page_fails():
+    c = cite("https://example.org/jacobs-laser", "Jacobs Hall laser cutter manual")
+    fake = fake_returning("<title>Search results</title>",
+                          final_url="https://example.org/search?q=jacobs+hall+laser+cutter")
+    status, msg = check(c, fetch=fake)
+    assert status == "FAIL"
+    assert msg == "points to a search page, not a source"
+
+
+def test_requested_url_on_results_path_fails():
+    c = cite("https://example.org/results/bixler", "Bixler Scratch Build")
+    status, msg = check(c, fetch=fake_returning(page("Bixler Scratch Build")))
+    assert status == "FAIL"
+    assert msg == "points to a search page, not a source"
+
+
+def test_query_repeating_claimed_words_fails():
+    c = cite("https://example.org/lookup", "Bixler Scratch Build")
+    status, msg = check(c, fetch=fake_returning(page("Bixler Scratch Build"),
+                                                final_url="https://example.org/lookup?term=bixler+scratch"))
+    assert status == "FAIL"
+    assert msg == "points to a search page, not a source"
+
+
+def test_unrelated_query_string_passes():
+    c = cite("https://example.org/article", "Bixler Scratch Build")
+    status, _ = check(c, fetch=fake_returning(page("Bixler Scratch Build"),
+                                              final_url="https://example.org/article?id=7"))
+    assert status == "PASS"
+
+
+# ---------------------------------------------------------------- bare URLs
+
+def test_bare_url_in_knowledge_body_uses_frontmatter_title():
+    text = ('---\ntitle: "Bixler Scratch Build"\n---\n'
+            "Built from https://example.org/bare-page for details.\n"
+            "[Linked](https://example.org/linked) only once.\n")
+    cites = sorted(extract_citations(text, "knowledge/diy-projects/demo.md"), key=lambda c: c.line)
+    assert [(c.url, c.claimed_text, c.line) for c in cites] == [
+        ("https://example.org/bare-page", "Bixler Scratch Build", 4),
+        ("https://example.org/linked", "Linked", 5),
+    ]
+
+
+def test_bare_url_in_frontmatter_is_not_counted_twice():
+    text = "---\ntitle: Dup\nsource_url: https://example.org/fm\n---\nbody\n"
+    cites = extract_citations(text, "knowledge/sources/x.md")
+    assert [c.url for c in cites] == ["https://example.org/fm"]
+
+
+def test_bare_url_in_knowledge_yaml_uses_key_path():
+    text = ("items:\n"
+            "  - name: foo\n"
+            "    notes: Built from https://example.org/yaml-page today\n")
+    cites = extract_citations(text, "knowledge/morphological-chart.yaml")
+    assert [(c.url, c.claimed_text, c.line) for c in cites] == [
+        ("https://example.org/yaml-page", "items.notes: Built from today", 3)]

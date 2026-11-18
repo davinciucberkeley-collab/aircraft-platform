@@ -76,3 +76,5 @@ Hooks in `.claude/settings.json` call `tools/agent_hooks.py`:
 - **CI citation check** (`plane check-citations`, in `validate.yml`): each URL a change adds under `knowledge/` or `standards/` is fetched. A title that does not match its citation fails; an unreachable URL warns.
 
 **Limit:** the hooks apply only to Claude Code sessions started inside this repo. Chat sessions, other tools and other clones are not covered. CI is the only check that runs everywhere.
+
+**Round 13 limits:** each gate runs `python3` and falls back to `python`, and the gate hooks set `onFailure: block`, so a gate that cannot start blocks the call instead of passing it. `tools/agent_hooks.py` and `.claude/` can be edited only by the main session with a dated `plans/conductor-edits.md` row, and never by a subagent. Bash writes are detected only after the fact: a post-Bash hook blocks the next step and logs any file a shell command changed that its caller may not edit, but it cannot undo the write and can also flag a concurrent agent's change.

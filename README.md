@@ -134,6 +134,8 @@ See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exa
 
 Claude Code hooks in `tools/agent_hooks.py` enforce the plan table, the edit limits and the agent log in Claude Code sessions opened in this repo. The "How this is enforced" section of `standards/agents.md` describes them, and `skills/agent-roles/SKILL.md` gives the steps.
 
+The gates use `python3` with a `python` fallback and block when neither runs. Bash writes are only detected after the fact, so a shell command can still change a protected file before the hook reports it.
+
 ## Known limits (v0.4)
 
 The validator checks that a design is self-consistent and buildable. It can't tell real geometry or mass from plausible-looking fake entries, so a human reviewer still confirms the model matches the aircraft. Accepted residual holes (found in review rounds 5–7, `reviews/2026-11-11-bootstrap.md`):

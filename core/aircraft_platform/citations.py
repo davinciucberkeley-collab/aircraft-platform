@@ -14,7 +14,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, NamedTuple
-from urllib.parse import urlsplit
+from urllib.parse import unquote_plus, urlsplit
 
 import yaml
 
@@ -107,10 +107,13 @@ def _knowledge_citations(text: str, path: str) -> list[Citation]:
     fm_end = None
     title = ""
     fm_urls: list[tuple[str, int]] = []
+    body_start = 0
     if lines and lines[0].strip() == "---":
+        body_start = len(lines)
         for i in range(1, len(lines)):
             if lines[i].strip() == "---":
                 fm_end = i
+                body_start = i + 1
                 break
         for i in range(1, fm_end if fm_end is not None else len(lines)):
             m = FM_TITLE_RE.match(lines[i])
@@ -125,6 +128,10 @@ def _knowledge_citations(text: str, path: str) -> list[Citation]:
     for i, line in enumerate(lines, start=1):
         for m in MD_LINK_RE.finditer(line):
             out.append(Citation(m.group(2).rstrip(".,;:"), _clean(m.group(1)), path, i))
+    # bare URLs in the body (markdown links already counted above, so strip them first)
+    for i in range(body_start, len(lines)):
+        for u in URL_RE.findall(MD_LINK_RE.sub(" ", lines[i])):
+            out.append(Citation(u.rstrip(".,;:"), title, path, i + 1))
     return out
 
 
@@ -166,11 +173,41 @@ def _yaml_source_citations(text: str, path: str) -> list[Citation]:
     return out
 
 
+def _yaml_bare_citations(text: str, path: str) -> list[Citation]:
+    """Every https URL in any YAML string value. Claim = key path plus the value without the URL."""
+    try:
+        root = yaml.compose(_normalise(text), Loader=yaml.SafeLoader)
+    except yaml.YAMLError:
+        return []
+    out: list[Citation] = []
+
+    def walk(node, keys: list[str]):
+        if isinstance(node, yaml.MappingNode):
+            for k, v in node.value:
+                sub = keys + ([k.value] if isinstance(k, yaml.ScalarNode) and isinstance(k.value, str) else [])
+                walk(v, sub)
+        elif isinstance(node, yaml.SequenceNode):
+            for item in node.value:
+                walk(item, keys)
+        elif isinstance(node, yaml.ScalarNode) and isinstance(node.value, str):
+            for m in URL_RE.finditer(node.value):
+                line = node.start_mark.line + 1 + node.value[:m.start()].count("\n")
+                rest = URL_RE.sub(" ", node.value)
+                claimed = _clean(f"{'.'.join(keys)}: {rest}")
+                out.append(Citation(m.group().rstrip(".,;:"), claimed, path, line))
+
+    if root is not None:
+        walk(root, [])
+    return out
+
+
 def extract_citations(text: str, path: str) -> list[Citation]:
     """Citations in one file. `path` is repo-relative and decides which rules apply."""
     p = Path(path).as_posix()
     if p.startswith("knowledge/") and p.endswith(".md"):
         return _knowledge_citations(text, p)
+    if p.startswith("knowledge/") and p.endswith((".yaml", ".yml")):
+        return _yaml_bare_citations(text, p)
     if p.startswith("standards/") and p.endswith((".yaml", ".yml")):
         return _yaml_source_citations(text, p)
     return []
@@ -299,6 +336,17 @@ def _norm_url(url: str) -> tuple[str, str, str, str]:
     return (s.scheme.lower(), (s.hostname or "").lower(), s.path.rstrip("/"), s.query)
 
 
+SEARCH_PATH_WORDS = ("search", "results", "find")
+
+
+def _search_page(url: str, claimed: str) -> bool:
+    """A search or results page, or a URL whose query repeats the claimed words."""
+    s = urlsplit(url)
+    if any(w in s.path.lower() for w in SEARCH_PATH_WORDS):
+        return True
+    return bool(_tokens(unquote_plus(s.query)) & _significant(claimed))
+
+
 def _match(claimed: str, title: str | None, body: str) -> str | None:
     """Why the page matches the claim, or None. Generic words never count."""
     distinct_claim = _significant(claimed) - GENERIC_CITE
@@ -331,6 +379,10 @@ def check_detail(citation: Citation, fetch: FetchFn = default_fetch) -> CheckRes
         return res(FAIL, f"link is dead (HTTP {resp.status})")
     if resp.ctype and not re.search(r"html|xml", resp.ctype, flags=re.I):
         return res(WARN, f"could not verify: non-HTML content ({resp.ctype})")
+
+    for u in (citation.url, resp.final_url or citation.url):
+        if _search_page(u, citation.claimed_text):
+            return res(FAIL, "points to a search page, not a source")
 
     title = page_title(resp.body)
     matched = _match(citation.claimed_text, title, resp.body)
