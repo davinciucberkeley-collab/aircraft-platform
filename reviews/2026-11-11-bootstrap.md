@@ -713,3 +713,100 @@ The distinction is acceptable. With instability warnings but finite states, ever
 1. Mark blocking results at the source rather than by message text: a `blocking: true` in `CheckResult.data` (or dedicated check_ids such as `T2.sim_unavailable`). Or import the phrases as constants from sim.py/checks.py, so a rewording can't drift from `baseline.py`. Add one end-to-end NaN test (monkeypatch `mujoco.mj_step` to write NaN into `qpos`).
 2. T1 should flag a self-attachment (parent == child) directly; today only the sim build catches it.
 3. Earlier suggestions still open: README "Known limits" entry for A3 (deleting a requirement drops its check); post the ADDED/REMOVED table as a PR comment.
+
+## Round 13 — agent enforcement (agent-enforcement)
+
+Reviewer: same Opus instance (R1, step R1 of `plans/2026-11-18-agent-enforcement.md`). Branch `agent-enforcement` @ 1addd0e. Hook inputs were fed to `tools/agent_hooks.py` from a shell harness, with `AGENT_HOOKS_ROOT` set to a scratch copy of the worktree. Citation extraction ran against a scratch git repo, and the checker against fake fetchers. Docs used: https://code.claude.com/docs/en/hooks.md (fetched 2026-11-18). Nothing in the repo was edited except this file.
+
+`pytest tests/test_agent_hooks.py tests/test_citations.py`: 30 passed.
+
+### What the docs say (load-bearing)
+
+- A command hook that exits with any code other than 0 or 2, **fails to start**, or times out is a *non-blocking error*: "The action goes ahead." To block on failure, set `"onFailure": "block"` (Claude Code v2.1.295+).
+- Structured `permissionDecision: "deny"` JSON requires exit 0. `agent_hooks.py` does this correctly.
+- Subagent tool calls carry `agent_id` and `agent_type`. The main session's example input omits them, so "no `agent_id`" = main session is a fair (implied) rule.
+- `${CLAUDE_PROJECT_DIR}` is "the project root where the session started … It does not change when Claude enters a worktree."
+- Matchers match tool names only. For Bash, an `if` filter exists but "is best-effort, use the permission system rather than a hook to enforce a hard allow or deny."
+
+### Plan gate (pre-agent)
+
+| # | Attack | Result |
+|---|---|---|
+| G1 | Step not in any plan (`Z99 …`) | CAUGHT |
+| G2 | Right step, wrong model (B15 builder with `model: opus`) | CAUGHT |
+| G3 | Model only from the agent definition (B15, `builder`, no `model`) | Allowed, correctly: `haiku` is read from `.claude/agents/builder.md` |
+| G4 | Right step, wrong role (B15 as `reviewer`) | CAUGHT |
+| G5 | **Non-role agent type takes any row**: B15 as `general-purpose` + `model: haiku`; **R1 as `general-purpose` + `opus`**; S9 ("its own") as `general-purpose` + opus | **MISSED**. `role_ok` returns True for any type outside builder/scout/tactician/reviewer. A general-purpose agent launched under the reviewer row then has none of the reviewer's edit limits (it can edit core/), and the "its own" row accepts any model. |
+| G6 | Step id mid-text ("please do B15") or lower-case ("b15") | CAUGHT |
+| G7 | Leading spaces, `B15-extra` | Allowed (harmless) |
+| G8 | **Old plan**: `plans/2026-09-01-ancient.md` with a row Q77, fresh mtime | **MISSED**. The window is file *mtime*, and every clone or checkout makes all plans "modified today". |
+| G9 | **Table inside a fenced code block** (```` ``` ````) or an HTML comment in a plans/*.md | **MISSED**: both are parsed as live agent tables. |
+| G10 | A role cell naming two roles ("builder (not reviewer)") with a `reviewer` launch | MISSED (substring match). Minor. |
+| G11 | Malformed JSON, `[]`, non-object `tool_input` | CAUGHT (fails closed with a reason) |
+| G12 | A tactician (has Write) adds its own row to a plan, then launches | MISSED: plans/ is writable by every agent except scout and reviewer. Minor, but agents.md says the conductor updates the table. |
+
+### Edit gate (pre-edit)
+
+| # | Attack | Result |
+|---|---|---|
+| E1-E5 | Main session editing core/ directly, via `plans/../core/…`, as a relative path, via a symlink outside the repo into core/, or via a symlink inside the repo | CAUGHT (`resolve()` handles all of these) |
+| E6 | `…/Core/aircraft_platform/checks.py` | Allowed on Linux, which is correct there (it is a different directory). **MISSED on macOS/Windows**, whose default file systems are case-insensitive: the write lands in core/. Compare a case-folded top directory. |
+| E7 | Backslashes (`root\core\x.py`) | Harmless on Linux (one literal file name at the root). On Windows `Path` treats `\` as a separator, so it is caught. |
+| E8-E10 | **Main session edits `.claude/settings.json` or `tools/agent_hooks.py`** (or design-standards.yaml) | **MISSED** for the first two: the conductor can switch the gates off. design-standards.yaml is legitimately the conductor's (CLAUDE.md). |
+| E11, E12 | Scout writes standards/ or `knowledge/../core/…` | CAUGHT |
+| E13, E14, E16 | Builder edits `.claude/…` or design-standards.yaml; general-purpose subagent edits design-standards.yaml | CAUGHT |
+| E15 | **Builder (or tactician, or general-purpose) edits `tools/agent_hooks.py`** | **MISSED**. The script is re-read on every call, so one edit disables every gate at once. |
+| E17 | Reviewer writes plans/ | CAUGHT |
+| E18 | Malformed JSON | CAUGHT (fails closed) |
+| E19 | Tool input without `file_path`/`notebook_path` | Allowed. Fine for today's tools, but a future write tool with another field name passes. |
+| C1-C3 | Conductor-edits row with yesterday's date, for another file, or with an empty reason | CAUGHT |
+| C4 | Reason "-" | MISSED (any non-empty text counts). Minor: it is visible in review. |
+| C5 | File written as `` `./core/…` `` | Allowed, correctly |
+| C6 | A directory row (`core/`) | CAUGHT (exact file only) |
+| C7 | The row inside a fenced code block in conductor-edits.md | MISSED (same parser as G9). Minor. |
+| C10 | A valid row for `.github/workflows/validate.yml` | **Bug, fails closed**: `_clean_path` uses `lstrip("./")`, which strips *characters*, so `.github/…` becomes `github/…` and never matches. The conductor can never be authorised for .github/ (or `.claude/`). Use `removeprefix("./")`. |
+| W1, W2 | **Worktrees.** The main session (or a scout in an isolated worktree) edits `<worktree>/core/x.py` | **MISSED**. The settings run `$CLAUDE_PROJECT_DIR/tools/agent_hooks.py`; per the docs that path does not change when the session enters a worktree. `repo_root()` is the script's checkout, so every path in the worktree is "outside the repo" and allowed. This project works in worktrees routinely (this review is in one). |
+| B1 | **Bash.** The hooks match `Edit|Write|NotebookEdit` only, so `sed -i`, `cat >`, `cp`, `git checkout -- core/…` or `python -c` from the main session, or from a scout or reviewer (both have Bash), are not gated. | **MISSED**. The docs say a Bash hook would be best-effort anyway. Not mentioned in agents.md's "Limit". |
+
+### Hook start-up and failure
+
+| # | Case | Result |
+|---|---|---|
+| H1 | The hook command is `python "$CLAUDE_PROJECT_DIR/…"`. Simulated a machine with only `python3` on PATH (macOS since 12.3; Debian/Ubuntu without `python-is-python3`): `/bin/sh: 1: python: not found`, exit 127. | **FAILS OPEN**. Per the docs, a hook that fails to start is a non-blocking error and the tool call goes ahead, so on those machines every gate is silently off. The same is true for a crash outside `run_gate`'s try (e.g. a SyntaxError after an edit to the script) and for a hook that hits its 30 s timeout. |
+| H2 | Exceptions inside the gates | Fail closed with a deny JSON. Correct. |
+
+### Citations (`plane check-citations`)
+
+| # | Attack | Result |
+|---|---|---|
+| K1 | Law-review case: "Hoerner 1965 Fluid-Dynamic Drag" → page "Harvard Law Review Vol 100 (1987)" | CAUGHT (FAIL; also a unit test) |
+| K2 | URL added inside an existing markdown line; URL appended to an existing YAML `source:` | CAUGHT (the modified line counts as added) |
+| K3 | **Invented URL that returns 404** | **MISSED**: WARN, CI passes. An invented URL is the failure CLAUDE.md names ("never invent URLs"). |
+| K4 | **Titles that share only a generic word**: "Selig 1997 airfoil thesis" vs "Thesis repository: Medieval poetry thesis"; "APC propeller performance data" vs "Data privacy policy" | **MISSED** (PASS "title shares: thesis" / "data"). `GENERIC_CITE` is applied only to the body fallback, not to the title match. |
+| K5 | **Redirect to an unrelated page**: a forum homepage whose nav says "tailsitter"; a search page that echoes the query ("Search results for: jacobs hall laser cutter") | **MISSED** (PASS "name found in page text"). One distinctive word anywhere in the body is enough, and redirects (followed by urllib) are not compared with the requested URL. |
+| K6 | PDF | WARN (non-HTML). Most papers are PDFs, so they are never checked. Acceptable only if written down as a limit. |
+| K7 | **Extraction gaps**: a bare URL in knowledge/ body text; **`source_url:` in standards/*.yaml** (the key `standards/manufacturing.yaml` actually uses); knowledge/*.yaml | **MISSED**: none is extracted. |
+| K8 | The frontmatter `title:` changed to a different work while the URL line is untouched | MISSED: only the URL's own line is in the diff. Minor. |
+| K9 | Link text "source" | PASS on any page containing "source". Minor. |
+
+### Verdict
+
+**NOT MERGE-READY.** The rules are implemented carefully where they apply: path resolution, fail-closed parsing, model-from-definition, the law-review case. But several fail open: the gates are off on any machine without `python`, in any worktree, after any agent edits the hook script, and for anything written through Bash. Agents.md presents these as enforcement, so each needs either a fix or an explicit documented limit.
+
+### Blockers
+
+1. **Hook start-up fails open (H1).** Use `python3` in all four commands. Add `"onFailure": "block"` to the two gate hooks (pre-agent, pre-edit) and state the minimum Claude Code version (v2.1.295) in agents.md. Optionally have `/hooks` or a SessionStart check warn when the script can't run.
+2. **Worktrees bypass the edit gate (W1, W2).** Derive the root from the edited file, not from the script: walk up from `file_path` to the nearest `.git` (file or dir) / `git rev-parse --show-toplevel`. Apply the rules relative to that root whenever it is a checkout of this repo (same `plans/`, `.claude/`). Read plans from the input `cwd`'s checkout for the plan gate.
+3. **The enforcement can be edited by the enforced (E8, E9, E15).** Add `tools/agent_hooks.py` and `.claude/` to the main session's protected set (conductor-edits row required), and block `tools/agent_hooks.py` for every subagent like `.claude/`. Fix the `lstrip("./")` bug (C10) at the same time, or the conductor can never log a `.claude/`/`.github/` edit.
+4. **Non-role agent types satisfy any row (G5).** Require the row's Role to name the launched `subagent_type` for every type. A row that should allow e.g. `claude-code-guide` or `general-purpose` must say so, and "its own"/"any" must apply only to the type the row names.
+5. **Bash is ungated (B1).** At least: remove `Bash` from the scout (it needs none to fill templates). Add a main-session `PreToolUse` Bash hook that denies obvious writes into the protected directories (`>`, `>>`, `tee`, `sed -i`, `cp`/`mv` targets, `git checkout --`, `git apply`). Put "Bash writes are best-effort only" in agents.md's Limit, so the reviewer's Process section checks for it.
+6. **Citation check passes invented and unrelated pages (K3, K4, K5, K7).** HTTP 404/410 → FAIL (keep timeouts, 403, 429 and 5xx as WARN). Apply `GENERIC_CITE` to title matches too. Require two distinctive tokens for the body fallback, and treat a redirect to a different host, or to the site root, as FAIL or WARN. Extract bare URLs in knowledge/ text, `source_url:`/`url:` keys in standards YAML, and knowledge/*.yaml.
+
+### Non-blocking
+
+1. G8: take the plan date from the filename (`plans/YYYY-MM-DD-*.md`) or the git commit date, not the mtime.
+2. G9/C7: skip fenced code blocks and HTML comments in `parse_tables`.
+3. E6: compare a case-folded top directory, so macOS/Windows can't bypass the gate with `Core/`.
+4. C4: reject placeholder reasons ("-", "n/a", under ~10 characters).
+5. G12: make plans/ conductor-only (subagents may append to `plans/agent-log.jsonl` only via the hook).
+6. K8: when a frontmatter `title:` changes, re-check that file's `source_url`.
