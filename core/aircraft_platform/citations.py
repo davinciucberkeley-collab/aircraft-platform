@@ -1,18 +1,20 @@
 """Citation check: does a cited URL point at the page the citation names?
 
 Citations are read from knowledge/ (markdown frontmatter and markdown links) and
-standards/ (https URLs inside YAML `source:` strings). Only citations on lines
-added relative to a base ref are checked, so old entries are not re-fetched.
+standards/ (https URLs in YAML `source:`, `source_url:` and `url:` values). Only citations on
+lines added relative to a base ref are checked, so old entries are not re-fetched.
 """
 from __future__ import annotations
 
 import html
 import re
 import subprocess
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, NamedTuple
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -26,12 +28,14 @@ USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like G
               "Chrome/124.0 Safari/537.36")
 TIMEOUT_S = 15
 MAX_BYTES = 2_000_000
+HEAD_CHARS = 5000  # how much of the page text counts as "the page" for a name match
 
 URL_RE = re.compile(r"https://[^\s\"'<>()\[\]]+")
 MD_LINK_RE = re.compile(r"\[([^\]]*)\]\((https://[^)\s]+)\)")
-FM_KEY_RE = re.compile(r"^(source_url|url|related_video):\s*(.*)$")
-FM_TITLE_RE = re.compile(r"^title:\s*(.*)$")
-HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+FM_KEY_RE = re.compile(r"^\s*[\"']?(source_url|url|related_video)[\"']?\s*:\s*(.*)$")
+FM_TITLE_RE = re.compile(r"^\s*[\"']?title[\"']?\s*:\s*(.*)$")
+YAML_URL_KEYS = ("source", "source_url", "url")
+HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 STOPWORDS = set("""
 about above after again against also among and any are aren because been before being below between
@@ -46,13 +50,18 @@ with would your yours yourself checked retrieved accessed
 WEB_WORDS = {"home", "homepage", "page", "site", "website", "welcome", "official", "index", "menu",
              "search", "login", "untitled", "online", "click", "read", "more", "contact"}
 
-# Words that name a kind of source rather than the thing cited. Not enough on their own to
-# count as the "distinctive" token of a citation (e.g. "MIT MS thesis" must not match a thesis).
+# Words that name a kind of source or a common topic rather than the thing cited. They never count
+# as a shared title word or as the "distinctive" token of a citation (e.g. "MIT MS thesis" must
+# not match a thesis; "APC propeller performance data" must not match "Data privacy policy").
 GENERIC_CITE = {"thesis", "paper", "report", "article", "study", "journal", "review", "university",
                 "wikipedia", "video", "blog", "thread", "document", "guide", "manual", "datasheet",
-                "data", "sheet", "technical", "specification", "standard", "version"}
+                "data", "sheet", "technical", "specification", "standard", "version",
+                "privacy", "policy", "repository", "performance", "information", "download",
+                "downloads", "archive", "collection", "database", "results", "project", "projects",
+                "portal", "forum", "notes", "library", "resources", "catalog", "news"}
 
 YOUTUBE_HOSTS = ("youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be")
+NOT_VERIFIABLE_4XX = (401, 403, 429)
 
 
 class Citation(NamedTuple):
@@ -60,6 +69,13 @@ class Citation(NamedTuple):
     claimed_text: str
     path: str
     line: int
+
+
+class Response(NamedTuple):
+    status: int
+    ctype: str
+    body: str
+    final_url: str  # the URL after any redirects
 
 
 @dataclass
@@ -70,7 +86,7 @@ class CheckResult:
     page_title: str | None
 
 
-FetchFn = Callable[[str], "tuple[str, str]"]
+FetchFn = Callable[[str], Response]
 
 
 # ---------------------------------------------------------------- extraction
@@ -80,14 +96,18 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
+def _normalise(text: str) -> str:
+    """Drop a BOM and make line endings plain \\n so line numbers and regexes behave."""
+    return text.lstrip("﻿").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def _knowledge_citations(text: str, path: str) -> list[Citation]:
     out: list[Citation] = []
-    lines = text.splitlines()
-    in_fm = bool(lines) and lines[0].strip() == "---"
+    lines = _normalise(text).split("\n")
     fm_end = None
     title = ""
     fm_urls: list[tuple[str, int]] = []
-    if in_fm:
+    if lines and lines[0].strip() == "---":
         for i in range(1, len(lines)):
             if lines[i].strip() == "---":
                 fm_end = i
@@ -110,22 +130,32 @@ def _knowledge_citations(text: str, path: str) -> list[Citation]:
 
 def _yaml_source_citations(text: str, path: str) -> list[Citation]:
     try:
-        root = yaml.compose(text, Loader=yaml.SafeLoader)
+        root = yaml.compose(_normalise(text), Loader=yaml.SafeLoader)
     except yaml.YAMLError:
         return []
     out: list[Citation] = []
 
+    def scalar(node):
+        return node.value if isinstance(node, yaml.ScalarNode) and isinstance(node.value, str) else None
+
     def walk(node):
         if isinstance(node, yaml.MappingNode):
+            sibling_name = ""
             for k, v in node.value:
-                if (isinstance(k, yaml.ScalarNode) and k.value == "source"
-                        and isinstance(v, yaml.ScalarNode) and isinstance(v.value, str)):
-                    urls = [u.rstrip(".,;:") for u in URL_RE.findall(v.value)]
-                    if urls:
-                        claimed = URL_RE.sub(" ", v.value).replace("()", " ")
+                if scalar(k) == "name" and scalar(v):
+                    sibling_name = _clean(scalar(v))
+            for k, v in node.value:
+                key, value = scalar(k), scalar(v)
+                if key in YAML_URL_KEYS and value is not None:
+                    if key == "source":
+                        claimed = URL_RE.sub(" ", value).replace("()", " ")
                         claimed = re.sub(r"\s+", " ", claimed).strip()
-                        for u in urls:
-                            out.append(Citation(u, claimed, path, v.start_mark.line + 1))
+                    else:
+                        claimed = sibling_name
+                    for m in URL_RE.finditer(value):
+                        # line of the URL itself, for multi-line scalars
+                        line = v.start_mark.line + 1 + value[:m.start()].count("\n")
+                        out.append(Citation(m.group().rstrip(".,;:"), claimed, path, line))
                 walk(v)
         elif isinstance(node, yaml.SequenceNode):
             for item in node.value:
@@ -156,26 +186,45 @@ def _git(repo_root: Path, *args: str) -> str:
 
 
 def _added_lines(diff: str) -> dict[str, set[int]]:
-    """{repo-relative path: line numbers (new file) added by the diff}. Expects --unified=0."""
+    """{repo-relative path: new-file line numbers that the diff adds or rewrites}.
+
+    Expects --unified=0. Hunk bodies are read by their line counts, so an added content line
+    that happens to start with "+++ " or "--- " is still treated as a + line, not a header.
+    """
     added: dict[str, set[int]] = {}
     current: str | None = None
+    old_left = new_left = 0
+    new_no = 0
     for line in diff.splitlines():
+        if old_left > 0 or new_left > 0:
+            if line.startswith("\\"):
+                continue  # "\ No newline at end of file"
+            if line.startswith("+"):
+                if current is not None:
+                    added.setdefault(current, set()).add(new_no)
+                new_no += 1
+                new_left -= 1
+            elif line.startswith("-"):
+                old_left -= 1
+            else:
+                old_left = new_left = 0
+            continue
         if line.startswith("+++ "):
             target = line[4:].strip()
             current = target[2:] if target.startswith("b/") else None
-            if current is not None:
-                added.setdefault(current, set())
-        elif line.startswith("@@") and current is not None:
+        elif line.startswith("@@"):
             m = HUNK_RE.match(line)
             if m:
-                start = int(m.group(1))
-                count = int(m.group(2)) if m.group(2) is not None else 1
-                added[current].update(range(start, start + count))
+                old_left = int(m.group(2)) if m.group(2) is not None else 1
+                new_left = int(m.group(4)) if m.group(4) is not None else 1
+                new_no = int(m.group(3))
+                if current is not None:
+                    added.setdefault(current, set())
     return {k: v for k, v in added.items() if v}
 
 
 def added_citations(base_ref: str, repo_root: Path = REPO_ROOT) -> list[Citation]:
-    """Citations on lines added under knowledge/ or standards/ relative to base_ref."""
+    """Citations on lines added or rewritten under knowledge/ or standards/ relative to base_ref."""
     diff = _git(repo_root, "diff", "--no-color", "--no-ext-diff", "--unified=0", base_ref,
                 "--", "knowledge", "standards")
     out: list[Citation] = []
@@ -190,15 +239,26 @@ def added_citations(base_ref: str, repo_root: Path = REPO_ROOT) -> list[Citation
 
 # ---------------------------------------------------------------- checking
 
-def default_fetch(url: str) -> tuple[str, str]:
-    """(content type, decoded body). Raises on network errors and timeouts."""
+def default_fetch(url: str) -> Response:
+    """Status, content type, decoded body and final URL. Raises on network errors and timeouts."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT,
                                                "Accept": "text/html,application/xhtml+xml,*/*;q=0.8"})
-    with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:  # follows redirects
+    try:
+        resp = urllib.request.urlopen(req, timeout=TIMEOUT_S)  # follows redirects
+    except urllib.error.HTTPError as e:
+        try:
+            raw = e.read(MAX_BYTES)
+        except Exception:  # noqa: BLE001 - the body of an error page is optional
+            raw = b""
+        return Response(e.code, e.headers.get("Content-Type", "") or "",
+                        raw.decode("utf-8", errors="replace"), url)
+    with resp:
         ctype = resp.headers.get("Content-Type", "") or ""
         charset = resp.headers.get_content_charset() or "utf-8"
         raw = resp.read(MAX_BYTES)
-    return ctype, raw.decode(charset, errors="replace")
+        final = resp.geturl() or url
+        status = resp.getcode() or 200
+    return Response(status, ctype, raw.decode(charset, errors="replace"), final)
 
 
 def _strip_tags(s: str) -> str:
@@ -230,32 +290,58 @@ def _significant(text: str) -> set[str]:
     return _tokens(text) - STOPWORDS - WEB_WORDS
 
 
+def _host(url: str) -> str:
+    return (urlsplit(url).hostname or "").lower()
+
+
+def _norm_url(url: str) -> tuple[str, str, str, str]:
+    s = urlsplit(url)
+    return (s.scheme.lower(), (s.hostname or "").lower(), s.path.rstrip("/"), s.query)
+
+
+def _match(claimed: str, title: str | None, body: str) -> str | None:
+    """Why the page matches the claim, or None. Generic words never count."""
+    distinct_claim = _significant(claimed) - GENERIC_CITE
+    shared = distinct_claim & _significant(title or "")
+    if len(shared) >= 2:
+        return f"title shares: {', '.join(sorted(shared))}"
+    distinctive = {t for t in distinct_claim if len(t) >= 5}
+    found = distinctive & (_tokens(title or "") | _tokens(_strip_tags(body)[:HEAD_CHARS]))
+    if found:
+        return f"name found: {', '.join(sorted(found))}"
+    return None
+
+
 def check_detail(citation: Citation, fetch: FetchFn = default_fetch) -> CheckResult:
     def res(status: str, message: str, title: str | None = None) -> CheckResult:
         return CheckResult(citation, status, message, title)
 
-    host = re.sub(r"^https?://", "", citation.url).split("/")[0].lower()
+    host = _host(citation.url)
     if host in YOUTUBE_HOSTS:
         return res(WARN, "not checkable: video host")
     if not citation.claimed_text.strip():
         return res(WARN, "could not verify: no claim text to compare")
     try:
-        ctype, body = fetch(citation.url)
+        resp = fetch(citation.url)
     except Exception as e:  # noqa: BLE001 - any fetch problem is a WARN, not a FAIL
         return res(WARN, f"could not verify: {type(e).__name__}: {e}")
-    if ctype and not re.search(r"html|xml", ctype, flags=re.I):
-        return res(WARN, f"could not verify: non-HTML content ({ctype})")
+    if resp.status >= 400:
+        if resp.status in NOT_VERIFIABLE_4XX or resp.status >= 500:
+            return res(WARN, f"could not verify: HTTP {resp.status}")
+        return res(FAIL, f"link is dead (HTTP {resp.status})")
+    if resp.ctype and not re.search(r"html|xml", resp.ctype, flags=re.I):
+        return res(WARN, f"could not verify: non-HTML content ({resp.ctype})")
 
-    title = page_title(body)
-    claimed_sig = _significant(citation.claimed_text)
-    title_shared = claimed_sig & _significant(title or "")
-    if title_shared:
-        return res(PASS, f"title shares: {', '.join(sorted(title_shared))}", title)
-
-    distinctive = claimed_sig - GENERIC_CITE
-    body_hits = distinctive & _tokens(_strip_tags(body))
-    if body_hits:
-        return res(PASS, f"name found in page text: {', '.join(sorted(body_hits))}", title)
+    title = page_title(resp.body)
+    matched = _match(citation.claimed_text, title, resp.body)
+    final = resp.final_url or citation.url
+    if _norm_url(final) != _norm_url(citation.url):
+        if urlsplit(final).path.rstrip("/") == "":
+            return res(FAIL, f"redirected to {final}", title)
+        if _host(final) != host and matched is None:
+            return res(FAIL, f"redirected to {final}", title)
+    if matched is not None:
+        return res(PASS, matched, title)
 
     shown = title if title else "(no title)"
     return res(FAIL, f"cited as '{citation.claimed_text}' but page is '{shown}'", title)
