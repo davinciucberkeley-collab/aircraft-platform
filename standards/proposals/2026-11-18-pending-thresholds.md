@@ -1,0 +1,14 @@
+# Pending thresholds: proposed values (2026-11-18, scout S8)
+
+Scout proposal only. `standards/design-standards.yaml` was not edited; the conductor and team decide.
+
+| Rule key | Current value | Proposed value (or keep) | Evidence (source ids + the exact number each gives) | Confidence (high/medium/low) |
+|---|---|---|---|---|
+| hover_thrust_to_weight_min | 1.5 | Change to 1.2 minimum (1.3 as a desirable target if the team wants control margin). Keeping 1.5 is only a design choice; no source gives it as a minimum. | std-wang-2016-small-tailsitter-sizing: K_T = 1.2 (max thrust / takeoff weight) for small battery tail-sitters, Sec 2.2 p.3. std-stone-wong-tandem-wing-tailsitter-usyd: thrust exceeds weight by 15% ("typically"), hover section and Table 3. std-castor-2019-variable-wing-loading-thesis: minimum 1.05 citing Raymer; 1.3 desirable, p.9. std-kamal-ramirez-serrano-2018-hybrid-vtol-design: 1.2 to 1.5 range, p.166, citing Raymer 5th ed. std-pollet-2022-common-framework-vtol-uav: 0.3 g takeoff acceleration (Table 4 p.15) gives T/W = 1 + a/g = 1.3 (derived). std-theys-deschutter-2016-vtol-parameter-selection: 1.5 used as a design input, Table 1 p.221 (no justification). | Medium |
+| landing_load_factor | 3.0 (g, before ultimate factor) | Change to 2.67 as a candidate, or keep 3.0 as provisional until a UAS-specific value is found. Note 2.67 x 1.5 = 4.0 g effective, versus 3.0 x 1.5 = 4.5 now, so this lowers the design load by about 11%. | std-faa-14cfr-23-473-landing-loads: inertia load factor minimum 2.67 (para g); ground reaction minimum 2.0 (para g); sink speed 7 to 10 ft/s (para d); manned Part 23 only. std-astm-f2910-22-sUAS: "normal landing impact loads" with no number (Sec 5.2.3, 5.6.10.1). std-astm-f3389-21-sua-impact: no landing load value (drop-test speeds 8 and 16 ft/s, Sec 12.1, injury tests only). std-castor-2019-variable-wing-loading-thesis, std-stone-wong-tandem-wing-tailsitter-usyd: drop tests with no g value. Earlier notes: ASTM F3298-19 no number (1.5 ultimate); STANAG 4703 3.8 g manoeuvre (not landing), Annex B not read. | Low |
+
+## Caveats
+- No primary source gives a UAS landing load factor. For landing_load_factor, the only numeric value found is the manned-aircraft FAA minimum, so the honest result is "no primary source found for a UAS value"; 2.67 is the closest sourced number.
+- The hover value rests on secondhand citations of Raymer (5th ed.), which was not opened. Gundlach and Sadraey were found only as catalogue records. ASTM F3298-24, the STANAG Annex B, and a DTIC report were not reachable.
+- All page content was read through a summarizing fetch tool, so quoted wording and page numbers should be checked against the original PDFs before a rule is changed.
+- Most hover sources are fixed-wing tail-sitter or hybrid VTOL designs, not multirotors. The rule applies to all VTOL designs.
