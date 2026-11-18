@@ -22,3 +22,9 @@ Conductor: Opus. User approved 2026-11-18 ("yes build this").
 | B16 | Builder | haiku | `core/aircraft_platform/citations.py`, `plane check-citations`, CI step, tests | catches the 1987 law-review mismatch in a test |
 | B17 | Builder | haiku | agents.md, review-scorecard.md, skills/agent-roles | docs match the mechanisms |
 | R1 | Reviewer | opus (reused) | review round 13 | tries to break each rule |
+
+## Round 13 fixes (conductor decisions)
+| Step | Role | Model | Output | Pass criterion |
+|---|---|---|---|---|
+| B18 | Builder | haiku | hooks: python3/python fallback + block on failure; worktree paths gated; tools/agent_hooks.py and .claude/ protected; general-purpose can't fill role rows; Bash writes detected after the fact | each round-13 attack now caught or logged |
+| B19 | Builder | haiku | citations: 404 and homepage-redirect FAIL; stronger title match; `source_url:` extraction fixed | round-13 citation attacks FAIL |
