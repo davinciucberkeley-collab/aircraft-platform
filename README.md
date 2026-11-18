@@ -62,6 +62,8 @@ pytest -q
 On Windows, run these in Miniforge Prompt (or any terminal with the environment active) and write paths with `\`
 if you like: `plane validate designs\concept-a` works the same.
 
+For agent work in Claude Code, update Claude Code to v2.1.295 or newer: older clients let a failed agent hook through, so the block-on-failure safeguard needs the newer version.
+
 ### Re-import Dillon's concept A from DBF-Combined
 
 ```bash

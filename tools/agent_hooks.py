@@ -502,6 +502,29 @@ def bash_state_path(tool_use_id):
     return BASH_STATE_DIR / f"{safe}.json"
 
 
+def _git_head(cwd):
+    try:
+        proc = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(cwd),
+                              capture_output=True, text=True, timeout=GIT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def _git_committed_between(cwd, old, new):
+    """Paths changed by commits between two HEADs (repo-relative), or [] if unknown."""
+    try:
+        proc = subprocess.run(["git", "diff", "--name-only", "-z", old, new], cwd=str(cwd),
+                              capture_output=True, timeout=GIT_TIMEOUT * 3)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if proc.returncode != 0:
+        return []
+    return [p.decode("utf-8", "surrogateescape") for p in proc.stdout.split(b"\0") if p]
+
+
 def pre_bash(data):
     tool_use_id = data.get("tool_use_id")
     if not tool_use_id:
@@ -511,7 +534,7 @@ def pre_bash(data):
     if got is None:
         return
     top, paths = got
-    snap = {"cwd": str(cwd), "toplevel": str(top),
+    snap = {"cwd": str(cwd), "toplevel": str(top), "head": _git_head(cwd),
             "files": {p: _file_state(top / p) for p in paths}}
     BASH_STATE_DIR.mkdir(parents=True, exist_ok=True)
     bash_state_path(tool_use_id).write_text(json.dumps(snap), encoding="utf-8")
@@ -547,6 +570,10 @@ def post_bash(data):
         return 0
     top, paths = got
     changed = changed_since(snap.get("files", {}), top, paths)
+    old_head, new_head = snap.get("head"), _git_head(cwd)
+    if old_head and new_head and old_head != new_head:
+        # a command may commit files that are clean afterwards; count every file its commits touched
+        changed = sorted(set(changed) | set(_git_committed_between(cwd, old_head, new_head)))
     if not changed:
         return 0
     if data.get("agent_id"):

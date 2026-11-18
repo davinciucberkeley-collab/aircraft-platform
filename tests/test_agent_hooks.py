@@ -461,6 +461,21 @@ def test_bash_post_flags_scout_core_write(git_repo):
     assert entry["caller"] == "scout" and entry["files"] == ["core/x.py"]
 
 
+def test_bash_post_flags_scout_commit_of_core_file(git_repo):
+    tid = uuid.uuid4().hex
+    _bash("pre-bash", git_repo, tid, "a9", "scout")
+    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.invalid",
+               GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.invalid")
+    subprocess.run("echo x > core/a.py && git add -A && git commit -q -m x", shell=True,
+                   cwd=str(git_repo), env=env, check=True, capture_output=True)
+    post = _bash("post-bash", git_repo, tid, "a9", "scout")
+    out = json.loads(post.stdout.decode("utf-8"))
+    assert out["decision"] == "block" and "core/a.py" in out["reason"]
+    entries = [json.loads(line) for line in
+               (git_repo / "plans" / "agent-log.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert any(e["event"] == "bash_write_violation" and "core/a.py" in e["files"] for e in entries)
+
+
 def test_bash_post_silent_for_scout_knowledge_write(git_repo):
     tid = uuid.uuid4().hex
     _bash("pre-bash", git_repo, tid, "a6", "scout")
