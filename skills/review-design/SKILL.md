@@ -13,6 +13,7 @@ One Reviewer (Opus) per task, reused for every item in that task via SendMessage
 
 ## Steps
 1. Run `plane validate designs/<id> --format md` (MCP: `validate_design`). Paste the scorecard as the "Automated" section unchanged.
+   In the CI "Known failures ADDED" list, confirm each entry is justified.
    If it reports printed parts with no stress check or out-of-date ones (`T2.fea_strength` SKIP), run `plane fea designs/<id> --all` (MCP: `structural_check`) first, commit `designs/<id>/fea/`, then validate again.
 2. For each judgment item, find the criterion in `standards/` (design-standards.yaml, manufacturing.yaml, agents.md). Score PASS / FAIL / N/A with a one-line reason and the criterion link.
 3. Judge only what validators can't: is the lineage recorded, does the README state the question, are joint ratings plausible for the stated method, is anything modelled too crudely to trust (e.g. static margin ignores the fuselage).

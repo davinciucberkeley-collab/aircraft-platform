@@ -160,7 +160,7 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
     except Exception as e:  # noqa: BLE001
         msg = f"could not build simulation model: {e}"
         return [CheckResult("T2.sim_stable", FAIL, msg, STD + "duration_s"),
-                CheckResult("T2.sim_drop_loads", SKIP, "no model", STD + "drop_height_m"),
+                CheckResult("T2.sim_drop_loads", SKIP, "no model", STD + "drop_height_m", {"parts": []}),
                 CheckResult("T2.sim_rest", SKIP, "no model", STD + "drop_height_m")]
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
@@ -193,7 +193,12 @@ def tier2_sim(design: Design, std: dict, mp: dict) -> list[CheckResult]:
     for k, (name, label, a) in enumerate(welds):
         peak = float(peaks[k])
         rated = a.get("rated_load_n")
-        d = {"peak_n": round(peak, 2)}
+        if nan or not math.isfinite(peak):
+            # an exploded run has no meaningful loads; NaN would otherwise compare as "not above the rating"
+            res.append(CheckResult("T2.sim_drop_loads", SKIP, f"{label}: no load, simulation went unstable",
+                                   STD + "drop_height_m", {"joint": label}))
+            continue
+        d = {"peak_n": round(peak, 2), "joint": label}
         if a.get("rating_basis") == "placeholder":
             res.append(CheckResult("T2.sim_drop_loads", SKIP, f"{label}: carries {peak:.1f} N; rating is a placeholder, not checked",
                                    STD + "landing_load_factor", d))

@@ -407,13 +407,14 @@ def tier2_fea(design: Design) -> list[CheckResult]:
             continue
         crit = STD + rec.get("allowable_key", "fea_allowable_printed_petg_mpa")
         if rec.get("error"):
-            out.append(CheckResult("T2.fea_strength", "FAIL", f"{pid}: OpenCAE run failed: {rec['error']}", crit))
+            out.append(CheckResult("T2.fea_strength", "FAIL", f"{pid}: OpenCAE run failed: {rec['error']}", crit,
+                                   {"component": pid}))
             continue
         for c in rec["cases"]:
             if c["status"] == "SKIP":
                 if c.get("not_checked"):
                     out.append(CheckResult("T2.fea_strength", "SKIP", f"{pid} {c['name']}: {c['message']}", crit,
-                                           {"part": pid}))
+                                           {"component": pid}))
                 continue
             msg = (f"{pid} {c['name']}: {c['max_von_mises_away_mpa']:.2f} MPa peak away from the clamps vs "
                    f"{rec['allowable_mpa']} MPa allowable at {rec['ultimate_factor']}x load "
@@ -422,13 +423,13 @@ def tier2_fea(design: Design) -> list[CheckResult]:
                 msg += "; equilibrium check failed"
             out.append(CheckResult("T2.fea_strength", c["status"], msg, crit,
                                    {k: c[k] for k in ("max_von_mises_away_mpa", "safety_factor_at_ultimate",
-                                                      "max_displacement_mm")} | {"part": pid}))
+                                                      "max_displacement_mm")} | {"component": pid}))
     if stale:
         out.append(CheckResult("T2.fea_strength", "SKIP", f"stress results out of date for {len(stale)} part(s) "
                                f"({', '.join(stale[:6])}{'…' if len(stale) > 6 else ''}): re-run plane fea",
-                               STD + "fea_allowable_printed_petg_mpa", {"stale": stale}))
+                               STD + "fea_allowable_printed_petg_mpa", {"parts": stale}))
     if missing:
         out.append(CheckResult("T2.fea_strength", "SKIP", f"{len(missing)} printed part(s) have no OpenCAE stress "
                                f"check yet (plane fea {design.base_dir.name} --all)",
-                               STD + "fea_allowable_printed_petg_mpa", {"missing": missing}))
+                               STD + "fea_allowable_printed_petg_mpa", {"parts": missing}))
     return out

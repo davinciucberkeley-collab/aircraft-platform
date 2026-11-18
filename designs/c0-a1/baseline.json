@@ -1,0 +1,135 @@
+{
+  "accepted": false,
+  "design_id": "c0-a1",
+  "known": [
+    {
+      "check_id": "T1.attachment_overlap",
+      "example": "servo-ail_l: embed_ok joint overlaps 89% of the child servo_ail_l (limit 35% unless the child is >= 99% inside the parent)",
+      "key": "T1.attachment_overlap|servo-ail_l: embed_ok joint overlaps #% of the child servo_ail_l (limit #% unless the child is >= #% inside the parent)|{\"joint\":\"servo-ail_l\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T1.attachment_overlap",
+      "example": "servo-ail_r: embed_ok joint overlaps 89% of the child servo_ail_r (limit 35% unless the child is >= 99% inside the parent)",
+      "key": "T1.attachment_overlap|servo-ail_r: embed_ok joint overlaps #% of the child servo_ail_r (limit #% unless the child is >= #% inside the parent)|{\"joint\":\"servo-ail_r\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.fea_strength",
+      "example": "18 printed part(s) have no OpenCAE stress check yet (plane fea c0-a1 --all)",
+      "key": "T2.fea_strength|# printed part(s) have no OpenCAE stress check yet (plane fea c0-a1 --all)|{\"parts\":[\"boom_clamp_f_l\",\"boom_clamp_r_l\",\"lift_mount_fl\",\"gear_clamp_fl\",\"lift_mount_rl\",\"gear_clamp_rl\",\"tail_clamp_l\",\"fin_shoe_l\",\"boom_clamp_f_r\",\"boom_clamp_r_r\",\"lift_mount_fr\",\"gear_clamp_fr\",\"lift_mount_rr\",\"gear_clamp_rr\",\"tail_clamp_r\",\"fin_shoe_r\",\"tip_mount_r\",\"tip_mount_l\"]}",
+      "status": "SKIP"
+    },
+    {
+      "check_id": "T2.joint_load",
+      "example": "pod-wiring: 26.3 N at 4.5g exceeds rating 20 N",
+      "key": "T2.joint_load|pod-wiring: # N at 4.5g exceeds rating # N|{\"joint\":\"pod-wiring\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.joint_load",
+      "example": "wing-tip_l: 50.0 N at 4.5g exceeds rating 50 N",
+      "key": "T2.joint_load|wing-tip_l: # N at 4.5g exceeds rating # N|{\"joint\":\"wing-tip_l\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.joint_load",
+      "example": "wing-tip_r: 50.0 N at 4.5g exceeds rating 50 N",
+      "key": "T2.joint_load|wing-tip_r: # N at 4.5g exceeds rating # N|{\"joint\":\"wing-tip_r\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "clampr-boom-l: peak 153.9 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|clampr-boom-l: peak # N in drop test exceeds rating # N|{\"joint\":\"clampr-boom-l\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "clampr-boom-r: peak 151.8 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|clampr-boom-r: peak # N in drop test exceeds rating # N|{\"joint\":\"clampr-boom-r\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-fl: peak 93.2 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-fl: peak # N in drop test exceeds rating # N|{\"joint\":\"gear-leg-fl\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-fr: peak 93.3 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-fr: peak # N in drop test exceeds rating # N|{\"joint\":\"gear-leg-fr\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-rl: peak 125.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-rl: peak # N in drop test exceeds rating # N|{\"joint\":\"gear-leg-rl\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "gear-leg-rr: peak 125.5 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|gear-leg-rr: peak # N in drop test exceeds rating # N|{\"joint\":\"gear-leg-rr\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-avionics: peak 141.7 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|pod-avionics: peak # N in drop test exceeds rating # N|{\"joint\":\"pod-avionics\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-battery: peak 151.1 N in drop test exceeds rating 50 N",
+      "key": "T2.sim_drop_loads|pod-battery: peak # N in drop test exceeds rating # N|{\"joint\":\"pod-battery\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-fasteners: peak 27.0 N in drop test exceeds rating 20 N",
+      "key": "T2.sim_drop_loads|pod-fasteners: peak # N in drop test exceeds rating # N|{\"joint\":\"pod-fasteners\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "pod-wiring: peak 44.8 N in drop test exceeds rating 20 N",
+      "key": "T2.sim_drop_loads|pod-wiring: peak # N in drop test exceeds rating # N|{\"joint\":\"pod-wiring\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-clampr-l: peak 152.6 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|wing-clampr-l: peak # N in drop test exceeds rating # N|{\"joint\":\"wing-clampr-l\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T2.sim_drop_loads",
+      "example": "wing-clampr-r: peak 150.5 N in drop test exceeds rating 100 N",
+      "key": "T2.sim_drop_loads|wing-clampr-r: peak # N in drop test exceeds rating # N|{\"joint\":\"wing-clampr-r\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T3.stall",
+      "example": "wing loading 105.8 g/dm^2, stall 12.3 m/s (CLmax 1.115) > required 12 m/s",
+      "key": "T3.stall|wing loading # g/dm^#, stall # m/s (CLmax #) > required # m/s|{\"band\":\"above\"}",
+      "status": "FAIL"
+    },
+    {
+      "check_id": "T3.static_margin",
+      "example": "16.3% MAC (NP x=739 mm, CG x=686 mm; target 5%-15%; fuselage effect not modelled)",
+      "key": "T3.static_margin|#% MAC (NP x=# mm, CG x=# mm; target #%#%; fuselage effect not modelled)|{\"band\":\"above\"}",
+      "status": "FAIL"
+    }
+  ],
+  "schema": 1,
+  "tiers_run": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}

@@ -529,3 +529,187 @@ I agree with it, with one condition that is already met. After rounds 5-7 every 
 2. validator-comparison.md: one sentence on the 3 detached LE slivers.
 3. Consider pivot-in-gap bridging instead of a 15% fraction; consider computing `envelope` (the base of the 15%) from the root and adjacent children only, since detached material currently enlarges it.
 4. Still open from earlier rounds: `rating_basis` optional in the schema; motor→prop chain via the mount (m2); validate.yml "Score every design" red on main, which predates this branch.
+
+## Round 9 — regression-only CI (ci-baselines)
+
+Reviewer: same Opus instance (R1). Commit reviewed: 14f75a8 on `ci-baselines`; plan `plans/2026-11-17-ci-baselines.md`. Every attack ran in a full throwaway copy, `/tmp/ap-review9/wt` (`cp -a` of the repo, `PYTHONPATH=/tmp/ap-review9/wt/core`, so `REPO_ROOT` is the copy), using git commits in that copy for `--base-ref`. Nothing in the real repo was edited except this file.
+
+### Automated
+
+- `python3 -m pytest -q`: `150 passed, 3 skipped, 46 warnings`.
+- `plane baseline check --all --format json`, run twice: exit 0 both times, and the outputs are **byte-identical** (deterministic). Known keys per design: c0-a1 20, c0-a2 16, c0-a3 17, c0-lift-cruise 17, concept-a 66, tiltwing-cakir 24; example accepted. Keys that merge several results: concept-a "sweep E-WNG-10/11 #°" (2 each), tiltwing "sweep wing-tilt/tail-tilt #°: clipping …" (6, 6, 4).
+
+### Attacks
+
+| # | Attack | Result | Evidence |
+|---|---|---|---|
+| A1 | **Swap inside one key.** Design `atk-a1` (the example with numeric joint ids "1".."11"); baseline has joint "4" failing its rating. The change fixes "4" and breaks "5". | **MISSED** | `#: # N at 4.5g exceeds rating # N`: "4:" and "5:" normalise to the same key, so the check says "Unchanged: 2. Regressions: 0", rc 0. The same happens wherever the subject is only in a number or past a truncated list (A1c). |
+| A1b | **Regression plus a baseline edit that adds no key.** Joints "4" and "5" both fail (count 1 → 2; the control run is caught, rc 1), and the same commit sets `count: 2` in baseline.json. `--base-ref` = previous commit. | **MISSED, silently** | rc 0, and **no "ADDED" section and no `::warning`**: `growth()` compares key sets only, so raising a `count` or changing a `status` (SKIP→FAIL) in baseline.json is invisible. Also, in the control run the regression table showed "4: … exceeds rating 0.1 N" (the old joint) and not the reason "count rose from 1 to 2". The md tables drop the `reason` field, so the reviewer is pointed at the wrong joint. |
+| A1c | **Truncated id lists.** kinematic_link ("…: mec-003-l, …, wng-006-r, …") and fea "out of date for # part(s) (…6 ids…)" show at most 6 ids. | **MISSED** (key level) | `normalize_message` of "6 pair(s) … wng-006-r, …" and "7 pair(s) … wng-006-r, …" is identical (checked in Python). A new unchecked pair, or a stale part past the 6th id, adds nothing to the key. |
+| A2 | **Value crosses the band.** concept-a: foot pads 0.7 → 50 g each, so SM 16.8% → **-1.2% (unstable)**. | Caught only by accident | The SM key is unchanged. CI failed only because every fea result went stale (new SKIP key; the mass change alters the part hashes). |
+| A2b | Same on a design without fea results. c0-lift-cruise: battery 820 → 100 g, so SM **15.3% (too stable) → 3.8% (below the 5% minimum)**; hover moment rises to a 73% WARN. | **MISSED** | "Result: pass", rc 0. The summary even lists an **Improvement** (the battery joint's drop-load FAIL went away) and tells the author to run `plane baseline update`. Static margin moving from one side of the band to the other is the classic regression, and the key `#% MAC (NP x=# mm, CG x=# mm; target #%#%; …)` can't see it (the sign is lost too: "-1.2%" becomes "#%"). WARNs are ignored by design, so the hover-moment change is also invisible. |
+| A3 | Delete `requirements.stall_speed_max_mps` from c0-a1 to silence T3.stall FAIL (12.3 > 12 m/s). | **MISSED** (shown as an improvement) | rc 0; "Improvements: T3.stall … > required 12 m/s". The validator then PASSes stall with no limit. This is mainly a validator gap (a missing requirement is silent), but the summary calls it an improvement. The plane.yaml diff shows the removal. |
+| A4 | Regression plus `plane baseline update` in the same change (new keys). | CAUGHT as visible, **not failing** | rc 0. "Known failures ADDED to the baseline in this change (reviewers: confirm each)" lists the 2 wing-pod rows, plus `::warning title=Baseline grew (c0-a2)::…` annotations. This is the plan's stated policy (growth is visible, not a failure). |
+| A5 | Same regression plus **renaming the folder** (`designs/c0-a2` → `c0-a2-renamed`). | Visible but **buried** | `baseline_at_ref` looks up the new path at the base ref, finds nothing, and lists **all 18** keys as ADDED; the 2 real additions are among them. Every rename or move of a design hides its real growth this way. |
+| A6 | Delete a non-accepted design's baseline.json. | CAUGHT | rc 1, "Missing baseline.json". All 17 rows are listed as regressions. |
+| A7 | "Accepted because a tier was skipped" | Not reachable | `baseline check` always runs `validate(design)` at tier 5. A SKIP anywhere blocks acceptance (rounds 2-6), and a partial run is never accepted. |
+| A8 | Numbers next to punctuation and units | No miss; some noise | `[1.0, 50.0, 600.0]`, `(SF 1.5;`, `12/41`, `sweep E-WNG-10 -6°` normalise; ids (`E-WNG-20`, `prop_2`, `M3x8`, `v2.0`) keep their digits. Numbers glued to a unit (`x=-5.0mm`, `4.5g`) or in exponent form (`1e-3`) are **not** normalised, so if such a value moved it would read as a new key: a false regression, not a miss. Current messages use spaced units ("2.2 N", "mm^3"). |
+
+### Workflow reasoning (validate.yml)
+
+- PR: `base = origin/<base_ref>`; `fetch-depth: 0` makes it present. Growth is measured against the base branch tip. Correct.
+- Push to main: `base = github.event.before`. For a force-push whose old head is gone, or for **the first push that introduces baselines** (the merge of this branch), `git show <before>:…/baseline.json` fails. `baseline_at_ref` returns None, so every key of every design (about 160) is reported as ADDED and annotated. That is noisy but harmless (exit 0), and it happens once on merge. A new branch (`before` = 000…) skips growth. Correct.
+- `shell: bash` runs with `-eo pipefail`, so the step fails on plane's exit 1 even before `exit ${PIPESTATUS[0]}`; the summary is still written by `tee`. Correct. The `::warning` lines also go through `tee` into the step summary as raw text (cosmetic).
+- Growth never fails CI (by policy), so the safety of this path depends on a human reading the ADDED section. A5 shows that section can be flooded.
+
+### Is the md summary readable?
+
+Mostly yes: a result line, then per design the counts, regressions, improvements and ADDED keys, each as a table or list. Two defects matter for a reviewer:
+1. The regression and improvement tables omit the `reason` field ("count rose from 1 to 2", "was SKIP in baseline, now FAIL"). With only one example message per key, they can name the wrong instance (A1b control).
+2. "Improvements" includes things that aren't (A2b, A3). The text "run `plane baseline update` … to record the improvement" invites locking in a worse design.
+
+### Verdict
+
+**NOT MERGE-READY.** Determinism, missing-baseline handling and the workflow are sound, and plain baseline growth is visible as the plan intends. But three paths let a real regression through with a green check, two of them with no trace in the summary.
+
+### Blockers
+
+1. **Baseline edits that add no key are invisible** (A1b). Make `growth` diff whole entries `(key, status, count)` against the base ref, and list any count increase or SKIP→FAIL change under "ADDED/LOOSENED". Treat a path rename as a move: match by `design_id`, not folder (A5).
+2. **The key can't see a FAIL changing side or direction** (A2b; the sign is lost). Give band checks distinct failure modes in their messages (e.g. T3.static_margin "above band" / "below band"; the same for any min/max check), or derive the key from structured data (check_id + `r.data` mode/side). Then 15.3% → 3.8% becomes a new key. Don't call a set of changes an "improvement" when another FAIL got worse in the same design.
+3. **Several results collapse into one key** (A1, A1c). Build the key from the result's *subject* (`r.data` part / pair / joint / configuration, or the full untruncated id list) rather than from display text, and list every instance. Never truncate an id list in text that forms a key. Show the `reason` column in the md tables.
+
+### Non-blocking
+
+1. A3: emit a visible row (WARN or SKIP) when a requirement the checks use is absent (`stall_speed_max_mps`, `mtow_g`), so deleting it isn't silent.
+2. Normalise numbers attached to units (`5.0mm`, `4.5g`) and exponents, to avoid false regressions.
+3. The first push after merge will annotate about 160 "Baseline grew" warnings. Consider skipping growth when the base ref has no baselines at all.
+
+## Round 10 (ci-baselines)
+
+Reviewer: same Opus instance (R1). Commit reviewed: 8524d47 on `ci-baselines`. Every attack ran in a **fresh clone**, `/tmp/ap-review10/wt` (`git clone --branch ci-baselines`, `PYTHONPATH` pointed at the clone), with git commits there for `--base-ref`. Nothing in the real repo was edited except this file.
+
+### Automated and stability
+
+- `python3 -m pytest -q`: `158 passed, 3 skipped`.
+- `plane baseline check --all --format json` in the fresh clone, run twice: rc 0 both times, outputs **byte-identical**, and every design is "Unchanged" against its committed baseline.json (c0-a1 20, c0-a2 16, c0-a3 17, c0-lift-cruise 17, concept-a 68, tiltwing-cakir 37 keys; example accepted). So keys are stable across runs and across a fresh clone.
+- String data that goes into keys (all 70 distinct values in the committed baselines) is subject ids (`joint`, `component`, `pair`, `part`), `band`, and `configuration` names such as "sweep wing-tilt 45°". None is a measured value, so nothing churns between runs.
+
+### Round-9 blockers
+
+| # | Round-9 blocker | Status | Evidence |
+|---|---|---|---|
+| 1 | Baseline edits that add no key are invisible | **CLOSED** | A tiltwing baseline `count` bumped 1→2 in a commit is listed under "Known failures ADDED" with reason "count 1→2" (`--base-ref` = previous commit). SKIP→FAIL edits are also compared (growth code). Renames are detected (`_renamed_from`). |
+| 2 | Key blind to band side | **CLOSED** | A2b re-run: c0-lift-cruise battery 820→100 g, SM 15.3% → 3.8% is now a **regression**, "T3.static_margin … not in baseline", rc 1. The design's other changes are shown as "Other changes (not improvements: this design also has regressions; do not lock these in yet)". The band is in data for static_margin, stall, mass, lateral_cg and hover_tw. |
+| 3 | Several results in one key | **Mostly closed** | Joint, component, pair, part and motor subjects and full pair lists are now in data (A1 and A1c fixed, per the builder and the unit test). One residue: see D2. The md tables have a reason column. |
+
+### New attacks on the data-in-key scheme
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| D1 | **Key churn hides a real regression.** concept-a: elevon range ±21 → ±22 deg (moves every range and sweep configuration name), plus a planted regression (E-FIN-01 rating 2009.8 → 20 N). Then `plane baseline update`, committed. | Visible, not failing (policy) | Before the update: rc 1, 14 regressions, 10 other changes. After: rc 0, and "ADDED" lists 14 rows: 8 renamed kinematic_link SKIPs, 1 fea stale SKIP, **4 genuinely new clipping FAILs at ±22 deg** (wng-008 vs wng-007, 8-10 mm^3) and the planted E-FIN-01. Churn adds about 9 noise rows, but every real one is listed by name with reason "added". Same class as A4/A5b. |
+| D2 | **Subject missing from data.** Example copy with legal numeric component ids `'5'`/`'6'` (slug `^[a-z0-9][a-z0-9_-]*$` allows them); baseline has T4.machine FAIL on `5`; the change fixes `5` and breaks `6`. | **MISSED** | rc 0, "Unchanged: 1". T4.machine ("in-house method … needs a `machine`") carries no `component` in data, and "5:"/"6:" normalise to "#:". The same gap exists for T4.method "does not do", T1.connectivity (`['#']` list in text), T1.point_mass_location (verified: none of these pass data), and T0.schema paths (`components/#/…`). It only bites with all-digit ids. |
+| D3 | **A known T0 FAIL masks everything after it.** c0-a2: add one unknown top-level key (`notes_v2`), `baseline update`, commit. Then, in a later change, wing-pod rating 535.8 → 1 N and battery 820 → 100 g. | **MISSED** (first step visible, everything after silent) | Step 1 summary: one ADDED row (`T0.schema … 'notes_v2' was unexpected`). Nothing says that the 16 other known results vanished from the baseline, because growth reports additions and loosening but not shrinking. Step 2: "Known results: 1 … Regressions: 0", rc 0. `validate()` stops after a T0 FAIL (and stops tiers 2-5 after `T*.blocked`), so from then on the design is unmonitored. This is the "accepted because a tier was skipped" case in another form. |
+
+### Is visible-but-passing (A3, A4, A5b, D1) acceptable?
+
+Yes, as a documented policy (README "CI and baselines": additions are "listed … and raised as a warning, so reviewers confirm each one"). CI can't tell an intended new known failure from a sneaky one, and every one of these cases puts the real rows *by name* in the PR summary and as `::warning` annotations. Two conditions make it hold in practice; they are process, not code:
+1. Branch protection on main must require a reviewed PR. The step summary sits on the Actions run page, not in the PR conversation, so reviewers must be told to open it, or the ADDED table should be posted as a PR comment.
+2. A3 (deleting a requirement turns a FAIL into an "improvement") is a validator gap, as the builder says, and its plane.yaml diff is visible in the PR. Fine to leave, but add it to README "Known limits".
+
+D3 is **not** covered by that policy. After one visible addition it removes all later monitoring of the design with no further signal, and the shrink of the baseline itself is never shown.
+
+### Verdict
+
+**NOT MERGE-READY.** One blocker, plus a small one. Neither is a documented policy.
+
+### Blockers
+
+1. **D3: a known schema or blocked failure silences the design.** Make `plane baseline check` fail (or refuse `baseline update`) whenever a design's results contain `T0.*` FAIL or `T*.blocked`/`T*.error`: a design must at least load and run every tier to be monitored. Also have growth report entries **removed** from a baseline in the change ("REMOVED: 16 known results"), so a shrink that comes with a new blocking failure is visible.
+2. **D2: subject missing from data (all-digit ids).** Either give every per-subject FAIL/SKIP its subject in data (T4.machine, T4.method, T1.connectivity, T1.point_mass_location, T0.schema path), or (one line) change the schema slug and attachment id patterns to require a letter (`^[a-z][a-z0-9_-]*$`), so ids never normalise to `#`. No current design uses all-digit ids.
+
+### Non-blocking
+
+1. Post the ADDED/REMOVED table as a PR comment, or require a reviewed PR in branch protection (see above).
+2. `key_data` accepts any string in data. Restrict it to a whitelist of subject fields (`joint`, `component`, `part`, `pair(s)`, `motor`, `configuration`, `band`), so a future check that stores a formatted value as a string can't churn keys.
+3. README "Known limits": add A3 (deleting a requirement silently drops its check).
+
+## Round 11 (ci-baselines)
+
+Reviewer: same Opus instance (R1). Commit reviewed: e6f12da on `ci-baselines`. Every attack ran in a fresh clone, `/tmp/ap-review11/wt` (`PYTHONPATH` pointed at the clone; git commits there for `--base-ref`). Nothing in the real repo was edited except this file.
+
+### Automated and stability
+
+- `python3 -m pytest -q`: `163 passed, 3 skipped` (it includes the new guard test that every per-subject FAIL/SKIP over all designs carries a subject in data).
+- `plane baseline check --all --format json` in the fresh clone, run twice: rc 0 both times, byte-identical output.
+
+### Round-10 blockers
+
+| # | Blocker | Status | Evidence |
+|---|---|---|---|
+| D3 | A known T0 FAIL silences the design | **CLOSED** | Unknown key `notes_v2` in c0-a2. `baseline update` gives "refused: schema or tier errors are never baselined … nothing written", rc 2. `baseline check` gives rc 1 with "did not reach tier 1 … tier 4" (one row per tier) and "Improvements: 16" shown separately. A hand-written baseline holding T0/blocked/error rows is flagged as an invalid baseline. Removed entries are listed under "Known results REMOVED". |
+| D2 | Subject missing from data (all-digit ids) | **CLOSED** | Example copy with components `'5'`/`'6'`: baseline holds T4.machine FAIL on `5`; the change fixes `5` and breaks `6`. Result: rc 1, regression "6: in-house method laser-cut needs a `machine` … not in baseline". |
+
+### DESIGN_LEVEL additions
+
+- `T0.version`: harmless. Every `T0.*` row is blocking anyway and never reaches a baseline.
+- `T4.capabilities` (SKIP "standards/manufacturing.yaml not written yet") and `T2.sim` (SKIP "mujoco not installed"): correct that they have no subject, but **each replaces a whole sub-tier with one row**. If one were baselined (a baseline made on a machine without mujoco, or with the file missing), every later T4 or drop-test regression of that design would be invisible, which is D3 again. They belong in `is_blocking`, not in DESIGN_LEVEL. In CI today neither can happen (mujoco is a core dependency and manufacturing.yaml exists); see D4 for the case that can.
+
+### New attack
+
+| # | Attack | Result | Detail |
+|---|---|---|---|
+| D4 | **A broken sim model, baselined.** c0-lift-cruise: add a self-attachment `pod-self` (pod→pod, a copy of wing-pod). MuJoCo then refuses the model: T2.sim_stable FAIL "could not build simulation model: … 'pod' is repeated in equality constraint", and sim_drop_loads/sim_rest become SKIP "no model". Run `baseline update` and commit. In a later change, cut the wing-pod rating 535.8 → 100 N (its drop peak was 120.6 N). | **MISSED** in the later change (the first step is visible) | Step 1: update accepted (rc 0, 8 known), and the PR summary shows the new sim_stable FAIL as ADDED and **12 sim_drop_loads rows as REMOVED**. That is visible, as the policy needs. Step 2: rc 0, "Unchanged: 8. Regressions: 0". The static joint_load passes (50 N ≤ 100 N), and the dynamic 120.6 N > 100 N is never computed. The self-attachment itself raised no T1 row. "Could not build simulation model" is a tier error in all but name, and it disables monitoring the same way D3 did. |
+
+### Visible-but-passing policy
+
+Still acceptable: additions, count/status loosening, renames and now removals are all listed by name in the summary and as warnings, and the conductor will recommend branch protection on main (PR + 1 approval + validate). With that in place, A3/A4/A5b/D1 rest on a reviewer reading a short, explicit list. That is the right trade for "CI can't tell an intended known failure from a sneaky one". D4 is different in kind, as D3 was: after one visible step, it turns off a whole check for every later change. A sim that can't be built is not a "known failure" a design should be allowed to carry.
+
+### Verdict
+
+**NOT MERGE-READY.** One small blocker; everything else is closed.
+
+### Blocker
+
+1. **D4: a design whose sim (or a whole sub-tier) can't run can still be baselined.** Treat these as blocking in `is_blocking` / `snapshot`: T2.sim_stable "could not build simulation model", T2.sim SKIP, and T4.capabilities SKIP (or any row that stands in for a whole sub-tier). Then `baseline update` refuses them and `check` reports "did not reach …". Optionally, also have T1 flag a self-attachment (parent == child) directly; today only the sim build catches it. Add D4 as a test.
+
+Non-blocking: the T2.sim_drop_loads/sim_rest "no model" SKIPs carry no subject; they disappear once the blocker is fixed.
+
+## Round 12 (18c8078)
+
+Reviewer: same Opus instance (R1). Every attack ran in a fresh clone, `/tmp/ap-review12/wt`. Nothing in the real repo was edited except this file.
+
+### Automated and stability
+
+- `python3 -m pytest -q`: `168 passed, 3 skipped`.
+- `plane baseline check --all --format json`, run twice in the fresh clone: rc 0 both times, byte-identical.
+
+### Re-runs
+
+| # | Attack | Result | Evidence |
+|---|---|---|---|
+| D4 | c0-lift-cruise with a self-attachment `pod-self`, so the sim model won't build | **CLOSED** | `baseline update` gives "refused: schema or tier errors are never baselined (T2.sim_stable: could not build simulation model …); nothing written", rc 2. `baseline check` gives rc 1 with "did not run: T2.sim_stable could not build …" and "did not run: T2.sim_drop_loads no model". |
+| D3 | Unknown top-level key in c0-a2 | still closed | update rc 2, check rc 1 |
+| D2 | All-digit component ids, swap which fails | still closed | Subject data is unchanged in this commit; the guard test over all designs passes. |
+
+### The NaN fix
+
+It is correct and it was needed. The loop stops at the first non-finite `qpos`/`qvel`, so `peaks` hold finite values from *before* the explosion. Python's `max(peak, nan)` also keeps the old value, so the previous code reported every joint "peak … <= rating" PASS on an exploded run: a silent false pass in the validator, not just in baselines. Now `nan or not isfinite(peak)` gives SKIP "no load, simulation went unstable" per joint (with `joint` in data), and both that SKIP and T2.sim_stable "simulation produced NaN/inf states" are blocking. That is right: there are no loads to compare, so the run can't be a known result.
+
+### Warning vs NaN
+
+The distinction is acceptable. With instability warnings but finite states, every joint still gets a measured peak and its own key, so later regressions are still compared row by row; a baselined "MuJoCo raised # instability warning(s)" FAIL doesn't silence anything. One caveat for the record: MuJoCo's bad-qacc warning resets the state mid-run, so peaks after a warning can come from a restarted drop. The rows are still produced and deterministic (two identical runs), so this affects the physics fidelity of that one design, not regression detection.
+
+### New attempts (my choice)
+
+- **Hand-edited baseline.json**: a blocking row put into `known` under another check_id (e.g. a SKIP "no model"), or `tiers_run` cut down to hide a tier. **CAUGHT** by reading the code. `compare` flags any `known` entry for which `is_blocking` is true as "invalid baseline". `tiers_run` can't hide anything, because every current blocking row is reported as "did not run" whatever the baseline says.
+- **Rewording the blocking messages**: blocking is decided by substrings of the message (`_WHOLE_GROUP_SKIPS/_FAILS`). Build failure and missing mujoco are pinned by end-to-end tests that go through sim.py (tests L395-L416), so rewording them would break a test. "simulation produced NaN/inf states", "simulation went unstable" and "standards/manufacturing.yaml not written" are only tested as literal strings (L424-L429). Rewording one of those in sim.py or checks.py would quietly make it baselinable again. Fail-safe today, fragile tomorrow. Not blocking; see suggestion 1.
+
+### Verdict
+
+**MERGE-READY**, on the condition the conductor has already taken on: branch protection on main (PR + 1 approval + validate), which the visible-but-passing policy (A3/A4/A5b/D1) relies on.
+
+### Non-blocking
+
+1. Mark blocking results at the source rather than by message text: a `blocking: true` in `CheckResult.data` (or dedicated check_ids such as `T2.sim_unavailable`). Or import the phrases as constants from sim.py/checks.py, so a rewording can't drift from `baseline.py`. Add one end-to-end NaN test (monkeypatch `mujoco.mj_step` to write NaN into `qpos`).
+2. T1 should flag a self-attachment (parent == child) directly; today only the sim build catches it.
+3. Earlier suggestions still open: README "Known limits" entry for A3 (deleting a requirement drops its check); post the ADDED/REMOVED table as a PR comment.

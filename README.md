@@ -124,6 +124,10 @@ follows equal joint stiffness, not the real parts' stiffness; the motor's reacti
 inertia are left out; loads go in as statically equivalent force and moment on the touching faces, so stresses right
 at a joint's faces are approximate (the report gives the location of the peak).
 
+## CI and baselines
+
+CI fails only on regressions. Each design's `designs/<id>/baseline.json` lists its known FAIL and SKIP results. A new failure, or a result that went from SKIP to FAIL, fails the build; fixing a known failure does not. To record a fix, run `plane baseline update designs/<id>` and commit the smaller file. Accepted designs need no baseline. Entries added to a baseline in a pull request are listed under "Known failures ADDED" and raised as a warning, so reviewers confirm each one. `plane baseline check --all` runs the same check locally.
+
 ## How we use agents
 
 See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exact instructions, builders and scouts (Haiku) execute, one reviewer (Opus) scores against named criteria. The clearer the goal, the cheaper the model.
