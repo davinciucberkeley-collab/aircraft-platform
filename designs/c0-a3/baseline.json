@@ -100,8 +100,8 @@
     },
     {
       "check_id": "T3.static_margin",
-      "example": "15.2% MAC (NP x=739 mm, CG x=690 mm; target 5%-15%; fuselage effect not modelled)",
-      "key": "T3.static_margin|#% MAC (NP x=# mm, CG x=# mm; target #%#%; fuselage effect not modelled)|{\"band\":\"above\"}",
+      "example": "17.5% MAC (NP x=746 mm, CG x=690 mm; target 5%-15%; NP by VLM, 192 panels, AeroSandbox: wings and tails only, no props, fuselage, pod or viscous effects)",
+      "key": "T3.static_margin|#% MAC (NP x=# mm, CG x=# mm; target #%#%; NP by VLM, # panels, AeroSandbox: wings and tails only, no props, fuselage, pod or viscous effects)|{\"band\":\"above\"}",
       "status": "FAIL"
     }
   ],

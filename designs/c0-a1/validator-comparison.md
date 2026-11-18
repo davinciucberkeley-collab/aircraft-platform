@@ -10,7 +10,7 @@ Source files are in `dbf-combined` @ `1244ebc`: `A1G` = `concepts/variants/a1/ge
 |---|---|---|---|---|
 | Mass | 7415.9 g | 8185.1 g (+769.1 g, +10.4 %) | 6910.4 g vs C0 6182.2 g, +728 g (`A1M#mass_kg`) | 41 g more than the source delta: pusher-side parts differ between baselines (README). Direction agrees. |
 | CG x | 689.65 mm | 686.46 mm | held at 28 % MAC by the 174.2 mm battery move (`A1M#cg_x_m`, `A1G` modify Battery) | Source shift was solved on the v0.3.1 CG. On v0.4.0 it leaves the CG 3.8 mm forward of the 690.25 mm lift centroid. About 38 mm more shift would fix it. |
-| Static margin | 15.3 % | 16.3 % | 17.7 % (range 16.7-18.7), C0 19.6 % (`A1M#static_margin_pct`) | Validator moves with the CG only. The source's -2.0 pt from tip-prop normal force is not modelled (no prop aero in v0.1). |
+| Static margin | 17.6 % | 18.6 % | 17.7 % (range 16.7-18.7), C0 19.6 % (`A1M#static_margin_pct`) | Validator moves with the CG only. The source's -2.0 pt from tip-prop normal force is not modelled (no prop aero in v0.1). |
 | Stall speed | 11.73 m/s | 12.3 m/s (**FAIL**, limit 12) | not stated for A1 | Same formula as the source (W, S, CLmax 1.115). V rises with sqrt(W): +4.8 %. |
 | Hover T/W | 1.69 | 1.53 (minimum 1.5) | 1.81 vs C0 2.03 (`A1M#hover_TW`) | Same 4 x 3130 gf. The source's own requirement R13 is 1.6 (C0 README), which 1.53 would miss. |
 | Hover moment | 0.47 N*m | 0.60 N*m (PASS) | tip mass moves CG 21 mm forward, "about 1.4 N*m bias" unless the battery moves (`A1D` section 2) | Consistent: the battery move was needed. |
@@ -31,7 +31,7 @@ Source files are in `dbf-combined` @ `1244ebc`: `A1G` = `concepts/variants/a1/ge
 | T2.joint_load `pod-wiring` | 26.3 N at 4.5 g vs 20 N | **new** | (c) | The wiring lump grew to 596 g (tip wiring and harness) on the same 20 N tape placeholder. Not a verdict on the wiring. |
 | T2.joint_load `wing-tip_r/l` | 50.0 N vs 50 N | **new** | (c) | Placeholder 50 N foam bond. The real load path to the spar is `spar-tip_*` (197 N, passes), so the foam bond is not load carrying; the check counts only mass below a joint (C0 limitation). |
 | T3.stall | 12.3 m/s vs 12 m/s | **new**, variant issue | (a) | +769 g at the same 0.774 m^2 wing. At v0.3.1 the source reported no stall figure for A1. On v0.4.0 A1 needs more wing, a higher CLmax, or a weight cut. |
-| T3.static_margin | 16.3 % vs 5-15 % | inherited (C0 15.3 %), 1.0 pt worse | (b) | Same pod-effect gap as C0 (AVL with pod is 10.4 %, validator ignores the fuselage). The extra point comes from the CG sitting 3.8 mm forward; the source's tip-prop term would pull it back about 2 pts. |
+| T3.static_margin | 18.6 % vs 5-15 % | inherited (C0 17.6 %, VLM), 1.0 pt worse | (b) | Same pod-effect gap as C0 (AVL with pod is 10.4 %, validator ignores the fuselage). The extra point comes from the CG sitting 3.8 mm forward; the source's tip-prop term would pull it back about 2 pts. |
 | T4.method `pod`, `wing`, `fin_l`, `fin_r`, `h_tail` | no machine does hotwire-foam | inherited | (b) | Same as C0. |
 | T4.fits_machine (SKIP, printed parts) | build volume unknown | inherited | (b) | 2 new printed mounts join the list. |
 

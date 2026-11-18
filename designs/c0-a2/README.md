@@ -52,4 +52,4 @@ Everything not listed in the diff table, including: pod radius along the tail (t
 
 ## Result
 
-`plane validate designs/c0-a2 --tier all`: T0 PASS, T1 FAIL (3, all inherited), T2 FAIL (inherited placeholders), T3 PASS (static margin 13.4 %, see below), T4 FAIL (inherited), T5 PASS. No new FAIL. The T3 pass is an artifact of the un-applied CG fix, not an A2 advantage.
+`plane validate designs/c0-a2 --tier all`: T0 PASS, T1 FAIL (3, all inherited), T2 FAIL (inherited placeholders), T3 FAIL (static margin 15.7 % with the vortex-lattice NP; it read 13.4 % PASS under the earlier quarter-chord estimate, see below), T4 FAIL (inherited), T5 PASS. One new FAIL versus the earlier run: the T3 static margin, from the method change (no pod term), not a design change. The aft-CG advantage is an artifact of the un-applied CG fix.

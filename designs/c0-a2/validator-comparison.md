@@ -10,7 +10,7 @@ Source files in `dbf-combined` @ `1244ebc`: `A2G` = `concepts/variants/a2/geomet
 |---|---|---|---|---|
 | Mass | 7415.9 g | 7474.9 g (+59.0 g) | 6241 g vs 6182 g, +59 g (`A2M#mass_kg`) | Input is the source delta, so this only checks the conversion. |
 | CG x | 689.65 mm | 695.78 mm (+6.1 mm) | held at -0.0668 m (28 % MAC) by sliding the pod 16.7 mm forward; 30.8 % MAC before the fix (`A2M#cg_x_m`) | Fix not applied (README). Direction and size agree with the source's unfixed CG (+2.8 % MAC vs +1.9 % here). |
-| Static margin | 15.3 % (FAIL) | 13.4 % (PASS) | 19.1 % (18.8-19.3) vs C0 19.6 % (`A2M#static_margin_pct`) | **Artifact.** Validator SM moves with CG only; the aft CG buys 1.9 pts. With the source's slide (CG back to 689.65) the validator would give C0's 15.3 % again. The source's own effect of A2 is -0.5 pt (tail volume and prop normal force). |
+| Static margin | 17.6 % (FAIL) | 15.7 % (FAIL, cap 15 %; was 13.4 % PASS with the quarter-chord estimate) | 19.1 % (18.8-19.3) vs C0 19.6 % (`A2M#static_margin_pct`) | **Artifact.** Validator SM moves with CG only; the aft CG buys 1.9 pts (17.6 % -> 15.7 % with the VLM; it passed at 13.4 % under the quarter-chord estimate, so the pass was the estimate's, and the pod term, about -4.9 pts, would bring it to about 10.8 %). With the source's slide (CG back to 689.65) the validator would give C0's 17.6 % again. The source's own effect of A2 is -0.5 pt (tail volume and prop normal force). |
 | Stall speed | 11.73 m/s | 11.8 m/s | not stated | Mass only (+0.8 %). |
 | Hover T/W | 1.69 | 1.67 | 1.99 vs C0 2.03 (`A2D` performance table) | Same direction and size (-1.2 % vs -2 %; v0.3.1 mass base differs). |
 | Hover moment | 0.47 N*m | 0.82 N*m (PASS, 13 %) | CG fixed to the thrust centroid by the slide | Shows what the un-applied fix would remove. |
@@ -29,7 +29,7 @@ No FAIL is new. (a) variant issue, (b) validator or standards limitation, (c) pl
 | T4.method `pod`, `wing`, `fin_l`, `fin_r`, `h_tail` | no machine does hotwire-foam | inherited | (b) | Same as C0. The A2 cone would be 3D printed, but the validator sees one pod cylinder with the C0 `hotwire-foam` method. |
 | T4.fits_machine (SKIP) | build volume unknown | inherited | (b) | Same as C0. The 3-segment printed cone would add checks if modelled separately. |
 
-T3.static_margin **passes** at 13.4 %; see the artifact note above.
+T3.static_margin **fails** at 15.7 % (was a 13.4 % pass under the quarter-chord estimate; the lattice has the NP 7 mm further aft and the pod term is not modelled); see the artifact note above.
 
 ## 3. Validator limitations found while building A2
 

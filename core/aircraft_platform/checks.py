@@ -24,6 +24,7 @@ from .design import (Design, CheckResult, TierReport, Scorecard, SCHEMA_PATH, RE
 from .geometry import (component_parts, lifting_surface_properties, articulated_attachments, att_label,
                        downstream_ids, posed_component_parts, pose_transforms, pose_angles, is_point_mass,
                        lifting_surface_halves, rotation_matrix, strip_planform)
+from . import aero as vlm_aero
 from .mass import mass_properties
 
 G = 9.80665
@@ -855,7 +856,7 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
                                {"wing_loading_g_dm2": round(wl, 2), "stall_mps": round(v_stall, 2),
                                 "band": "above" if st == FAIL else "within"}))
 
-        # neutral point: lift-slope-weighted AC of lifting surfaces, downwash on aft surfaces
+        # neutral point: vortex lattice (AeroSandbox) when available, else lift-slope-weighted AC with crude downwash
         def slope(ar):  # Helmbold, per rad
             return 2 * math.pi * ar / (2 + math.sqrt(ar ** 2 + 4))
         a_w = slope(main["aspect_ratio"])
@@ -867,13 +868,36 @@ def tier3_aero(design: Design, std: dict, mp: dict) -> TierReport:
                 k *= a["aft_surface_efficiency"]["value"] * ((1 - deps) if p["x_ac_mm"] > main["x_ac_mm"] else 1.0)
             num += k * p["x_ac_mm"]; den += k
         x_np = num / den
+        np_method = "quarter-chord estimate (Helmbold slopes, crude downwash; fuselage effect not modelled)"
+        try:
+            surfs = []
+            n_semi = a["vlm_spanwise_panels_per_semispan"]["value"]
+            vlm_set = surfaces if a["vlm_include_non_lifting_surfaces"]["value"] else lifting
+            for c, _ls, p in vlm_set:
+                tf = c_tf[c["id"]] if cruise_pose else None
+                if "lifting_surface" in c["geometry"]:
+                    surfs.append(vlm_aero.lifting_surface_sections(c, tf, n_semi))
+                else:
+                    surfs.append(vlm_aero.strip_sections(p["strip_data"], tf, 2 * n_semi))
+            vlm = vlm_aero.vlm_neutral_point(
+                surfs, main["x_ac_mm"], main["mac_mm"], main["area_mm2"],
+                speed_mps=req.get("cruise_speed_mps", vlm_aero.DEFAULT_SPEED_MPS),
+                chordwise=a["vlm_chordwise_panels"]["value"])
+            x_np = vlm["x_np_mm"]
+            np_method = (f"VLM, {vlm['panels']} panels, AeroSandbox: wings and tails only, no props, fuselage, pod "
+                         "or viscous effects")
+        except ImportError as e:
+            np_method = f"quarter-chord estimate because AeroSandbox is not installed ({e}); fuselage effect not modelled"
+        except Exception as e:  # a failed VLM must not hide the estimate
+            np_method = (f"quarter-chord estimate because the VLM failed ({type(e).__name__}: {e}); "
+                         "fuselage effect not modelled")
         sm = (x_np - mp["cg_mm"][0]) / main["mac_mm"]
         lo, hi = a["static_margin"]["min"], a["static_margin"]["max"]
         st = PASS if lo <= sm <= hi else FAIL
         sm_band = "below" if sm < lo else "above" if sm > hi else "within"
         res.append(CheckResult("T3.static_margin", st,
                                f"{sm:.1%} MAC (NP x={x_np:.0f} mm, CG x={mp['cg_mm'][0]:.0f} mm; target {lo:.0%}-{hi:.0%}; "
-                               "fuselage effect not modelled)"
+                               f"NP by {np_method})"
                                + (f" (mesh wing: chord measured at {n_strip} stations)" if main_from_planform else ""),
                                STD + "static_margin", {"static_margin": round(sm, 4), "x_np_mm": round(x_np, 1), "band": sm_band}))
         lat = abs(mp["cg_mm"][1]) / main["span_mm"]

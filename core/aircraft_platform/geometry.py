@@ -254,7 +254,8 @@ def strip_planform(owners: dict[str, list[trimesh.Trimesh]], root: str, n: int =
     with no section counts as c = 0 and is listed.
     Midpoint rule: S = sum c_i dy, MAC = sum c_i^2 dy / S, x_ac = sum (LE_i + c_i/4) c_i dy / S, AR = b^2 / S, b = span extent.
     Returns the lifting_surface_properties keys plus span_mm, span_axis, missing_stations, ignored_strips
-    ([strip, detached length mm] pairs), control_gap_strips ([strip, bridged gap mm] pairs above gap_tol) and source."""
+    ([strip, detached length mm] pairs), control_gap_strips ([strip, bridged gap mm] pairs above gap_tol), source and strip_data (per-strip
+    centres, LE x and chord, with the span axis index and extent: input of the vortex-lattice model in aero.py)."""
     allv = np.vstack([m.vertices for meshes in owners.values() for m in meshes])
     ext = allv.max(axis=0) - allv.min(axis=0)
     axis = 1 if ext[1] >= ext[2] else 2
@@ -312,4 +313,6 @@ def strip_planform(owners: dict[str, list[trimesh.Trimesh]], root: str, n: int =
     return {"area_mm2": area, "aspect_ratio": b ** 2 / area, "mac_mm": mac, "x_ac_mm": x_ac,
             "lifting": True, "span_mm": b, "span_axis": "yz"[axis - 1], "missing_stations": missing,
             "ignored_strips": ignored, "control_gap_strips": control_gaps,
-            "source": f"geometry strips ({n} stations)"}
+            "source": f"geometry strips ({n} stations)",
+            "strip_data": {"axis": axis, "lo": lo_s, "hi": hi_s, "centres": centres.tolist(), "le": le.tolist(),
+                           "chord": chord.tolist()}}

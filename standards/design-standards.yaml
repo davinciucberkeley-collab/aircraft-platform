@@ -111,9 +111,25 @@ aero:
     value: 41
     rule: "Spanwise stations used to measure a mesh wing's chord distribution: the measured span is split into equal strips, each sliced at its centre (midpoint rule)."
     source: internal convention
+  neutral_point_method:
+    value: vlm
+    rule: "Tier-3 neutral point comes from a vortex-lattice run (AeroSandbox VortexLatticeMethod, alpha 0 and 2 deg, x_np = x_ref - Cm_alpha/CL_alpha * c_ref) of the lifting surfaces only: wings and tails, no propellers, fuselage, pod or viscous effects. Without AeroSandbox the quarter-chord estimate below is used and the message says so."
+    source: "AeroSandbox (Sharpe 2021, MIT MS thesis, https://dspace.mit.edu/handle/1721.1/130873; https://github.com/peterdsharpe/AeroSandbox). Method choice, not a numeric standard."
+  vlm_chordwise_panels:
+    value: 6
+    rule: "Chordwise panels per surface in the tier-3 vortex lattice."
+    source: "internal convention; NP changes by under 0.5 mm of 40 mm going 6 -> 10 on concept A (see plans/ report)"
+  vlm_spanwise_panels_per_semispan:
+    value: 8
+    rule: "Spanwise panels per semispan (cosine spaced) in the tier-3 vortex lattice; a mesh wing uses twice this over its measured span."
+    source: internal convention
+  vlm_include_non_lifting_surfaces:
+    value: false
+    rule: "Whether surfaces declared lifting: false (vertical fins) go into the tier-3 vortex lattice. The schema says such fins are excluded from the neutral-point estimate, so false by default. They act as endplates on the surface they touch: true moves NP aft by 4 mm on c0-lift-cruise (+1.1 pts SM) and 6 mm (+2.8 pts) on the example, which would then exceed the 15 % cap."
+    source: "internal convention; effect measured with this repo's VLM runs (plan T9 report)"
   aft_surface_efficiency:
     value: 0.9
-    rule: Lift-slope multiplier for lifting surfaces other than the main wing in the neutral point estimate (dynamic pressure and interference loss).
+    rule: Lift-slope multiplier for lifting surfaces other than the main wing in the quarter-chord fallback neutral point estimate (dynamic pressure and interference loss).
     source: internal convention
   lateral_cg_max_fraction_span:
     value: 0.02

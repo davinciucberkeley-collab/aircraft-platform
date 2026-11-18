@@ -64,14 +64,8 @@
     },
     {
       "check_id": "T2.fea_strength",
-      "example": "cge-001 landing: not checked: the mesh (2.5 mm elements, direct-mesh) is too coarse for its 1.2 mm walls; needs a finer mesh or exact CAD (STEP)",
-      "key": "T2.fea_strength|cge-001 landing: not checked: the mesh (# mm elements, direct-mesh) is too coarse for its # mm walls; needs a finer mesh or exact CAD (STEP)|{\"component\":\"cge-001\"}",
-      "status": "SKIP"
-    },
-    {
-      "check_id": "T2.fea_strength",
-      "example": "cge-001 thrust: not checked: the mesh (2.5 mm elements, direct-mesh) is too coarse for its 1.2 mm walls; needs a finer mesh or exact CAD (STEP)",
-      "key": "T2.fea_strength|cge-001 thrust: not checked: the mesh (# mm elements, direct-mesh) is too coarse for its # mm walls; needs a finer mesh or exact CAD (STEP)|{\"component\":\"cge-001\"}",
+      "example": "stress results out of date for 28 part(s) (avn-001, avn-008, cge-001, cge-003-ll, cge-003-lr, cge-003-ul\u2026): re-run plane fea",
+      "key": "T2.fea_strength|stress results out of date for # part(s) (avn-001, avn-008, cge-001, cge-003-ll, cge-003-lr, cge-003-ul\u2026): re-run plane fea|{\"parts\":[\"avn-001\",\"avn-008\",\"cge-001\",\"cge-003-ll\",\"cge-003-lr\",\"cge-003-ul\",\"cge-003-ur\",\"cge-006\",\"cge-007-l\",\"cge-007-r\",\"cge-008\",\"fin-003-l\",\"fin-003-r\",\"fin-005-l\",\"fin-005-r\",\"ger-001-ll\",\"ger-001-lr\",\"ger-001-ul\",\"ger-001-ur\",\"wng-003-c\",\"wng-004-l\",\"wng-004-r\",\"wng-005-l\",\"wng-005-r\",\"wng-008-ll\",\"wng-008-lu\",\"wng-008-rl\",\"wng-008-ru\"]}",
       "status": "SKIP"
     },
     {
@@ -406,8 +400,8 @@
     },
     {
       "check_id": "T3.static_margin",
-      "example": "16.8% MAC (NP x=59 mm, CG x=20 mm; target 5%-15%; fuselage effect not modelled) (mesh wing: chord measured at 41 stations)",
-      "key": "T3.static_margin|#% MAC (NP x=# mm, CG x=# mm; target #%#%; fuselage effect not modelled) (mesh wing: chord measured at # stations)|{\"band\":\"above\"}",
+      "example": "16.8% MAC (NP x=59 mm, CG x=20 mm; target 5%-15%; NP by VLM, 96 panels, AeroSandbox: wings and tails only, no props, fuselage, pod or viscous effects) (mesh wing: chord measured at 41 stations)",
+      "key": "T3.static_margin|#% MAC (NP x=# mm, CG x=# mm; target #%#%; NP by VLM, # panels, AeroSandbox: wings and tails only, no props, fuselage, pod or viscous effects) (mesh wing: chord measured at # stations)|{\"band\":\"above\"}",
       "status": "FAIL"
     }
   ],

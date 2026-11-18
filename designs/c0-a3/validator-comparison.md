@@ -12,7 +12,7 @@ Source files in `dbf-combined` @ `1244ebc`: `A3G` = `concepts/variants/a3/geomet
 |---|---|---|---|---|
 | Mass | 7415.9 g | 7665.7 g (+249.8 g) | 6432 g vs 6182 g, +250 g (`A3M#mass_kg`) | Input is the source delta (phase 1 + 2). Conversion check only. |
 | CG x | 689.65 mm | 689.99 mm (was 690.25 mm before the motor-bay cavities) | -0.06683 m, shift -3.4e-5 mm (`A3M#cg_x_m`) | Source shift is about zero. The 0.26 mm forward move comes from the hollowed nacelle centroid, not from mass. |
-| Static margin | 15.3 % | 15.2 % (FAIL, cap 15 %) | 19.6 %, unchanged (`A3M#static_margin_pct`) | Both nearly the same. The forward CG move adds 0.1 pt. Nacelle weathercock effect is not modelled by either. |
+| Static margin | 17.6 % | 17.5 % (FAIL, cap 15 %) | 19.6 %, unchanged (`A3M#static_margin_pct`) | Both nearly the same. The forward CG move adds 0.1 pt. Nacelle weathercock effect is not modelled by either. |
 | Stall speed | 11.73 m/s | 11.9 m/s (PASS) | stall rises 12.0 -> 12.24 m/s from mass (`A3D` section 5) | Same direction (+1.5 % here, +2 % there). |
 | Hover T/W | 1.69 | 1.63 | 2.03 -> about 1.95 (4 x 3130 gf over 6.432 kg, calc) | Same formula; baseline mass differs. |
 | Hover moment | 0.47 N*m | 0.45 N*m (PASS) | none | |
@@ -33,7 +33,7 @@ Rows from the pre-cavity run that are now resolved are kept for the record.
 | T1.attachment_overlap `servo-ail_l/r` | 89 % overlap | inherited | (a), team to confirm | Aileron servo protrusion; A3 does not touch it. |
 | T1.attachment_contact `pusher-prop` | 5.0 mm gap | inherited | (b) | No hub in schema. |
 | T2.sim_drop_loads (12 joints: `gear-leg-*` 102-135 N vs 50, `wing-clampr-*`/`clampr-boom-*` 134-138 N vs 100, `pod-battery` 220 N, `pod-avionics` 122 N, `pod-wiring` 31 N, `pod-fasteners` 26 N) | exceed placeholder ratings | inherited, same 12 joints | (c) | Placeholders. Gear-leg peaks rise 93 -> 102.5 N (front) and 126 -> 135 N (rear) with the extra 63 g per rotor. |
-| T3.static_margin | 15.2 % vs 5-15 % | inherited (C0 15.3 %) | (b) | Pod effect not modelled (AVL with pod 10.4 %); knife edge at the 15 % cap. |
+| T3.static_margin | 17.5 % vs 5-15 % | inherited (C0 17.6 %, VLM) | (b) | Pod effect not modelled (AVL with pod 10.4 %); the VLM covers wings and tails only. |
 | T4 | no FAIL | was inherited (`pod`, `wing`, `fin_*`, `h_tail` hot-wire; nacelles unverified) | (b), now passing | Passes because of the `standards/manufacturing.yaml` change in section header, not this build. |
 
 New joints (`mount-nacelle_*`, `boom-nacelle_*`, `prop-cap_*`) raise no T2 rows.
