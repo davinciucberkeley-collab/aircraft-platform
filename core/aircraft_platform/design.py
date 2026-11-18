@@ -100,14 +100,31 @@ class Scorecard:
             ],
         }
 
-    def to_markdown(self) -> str:
-        lines = [f"# Scorecard: {self.design_id}", "",
-                 (f"**Partial run (tiers 0\u2013{self.max_tier}):** {'no failures' if self.clean else 'failures found'}"
-                  if self.partial else f"**Accepted:** {'yes' if self.accepted else 'no'}"), "",
-                 "| Tier | Status | Check | Result | Criterion |", "|---|---|---|---|---|"]
+    def to_markdown(self, all_rows: bool = False) -> str:
+        """Summary first, then FAIL, SKIP and WARN rows; PASS rows only when all_rows is set."""
+        verdict = (f"**Partial run (tiers 0\u2013{self.max_tier}):** {'no failures' if self.clean else 'failures found'}"
+                   if self.partial else f"**Accepted:** {'yes' if self.accepted else 'no'}")
+        lines = [f"# Scorecard: {self.design_id}", "", verdict, "",
+                 "| Tier | Name | Status | FAIL | SKIP | WARN | PASS |", "|---|---|---|---|---|---|---|"]
         for t in self.tiers:
-            for r in t.results:
-                lines.append(f"| {t.tier} {t.name} | {t.status} | {r.check_id} | {r.status}: {r.message} | {r.criterion} |")
+            c = {s: sum(1 for r in t.results if r.status == s) for s in (FAIL, SKIP, WARN, PASS)}
+            lines.append(f"| {t.tier} | {t.name} | {t.status} | {c[FAIL]} | {c[SKIP]} | {c[WARN]} | {c[PASS]} |")
+
+        def rows_table(status: str) -> list[str]:
+            rows = [(t, r) for t in self.tiers for r in t.results if r.status == status]
+            out = ["| Tier | Check | Message | Criterion |", "|---|---|---|---|"]
+            out += [f"| {t.tier} {t.name} | {r.check_id} | {r.message} | {r.criterion} |" for t, r in rows]
+            return out
+
+        for status, heading in ((FAIL, "## Failures"), (SKIP, "## Not checked"), (WARN, "## Warnings")):
+            if any(r.status == status for t in self.tiers for r in t.results):
+                lines += ["", heading, ""] + rows_table(status)
+
+        passed = sum(1 for t in self.tiers for r in t.results if r.status == PASS)
+        if all_rows:
+            lines += ["", "## Passed", ""] + rows_table(PASS)
+        else:
+            lines += ["", f"{passed} passed checks hidden; run with --all-rows to list them."]
         return "\n".join(lines) + "\n"
 
 

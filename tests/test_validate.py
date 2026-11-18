@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import pytest
+from click.testing import CliRunner
 
 from aircraft_platform.checks import validate
-from aircraft_platform.design import FAIL, PASS, load_design
+from aircraft_platform.cli import cli
+from aircraft_platform.design import FAIL, PASS, SKIP, WARN, load_design
 from aircraft_platform.mass import mass_properties
 
 from conftest import statuses
@@ -107,3 +109,56 @@ def test_scorecard_outputs(example):
     sc = validate(load_design(example))
     assert "Accepted" in sc.to_markdown()
     assert "tiers" in sc.to_dict()
+
+
+def _all_results(sc):
+    return [r for t in sc.tiers for r in t.results]
+
+
+def test_markdown_summary_counts_match_results(mutate):
+    sc = mutate(lambda d: _comp(d, "flight_controller").__setitem__("manufacturing", {"method": "3d-print-sla", "machine": "jacobs-sla"}))
+    md = sc.to_markdown()
+    for t in sc.tiers:
+        counts = {s: sum(1 for r in t.results if r.status == s) for s in (FAIL, SKIP, WARN, PASS)}
+        row = f"| {t.tier} | {t.name} | {t.status} | {counts[FAIL]} | {counts[SKIP]} | {counts[WARN]} | {counts[PASS]} |"
+        assert row in md
+
+
+def test_markdown_failures_before_skip_and_warn(mutate):
+    def both(d):
+        _comp(d, "flight_controller").__setitem__("manufacturing", {"method": "3d-print-sla", "machine": "jacobs-sla"})
+        _comp(d, "wing").pop("manufacturing")
+
+    sc = mutate(both)
+    assert any(r.status == FAIL for r in _all_results(sc))
+    assert any(r.status == SKIP for r in _all_results(sc))
+    md = sc.to_markdown()
+    i_fail = md.index("## Failures")
+    i_skip = md.index("## Not checked")
+    assert i_fail < i_skip
+    if "## Warnings" in md:
+        assert i_skip < md.index("## Warnings")
+
+
+def test_markdown_hides_pass_rows_by_default(example):
+    sc = validate(load_design(example))
+    passed = sum(1 for r in _all_results(sc) if r.status == PASS)
+    assert passed > 0
+    md = sc.to_markdown()
+    assert "## Passed" not in md
+    assert f"{passed} passed checks hidden; run with --all-rows to list them." in md
+    assert "## Passed" in sc.to_markdown(all_rows=True)
+    assert "passed checks hidden" not in sc.to_markdown(all_rows=True)
+
+
+def test_markdown_example_still_accepted(example):
+    assert "**Accepted:** yes" in validate(load_design(example)).to_markdown()
+
+
+def test_cli_all_rows_flag(example):
+    runner = CliRunner()
+    short = runner.invoke(cli, ["validate", str(example.parent)])
+    full = runner.invoke(cli, ["validate", str(example.parent), "--all-rows"])
+    assert "## Passed" not in short.output
+    assert "## Passed" in full.output
+    assert len(full.output) > len(short.output)

@@ -64,11 +64,13 @@ def cli():
 @click.option("--format", "fmt", type=click.Choice(["md", "json"]), default="md", show_default=True)
 @click.option("--out", "out_file", type=click.Path(dir_okay=False), default=None,
               help="Write the scorecard to FILE instead of stdout.")
-def validate_cmd(path, max_tier, fmt, out_file):
+@click.option("--all-rows", is_flag=True, default=False,
+              help="Markdown only: also list every PASS row.")
+def validate_cmd(path, max_tier, fmt, out_file, all_rows):
     """Run the validation tiers on PATH and print the scorecard."""
     design = _load(path)
     card = validate(design, max_tier=5 if max_tier == "all" else int(max_tier))
-    text = card.to_markdown() if fmt == "md" else _dumps(card.to_dict()) + "\n"
+    text = card.to_markdown(all_rows=all_rows) if fmt == "md" else _dumps(card.to_dict()) + "\n"
     if out_file:
         Path(out_file).parent.mkdir(parents=True, exist_ok=True)
         Path(out_file).write_text(text)
