@@ -132,7 +132,7 @@ CI fails only on regressions. Each design's `designs/<id>/baseline.json` lists i
 
 ## How we use agents
 
-See `standards/agents.md`: conductor (Opus) plans, tactician (Sonnet) writes exact instructions, builders and scouts (Haiku) execute, one reviewer (Opus) scores against named criteria. The clearer the goal, the cheaper the model.
+See `standards/agents.md`: conductor (Opus) plans and decides, scouts research how others solved the problem, tactician (Sonnet) writes exact instructions, builders (Haiku, Sonnet for hard work) execute, an advisor (Opus) is on call when work drifts from the intent, a fresh reviewer (Opus) scores each batch against named criteria, and an auditor (Haiku) checks long runs for stalls and loops. The clearer the goal, the cheaper the model; fixes consider subtraction before adding.
 
 Claude Code hooks in `tools/agent_hooks.py` enforce the plan table, the edit limits and the agent log in Claude Code sessions opened in this repo. The "How this is enforced" section of `standards/agents.md` describes them, and `skills/agent-roles/SKILL.md` gives the steps.
 

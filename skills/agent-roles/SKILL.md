@@ -12,17 +12,19 @@ A plan in `plans/` with an agent table written before any launch, every launch m
 | Step | Role | Model |
 |---|---|---|
 | Plan, launch and check (this skill) | Conductor (main session) | Opus |
-| Builder-ready step (exact output, inputs, pass check, stop rule) | Builder | Haiku |
-| Fuzzy step that is not yet builder-ready | Tactician | Sonnet |
-| Gather facts into a `knowledge/` template | Scout | Haiku |
-| Review against `standards/` (one per task, reused) | Reviewer | Opus |
+| Builder-ready step (exact output, inputs, pass check, stop rule) | Builder | Haiku; Sonnet on hard rows |
+| Fuzzy step that is not yet builder-ready | Tactician | Sonnet; Opus on hard rows |
+| Research how others solved it, into a `knowledge/` template | Scout | Haiku; Sonnet for benchmarks |
+| Work drifts from the intent | Advisor | Opus |
+| Check a long run for stalls, loops, broken rules (every 30-60 min) | Auditor | Haiku |
+| Review a batch against `standards/` (fresh reviewer per batch) | Reviewer | Opus |
 
-Definitions are in `.claude/agents/`. The model comes from the definition, not from the conductor's choice.
+Definitions are in `.claude/agents/`. The model comes from the definition, except on a row marked hard: there the Model column names the higher model and the launch sets `model` to match.
 
 ## Steps
-1. Write `plans/<date>-<task>.md` with an agent table: `| Step | Role | Model | Input | Output | Pass criterion |`. Give each step a short id (for example `B15`).
+1. Write `plans/<date>-<task>.md` with an agent table: `| Step | Role | Tier | Model | Input | Output | Pass criterion |` (Tier is easy or hard). Give each step a short id (for example `B15`).
 2. Check each row against the builder-ready bar in `standards/agents.md#builder-ready-bar`. A row that fails it goes to a tactician, not a builder.
-3. Launch with the Agent tool. Set `subagent_type` to `builder`, `scout`, `tactician` or `reviewer`, and start `description` with the step id, for example `B15 write hooks`. The role must match the row.
+3. Launch with the Agent tool. Set `subagent_type` to `builder`, `scout`, `tactician`, `reviewer`, `advisor` or `auditor`, and start `description` with the step id, for example `B15 write hooks`. The role must match the row.
 4. If the plan gate blocks a launch, its message names the table to fix. Update the plan, then relaunch. Do not work around the gate.
 5. Conductor edits to `core/`, `tests/`, `designs/`, `schema/` or `.github/` go to a builder. If one cannot be avoided, add a dated row with a reason to `plans/conductor-edits.md` first.
 6. At the end, read `plans/agent-log.jsonl`. Count `agent_done` lines by `subagent_type` and `model`, and list any whose `plan` is null (a launch not in a table).
