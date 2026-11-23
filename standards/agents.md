@@ -23,7 +23,9 @@ How Claude (and any other model) is used to make things in this repo. Load this 
 - Tactician → builder, scout.
 - Builder, scout, reviewer → nobody.
 
-**Where nesting isn't available** (e.g. Claude Code subagents can't launch their own subagents — found 2026-11-11 when the A-series tactician ran with no launch tool): the tactician runs in *briefing mode*. It writes the builder briefs to `plans/<task>/briefs/*.md` and returns; the conductor launches one Haiku builder per brief, then hands the results back to the same tactician (SendMessage) to check. A tactician that does the builder work itself must report it as a process miss.
+**Nesting.** Claude Code allows subagents to launch subagents, up to 3 levels deep. The tactician definition includes the Agent tool, so a tactician launches its builders and scouts directly. (The 2026-11-11 A-series tactician ran with no launch tool; that setup is gone.)
+
+**Briefing mode** is only the fallback where nesting is disabled: the tactician writes the builder briefs to `plans/<task>/briefs/*.md` and returns; the conductor launches one Haiku builder per brief, then hands the results back to the same tactician (SendMessage) to check. A tactician that does the builder work itself must report it as a process miss.
 
 ## Declaring agents up front
 
@@ -54,3 +56,27 @@ Instructions can go to Haiku only if they include all of:
 ## Cost check
 
 At the end of a task the conductor reports how many agents of each role ran. If Opus or Sonnet did work that met the builder-ready bar, note it as a process miss.
+
+## How this is enforced
+
+Four agent definitions live in `.claude/agents/`:
+
+| Agent (`subagent_type`) | Model | May edit |
+|---|---|---|
+| builder | haiku | files its brief names |
+| scout | haiku | `knowledge/`, `standards/proposals/` only |
+| tactician | sonnet | briefs and plan files; launches builders and scouts |
+| reviewer | opus | `reviews/` only |
+
+Hooks in `.claude/settings.json` call `tools/agent_hooks.py`:
+
+- **Plan gate** (before every Agent launch): the description must start with a step id (e.g. `B15`) from an agent table in a `plans/` file changed in the last 14 days. The role must match `subagent_type`, and the model must match the agent definition. Otherwise the launch is blocked.
+- **Edit gate** (before Edit, Write, NotebookEdit): the conductor may not edit `core/`, `tests/`, `designs/`, `schema/` or `.github/` unless `plans/conductor-edits.md` has a row dated today (UTC) for that file with a reason. Scouts edit only `knowledge/` and `standards/proposals/`. Reviewers edit only `reviews/`. No agent edits `standards/design-standards.yaml` or `.claude/`.
+- **Agent log** (after each launch and on subagent stop): one line per event is appended to `plans/agent-log.jsonl`, with role, model, step, plan, description and token usage where reported.
+- **CI citation check** (`plane check-citations`, in `validate.yml`): each URL a change adds under `knowledge/` or `standards/` is fetched. A title that does not match its citation fails; an unreachable URL warns.
+
+**Limit:** the hooks apply only to Claude Code sessions started inside this repo. Chat sessions, other tools and other clones are not covered. CI is the only check that runs everywhere.
+
+**Round 13 limits:** each gate runs `python3` and falls back to `python`, and the gate hooks set `onFailure: block`, so a gate that cannot start blocks the call instead of passing it. `tools/agent_hooks.py` and `.claude/` can be edited only by the main session with a dated `plans/conductor-edits.md` row, and never by a subagent. Bash writes are detected only after the fact: a post-Bash hook blocks the next step and logs any file a shell command changed that its caller may not edit, but it cannot undo the write and can also flag a concurrent agent's change.
+Plans are dated by filename (`plans/YYYY-MM-DD-*.md`, 14 days), table rows inside code fences or HTML comments do not count, and only the conductor edits `plans/*.md` and `plans/conductor-edits.md`; tacticians write briefs under `plans/<plan-name>/briefs/`.
+The block-on-hook-failure safeguard (`onFailure: block`) needs Claude Code v2.1.295 or newer; older clients let a failed hook through, so everyone should update Claude Code.
