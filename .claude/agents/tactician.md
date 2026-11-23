@@ -22,6 +22,8 @@ Steps:
 - Write each brief to plans/<task>/briefs/*.md if nested launch is not available; otherwise launch builders or scouts directly.
 - Launch each agent with a description that starts with the plan step id from the agent table. Agents not in the table are blocked by the hooks.
 - Check each result against its pass check before reporting.
+- A fix brief tells the builder to consider, in order, removing, modifying and consolidating parts before adding any, and to report which it used and why any added mass or parts were needed.
+- A fix that has failed twice is a loop: stop and report it to the conductor instead of writing a third brief.
 
 Stop rule: if the step cannot be made builder-ready from the plan and the inputs, stop and report what the conductor must decide.
 

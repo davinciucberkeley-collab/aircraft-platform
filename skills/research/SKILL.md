@@ -12,13 +12,14 @@ New, template-conforming files in `knowledge/`, each with real, opened sources.
 | Step | Role | Model |
 |---|---|---|
 | Choose topics or gaps, write scout briefs | Tactician | Sonnet (or Conductor if briefs are trivial) |
-| Gather into template | Scout | Haiku, several in parallel, disjoint topics |
+| Gather into template | Scout | Haiku, several in parallel, disjoint topics; Sonnet for benchmark mode (see `standards/agents.md#scouting`) |
 | Spot-check sources | Reviewer | Opus (one) — sample 20% of entries |
 
 ## Templates
 - DIY project → `knowledge/TEMPLATE-diy-project.md` → `knowledge/diy-projects/<id>.md`
 - Paper / standard / doc → `knowledge/TEMPLATE-source.md` → `knowledge/sources/<prefix>-<id>.md`
 - Concept evidence ("does X work?") → structure of `knowledge/concepts/tailsitter-evidence.md`
+- How others solved a problem ("how do people cut wing mass without adding parts?") → `knowledge/TEMPLATE-approaches.md` → `knowledge/approaches/<topic>.md`
 
 ## Modes
 **Survey:** "find N builds about <topic>". One scout per disjoint topic.
